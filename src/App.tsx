@@ -541,13 +541,13 @@ const AppRoutes = () => (
 );
 
 const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <ErrorBoundary>
+  <ErrorBoundary>
+    <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <AppRoutes />
       </AuthProvider>
-    </ErrorBoundary>
-  </QueryClientProvider>
+    </QueryClientProvider>
+  </ErrorBoundary>
 );
 
 export default App;
