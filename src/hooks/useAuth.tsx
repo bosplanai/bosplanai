@@ -140,7 +140,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     // Initial session check - mark as initial
     supabase.auth
       .getSession()
-      .then(({ data: { session: initialSession } }) => validateAndApplySession(initialSession, false, true));
+      .then(({ data: { session: initialSession } }) =>
+        validateAndApplySession(initialSession, false, true)
+      )
+      .catch((err) => {
+        // If Supabase env vars are missing or network is unavailable, avoid getting stuck
+        // in an infinite loading state at `/`.
+        console.error("[AUTH] Initial session check failed", err);
+        applySession(null, true);
+      });
 
     return () => {
       mounted = false;
