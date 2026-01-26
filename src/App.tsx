@@ -57,6 +57,7 @@ import ProjectManagementExplainer from "./pages/ProjectManagement.explainer";
 import CalendarExplainer from "./pages/CalendarExplainer";
 import Pricing from "./pages/Pricing";
 import VirtualAssistants from "./pages/VirtualAssistants";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 const queryClient = new QueryClient();
 
@@ -541,9 +542,11 @@ const AppRoutes = () => (
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <AuthProvider>
-      <AppRoutes />
-    </AuthProvider>
+    <ErrorBoundary>
+      <AuthProvider>
+        <AppRoutes />
+      </AuthProvider>
+    </ErrorBoundary>
   </QueryClientProvider>
 );
 
