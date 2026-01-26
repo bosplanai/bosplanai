@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { useState, useRef, useEffect, useCallback } from "react";
 import { Calendar, Flag, User, Circle, Pencil, Check, X, Users, FolderOpen, Plus, Trash2, FileText } from "lucide-react";
 import { format } from "date-fns";

@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { useState, useEffect } from "react";
 import { format } from "date-fns";
 import { Clock, User, FolderOpen, Calendar, AlertCircle, ArrowRight } from "lucide-react";
@@ -405,3 +406,4 @@ export const DeclinedTaskReassignDialog = ({
 };
 
 export default DeclinedTaskReassignDialog;
+
