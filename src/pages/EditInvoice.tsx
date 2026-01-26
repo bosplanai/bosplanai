@@ -1,0 +1,603 @@
+import { useState, useEffect, useMemo } from "react";
+import { useParams } from "react-router-dom";
+import { useOrgNavigation } from "@/hooks/useOrgNavigation";
+import { ArrowLeft, Plus, CalendarIcon, X, Loader2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { format } from "date-fns";
+import { cn } from "@/lib/utils";
+import { toast } from "sonner";
+import SideNavigation from "@/components/SideNavigation";
+import ActionBar from "@/components/ActionBar";
+import CustomerSelect from "@/components/invoicing/CustomerSelect";
+import ItemSelect from "@/components/invoicing/ItemSelect";
+import { Customer } from "@/hooks/useCustomers";
+import { InvoiceProduct } from "@/hooks/useInvoiceProducts";
+import { useOrganization } from "@/hooks/useOrganization";
+import { supabase } from "@/integrations/supabase/client";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+
+interface InvoiceItem {
+  id: string;
+  description: string;
+  quantity: number;
+  rate: number;
+  discount: number;
+  discountType: "percent" | "fixed";
+  vat: string;
+}
+
+const VAT_OPTIONS = [
+  { value: "none", label: "No VAT", rate: 0 },
+  { value: "standard", label: "Standard (20%)", rate: 20 },
+  { value: "reduced", label: "Reduced (5%)", rate: 5 },
+  { value: "zero", label: "Zero Rated (0%)", rate: 0 },
+];
+
+const TERMS_OPTIONS = [
+  { value: "receipt", label: "Due on Receipt" },
+  { value: "net15", label: "Net 15" },
+  { value: "net30", label: "Net 30" },
+  { value: "net45", label: "Net 45" },
+  { value: "net60", label: "Net 60" },
+];
+
+const EditInvoice = () => {
+  const { navigate } = useOrgNavigation();
+  const { id } = useParams<{ id: string }>();
+  const { organization } = useOrganization();
+  const queryClient = useQueryClient();
+  
+  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
+  const [orderNumber, setOrderNumber] = useState("");
+  const [invoiceDate, setInvoiceDate] = useState<Date>(new Date());
+  const [terms, setTerms] = useState("receipt");
+  const [dueDate, setDueDate] = useState<Date>(new Date());
+  const [items, setItems] = useState<InvoiceItem[]>([]);
+  const [adjustment, setAdjustment] = useState<number>(0);
+  const [customerNotes, setCustomerNotes] = useState("");
+  const [termsAndConditions, setTermsAndConditions] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
+
+  // Fetch invoice data
+  const { data: invoice, isLoading } = useQuery({
+    queryKey: ["invoice", id],
+    queryFn: async () => {
+      if (!id) return null;
+      
+      const { data, error } = await supabase
+        .from("invoices")
+        .select(`
+          *,
+          customer:customers(*),
+          line_items:invoice_line_items(*)
+        `)
+        .eq("id", id)
+        .single();
+      
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!id,
+  });
+
+  // Initialize form with invoice data
+  useEffect(() => {
+    if (invoice) {
+      if (invoice.customer) {
+        setSelectedCustomer(invoice.customer as Customer);
+      }
+      if (invoice.invoice_date) {
+        setInvoiceDate(new Date(invoice.invoice_date));
+      }
+      if (invoice.due_date) {
+        setDueDate(new Date(invoice.due_date));
+      }
+      setTerms(invoice.terms || "receipt");
+      setCustomerNotes(invoice.customer_notes || invoice.description || "");
+      setTermsAndConditions(invoice.terms_conditions || "");
+      
+      if (invoice.line_items && invoice.line_items.length > 0) {
+        setItems(invoice.line_items.map((item: any) => ({
+          id: item.id,
+          description: item.description,
+          quantity: item.quantity,
+          rate: item.rate,
+          discount: item.discount,
+          discountType: item.discount_type as "percent" | "fixed",
+          vat: item.vat,
+        })));
+      } else {
+        setItems([{ id: crypto.randomUUID(), description: "", quantity: 1, rate: 0, discount: 0, discountType: "percent", vat: "none" }]);
+      }
+    }
+  }, [invoice]);
+
+  // Update invoice mutation
+  const updateInvoice = useMutation({
+    mutationFn: async (data: any) => {
+      if (!id || !organization?.id) throw new Error("Missing data");
+
+      // Update invoice
+      const { error: invoiceError } = await supabase
+        .from("invoices")
+        .update({
+          customer_id: data.customer_id,
+          description: data.description,
+          due_date: data.due_date,
+          invoice_date: data.invoice_date,
+          terms: data.terms,
+          customer_notes: data.customer_notes,
+          terms_conditions: data.terms_conditions,
+          amount_due: Math.round(data.amount_due * 100),
+        })
+        .eq("id", id);
+
+      if (invoiceError) throw invoiceError;
+
+      // Delete existing line items
+      await supabase.from("invoice_line_items").delete().eq("invoice_id", id);
+
+      // Insert new line items
+      const lineItems = data.items.map((item: any, index: number) => ({
+        invoice_id: id,
+        description: item.description,
+        quantity: item.quantity,
+        rate: item.rate,
+        discount: item.discount,
+        discount_type: item.discount_type,
+        vat: item.vat,
+        amount: item.amount,
+        position: index,
+      }));
+
+      const { error: lineItemsError } = await supabase
+        .from("invoice_line_items")
+        .insert(lineItems);
+
+      if (lineItemsError) throw lineItemsError;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["invoice", id] });
+      queryClient.invalidateQueries({ queryKey: ["invoices"] });
+      toast.success("Invoice updated successfully");
+      navigate(`/invoicing/view/${id}`);
+    },
+    onError: (error) => {
+      toast.error("Failed to update invoice: " + error.message);
+    },
+  });
+
+  const addItem = () => {
+    setItems([
+      ...items,
+      { id: crypto.randomUUID(), description: "", quantity: 1, rate: 0, discount: 0, discountType: "percent", vat: "none" },
+    ]);
+  };
+
+  const removeItem = (itemId: string) => {
+    if (items.length > 1) {
+      setItems(items.filter((item) => item.id !== itemId));
+    }
+  };
+
+  const updateItem = (itemId: string, field: keyof InvoiceItem, value: string | number) => {
+    setItems(items.map((item) => 
+      item.id === itemId ? { ...item, [field]: value } : item
+    ));
+  };
+
+  const handleProductSelect = (itemId: string, product: InvoiceProduct) => {
+    setItems(items.map((item) => 
+      item.id === itemId 
+        ? { 
+            ...item, 
+            description: product.name,
+            rate: Number(product.default_rate),
+            vat: product.default_vat,
+          } 
+        : item
+    ));
+  };
+
+  const calculateItemAmount = (item: InvoiceItem) => {
+    const subtotal = item.quantity * item.rate;
+    const discountAmount = item.discountType === "percent" 
+      ? (subtotal * item.discount) / 100 
+      : item.discount;
+    const afterDiscount = subtotal - discountAmount;
+    const vatOption = VAT_OPTIONS.find((v) => v.value === item.vat);
+    const vatAmount = vatOption ? (afterDiscount * vatOption.rate) / 100 : 0;
+    return afterDiscount + vatAmount;
+  };
+
+  const { subTotal, totalVat, total } = useMemo(() => {
+    let subTotal = 0;
+    let totalVat = 0;
+    
+    items.forEach((item) => {
+      const itemSubtotal = item.quantity * item.rate;
+      const discountAmount = item.discountType === "percent" 
+        ? (itemSubtotal * item.discount) / 100 
+        : item.discount;
+      const afterDiscount = itemSubtotal - discountAmount;
+      const vatOption = VAT_OPTIONS.find((v) => v.value === item.vat);
+      const vatAmount = vatOption ? (afterDiscount * vatOption.rate) / 100 : 0;
+      
+      subTotal += afterDiscount;
+      totalVat += vatAmount;
+    });
+    
+    const total = subTotal + totalVat + adjustment;
+    
+    return { subTotal, totalVat, total };
+  }, [items, adjustment]);
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat("en-GB", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(amount);
+  };
+
+  const handleSave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!selectedCustomer) {
+      toast.error("Please select a customer");
+      return;
+    }
+    
+    if (items.some((item) => !item.description.trim())) {
+      toast.error("Please fill in all item descriptions");
+      return;
+    }
+    
+    setIsSaving(true);
+    try {
+      await updateInvoice.mutateAsync({
+        customer_id: selectedCustomer.id,
+        description: customerNotes || undefined,
+        due_date: dueDate.toISOString(),
+        invoice_date: invoiceDate.toISOString(),
+        terms,
+        customer_notes: customerNotes,
+        terms_conditions: termsAndConditions,
+        amount_due: total,
+        items: items.map((item) => ({
+          description: item.description,
+          quantity: item.quantity,
+          rate: item.rate,
+          discount: item.discount,
+          discount_type: item.discountType,
+          vat: item.vat,
+          amount: calculateItemAmount(item),
+        })),
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  if (!invoice) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <h2 className="text-lg font-semibold mb-2">Invoice not found</h2>
+          <Button onClick={() => navigate("/invoicing/list")}>Back to Invoices</Button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-background flex">
+      <div className="flex-1 flex flex-col">
+        <div className="border-b border-border bg-card px-6 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <Button variant="ghost" size="icon" onClick={() => navigate(`/invoicing/view/${id}`)}>
+                <ArrowLeft className="w-5 h-5" />
+              </Button>
+              <h1 className="text-xl font-semibold">Edit Invoice - {invoice.invoice_number}</h1>
+            </div>
+            <ActionBar />
+          </div>
+        </div>
+
+        <div className="flex-1 p-6 overflow-y-auto">
+          <form onSubmit={handleSave} className="max-w-5xl mx-auto space-y-6">
+            {/* Customer Section */}
+            <Card>
+              <CardContent className="pt-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <Label className="text-primary">
+                      Customer<span className="text-destructive">*</span>
+                    </Label>
+                    <CustomerSelect
+                      selectedCustomer={selectedCustomer}
+                      onSelect={setSelectedCustomer}
+                    />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Invoice Details */}
+            <Card>
+              <CardContent className="pt-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                  <div className="space-y-2">
+                    <Label htmlFor="invoiceNumber" className="text-primary">
+                      Invoice#
+                    </Label>
+                    <Input
+                      id="invoiceNumber"
+                      value={invoice.invoice_number}
+                      disabled
+                      className="bg-muted"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-primary">Invoice Date</Label>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          className={cn("w-full justify-start text-left font-normal")}
+                        >
+                          <CalendarIcon className="mr-2 h-4 w-4" />
+                          {format(invoiceDate, "dd/MM/yy")}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0">
+                        <Calendar
+                          mode="single"
+                          selected={invoiceDate}
+                          onSelect={(date) => date && setInvoiceDate(date)}
+                          initialFocus
+                        />
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Terms</Label>
+                    <Select value={terms} onValueChange={setTerms}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {TERMS_OPTIONS.map((option) => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Due Date</Label>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          className={cn("w-full justify-start text-left font-normal")}
+                        >
+                          <CalendarIcon className="mr-2 h-4 w-4" />
+                          {format(dueDate, "dd/MM/yy")}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0">
+                        <Calendar
+                          mode="single"
+                          selected={dueDate}
+                          onSelect={(date) => date && setDueDate(date)}
+                          initialFocus
+                        />
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Item Table */}
+            <Card>
+              <CardHeader className="pb-4">
+                <CardTitle className="text-base font-semibold">Item Table</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-12 gap-2 text-xs font-medium text-muted-foreground uppercase tracking-wide mb-3 px-2">
+                  <div className="col-span-4">Item Details</div>
+                  <div className="col-span-1 text-center">Quantity</div>
+                  <div className="col-span-2 text-center">Rate</div>
+                  <div className="col-span-1 text-center">Discount</div>
+                  <div className="col-span-2">VAT</div>
+                  <div className="col-span-1 text-right">Amount</div>
+                  <div className="col-span-1"></div>
+                </div>
+
+                <div className="space-y-3">
+                  {items.map((item) => (
+                    <div
+                      key={item.id}
+                      className="grid grid-cols-12 gap-2 items-center bg-muted/30 rounded-lg p-2"
+                    >
+                      <div className="col-span-4">
+                        <ItemSelect
+                          value={item.description}
+                          onChange={(value) => updateItem(item.id, "description", value)}
+                          onProductSelect={(product) => handleProductSelect(item.id, product)}
+                        />
+                      </div>
+                      <div className="col-span-1">
+                        <Input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={item.quantity}
+                          onChange={(e) => updateItem(item.id, "quantity", parseFloat(e.target.value) || 0)}
+                          className="bg-background text-center"
+                        />
+                      </div>
+                      <div className="col-span-2">
+                        <Input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={item.rate}
+                          onChange={(e) => updateItem(item.id, "rate", parseFloat(e.target.value) || 0)}
+                          className="bg-background text-center"
+                        />
+                      </div>
+                      <div className="col-span-1 flex items-center gap-1">
+                        <Input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={item.discount}
+                          onChange={(e) => updateItem(item.id, "discount", parseFloat(e.target.value) || 0)}
+                          className="bg-background text-center w-16"
+                        />
+                        <span className="text-muted-foreground text-sm">%</span>
+                      </div>
+                      <div className="col-span-2">
+                        <Select
+                          value={item.vat}
+                          onValueChange={(value) => updateItem(item.id, "vat", value)}
+                        >
+                          <SelectTrigger className="bg-background">
+                            <SelectValue placeholder="Select VAT" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {VAT_OPTIONS.map((option) => (
+                              <SelectItem key={option.value} value={option.value}>
+                                {option.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="col-span-1 text-right font-medium">
+                        {formatCurrency(calculateItemAmount(item))}
+                      </div>
+                      <div className="col-span-1 flex justify-end">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => removeItem(item.id)}
+                          disabled={items.length === 1}
+                          className="text-destructive hover:text-destructive"
+                        >
+                          <X className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="mt-4 text-primary border-primary hover:bg-primary/5"
+                  onClick={addItem}
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  Add Another Line
+                </Button>
+              </CardContent>
+            </Card>
+
+            {/* Totals */}
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex justify-end">
+                  <div className="w-72 space-y-2 text-sm">
+                    <div className="flex justify-between">
+                      <span>Sub Total</span>
+                      <span>{formatCurrency(subTotal)}</span>
+                    </div>
+                    {totalVat > 0 && (
+                      <div className="flex justify-between text-muted-foreground">
+                        <span>VAT Total</span>
+                        <span>{formatCurrency(totalVat)}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between pt-2 border-t font-bold text-lg">
+                      <span>Total</span>
+                      <span>£{formatCurrency(total)}</span>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Notes */}
+            <Card>
+              <CardContent className="pt-6 space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="customerNotes">Customer Notes</Label>
+                  <Textarea
+                    id="customerNotes"
+                    value={customerNotes}
+                    onChange={(e) => setCustomerNotes(e.target.value)}
+                    placeholder="Notes visible to the customer"
+                    rows={3}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="terms">Terms & Conditions</Label>
+                  <Textarea
+                    id="terms"
+                    value={termsAndConditions}
+                    onChange={(e) => setTermsAndConditions(e.target.value)}
+                    placeholder="Enter terms and conditions"
+                    rows={3}
+                  />
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Actions */}
+            <div className="flex justify-end gap-3">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => navigate(`/invoicing/view/${id}`)}
+              >
+                Cancel
+              </Button>
+              <Button type="submit" disabled={isSaving}>
+                {isSaving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                Save Changes
+              </Button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <SideNavigation />
+    </div>
+  );
+};
+
+export default EditInvoice;
