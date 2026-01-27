@@ -12,6 +12,7 @@ import { Gift, Loader2, Clock, Users, Shield, CheckCircle2, AlertTriangle } from
 import { z } from "zod";
 import MathCaptcha from "@/components/MathCaptcha";
 import bosplanLogo from "@/assets/bosplan-logo.png";
+import SpecialistSetPasswordDialog from "@/components/SpecialistSetPasswordDialog";
 
 const employeeSizeOptions = [
   { value: "1-10", label: "1-10 employees" },
@@ -21,9 +22,9 @@ const employeeSizeOptions = [
   { value: "500+", label: "500+ employees" },
 ];
 
+// No password in initial form - user sets it after org creation
 const signUpSchema = z.object({
   email: z.string().trim().email("Invalid email address").max(255),
-  password: z.string().min(6, "Password must be at least 6 characters").max(100),
   organizationName: z.string().trim().min(2, "Organization name must be at least 2 characters").max(100),
   employeeSize: z.string().min(1, "Please select employee size"),
   fullName: z.string().trim().min(2, "Full name must be at least 2 characters").max(100),
@@ -52,7 +53,6 @@ const SpecialistSignup = () => {
   const [error, setError] = useState<string | null>(null);
 
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
   const [organizationName, setOrganizationName] = useState("");
   const [employeeSize, setEmployeeSize] = useState("");
   const [fullName, setFullName] = useState("");
@@ -62,6 +62,11 @@ const SpecialistSignup = () => {
   const [captchaVerified, setCaptchaVerified] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  // Two-step flow state
+  const [showPasswordDialog, setShowPasswordDialog] = useState(false);
+  const [tempPassword, setTempPassword] = useState<string | null>(null);
+  const [registrationComplete, setRegistrationComplete] = useState(false);
 
   useEffect(() => {
     const validateCode = async () => {
@@ -87,7 +92,7 @@ const SpecialistSignup = () => {
           setPlanInfo(result);
           setError(null);
         }
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error("Error validating referral code:", err);
         setError("Failed to validate referral code");
       } finally {
@@ -102,7 +107,6 @@ const SpecialistSignup = () => {
     try {
       signUpSchema.parse({
         email,
-        password,
         organizationName,
         employeeSize,
         fullName,
@@ -150,7 +154,7 @@ const SpecialistSignup = () => {
 
     setIsSubmitting(true);
     try {
-      // Use edge function to create user with pre-confirmed email
+      // Step 1: Create org and user WITHOUT password (edge function generates temp password)
       const response = await fetch(
         `https://qiikjhvzlwzysbtzhdcd.supabase.co/functions/v1/complete-specialist-registration`,
         {
@@ -159,7 +163,7 @@ const SpecialistSignup = () => {
           body: JSON.stringify({
             referralCode,
             email: email.trim().toLowerCase(),
-            password,
+            // No password - user will set it in Step 2
             organizationName: organizationName.trim(),
             employeeSize,
             fullName: fullName.trim(),
@@ -180,20 +184,52 @@ const SpecialistSignup = () => {
         return;
       }
 
-      // Sign in the user
+      // Step 2: Show password dialog
+      if (result.requires_password_setup && result.temp_password) {
+        setTempPassword(result.temp_password);
+        setRegistrationComplete(true);
+        setShowPasswordDialog(true);
+      } else {
+        // Password was somehow provided - shouldn't happen in normal flow
+        toast({
+          title: "Welcome to BosPlan!",
+          description: `Your organization has been created with ${planInfo?.plan_duration_months} months of free access.`,
+        });
+        navigate("/auth");
+      }
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "An unexpected error occurred";
+      toast({
+        title: "Error",
+        description: message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handlePasswordSet = async (password: string) => {
+    if (!tempPassword) return;
+
+    try {
+      // Sign in with temp password first
       const { error: signInError } = await supabase.auth.signInWithPassword({
         email: email.trim().toLowerCase(),
-        password,
+        password: tempPassword,
       });
 
       if (signInError) {
-        toast({
-          title: "Sign in failed",
-          description: "Your account was created but we couldn't sign you in. Please try signing in manually.",
-          variant: "destructive",
-        });
-        navigate("/auth");
-        return;
+        throw signInError;
+      }
+
+      // Update password to user's chosen password
+      const { error: updateError } = await supabase.auth.updateUser({
+        password: password,
+      });
+
+      if (updateError) {
+        throw updateError;
       }
 
       // Send welcome email (fire and forget)
@@ -206,19 +242,19 @@ const SpecialistSignup = () => {
 
       toast({
         title: "Welcome to BosPlan!",
-        description: `Your organization has been created with ${planInfo?.plan_duration_months} months of free access.`,
+        description: `Your account is ready with ${planInfo?.plan_duration_months} months of free access.`,
       });
 
+      setShowPasswordDialog(false);
       navigate("/");
     } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : "An unexpected error occurred";
+      const message = error instanceof Error ? error.message : "Failed to set password";
       toast({
         title: "Error",
         description: message,
         variant: "destructive",
       });
-    } finally {
-      setIsSubmitting(false);
+      throw error; // Re-throw so dialog can show error
     }
   };
 
@@ -291,11 +327,11 @@ const SpecialistSignup = () => {
           </CardContent>
         </Card>
 
-        {/* Signup Form */}
+        {/* Signup Form - Step 1: Organization & Profile Details */}
         <Card>
           <CardHeader>
-            <CardTitle>Create Your Account</CardTitle>
-            <CardDescription>Fill in your details to get started</CardDescription>
+            <CardTitle>Create Your Organization</CardTitle>
+            <CardDescription>Fill in your details to get started. You'll set your password in the next step.</CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
@@ -309,22 +345,9 @@ const SpecialistSignup = () => {
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="you@company.com"
                   className={errors.email ? "border-destructive" : ""}
+                  disabled={registrationComplete}
                 />
                 {errors.email && <p className="text-sm text-destructive">{errors.email}</p>}
-              </div>
-
-              {/* Password */}
-              <div className="space-y-2">
-                <Label htmlFor="password">Password *</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Min 6 characters"
-                  className={errors.password ? "border-destructive" : ""}
-                />
-                {errors.password && <p className="text-sm text-destructive">{errors.password}</p>}
               </div>
 
               {/* Organization Name */}
@@ -336,6 +359,7 @@ const SpecialistSignup = () => {
                   onChange={(e) => setOrganizationName(e.target.value)}
                   placeholder="Your company name"
                   className={errors.organizationName ? "border-destructive" : ""}
+                  disabled={registrationComplete}
                 />
                 {errors.organizationName && <p className="text-sm text-destructive">{errors.organizationName}</p>}
               </div>
@@ -343,7 +367,7 @@ const SpecialistSignup = () => {
               {/* Employee Size */}
               <div className="space-y-2">
                 <Label>Employee Size *</Label>
-                <Select value={employeeSize} onValueChange={setEmployeeSize}>
+                <Select value={employeeSize} onValueChange={setEmployeeSize} disabled={registrationComplete}>
                   <SelectTrigger className={errors.employeeSize ? "border-destructive" : ""}>
                     <SelectValue placeholder="Select size" />
                   </SelectTrigger>
@@ -367,6 +391,7 @@ const SpecialistSignup = () => {
                   onChange={(e) => setFullName(e.target.value)}
                   placeholder="John Smith"
                   className={errors.fullName ? "border-destructive" : ""}
+                  disabled={registrationComplete}
                 />
                 {errors.fullName && <p className="text-sm text-destructive">{errors.fullName}</p>}
               </div>
@@ -380,6 +405,7 @@ const SpecialistSignup = () => {
                   onChange={(e) => setJobRole(e.target.value)}
                   placeholder="e.g., CEO, Manager"
                   className={errors.jobRole ? "border-destructive" : ""}
+                  disabled={registrationComplete}
                 />
                 {errors.jobRole && <p className="text-sm text-destructive">{errors.jobRole}</p>}
               </div>
@@ -393,6 +419,7 @@ const SpecialistSignup = () => {
                   onChange={(e) => setPhoneNumber(e.target.value)}
                   placeholder="+1 234 567 8900"
                   className={errors.phoneNumber ? "border-destructive" : ""}
+                  disabled={registrationComplete}
                 />
                 {errors.phoneNumber && <p className="text-sm text-destructive">{errors.phoneNumber}</p>}
               </div>
@@ -409,6 +436,7 @@ const SpecialistSignup = () => {
                       id="terms"
                       checked={agreedToTerms}
                       onCheckedChange={(checked) => setAgreedToTerms(checked as boolean)}
+                      disabled={registrationComplete}
                     />
                     <Label htmlFor="terms" className="text-sm text-muted-foreground leading-relaxed cursor-pointer">
                       I have read and agree to the above terms and conditions
@@ -418,21 +446,25 @@ const SpecialistSignup = () => {
               )}
 
               {/* Captcha */}
-              <MathCaptcha onVerified={setCaptchaVerified} isVerified={captchaVerified} />
+              {!registrationComplete && (
+                <MathCaptcha onVerified={setCaptchaVerified} isVerified={captchaVerified} />
+              )}
 
-              <Button type="submit" disabled={isSubmitting} className="w-full">
-                {isSubmitting ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Creating Account...
-                  </>
-                ) : (
-                  <>
-                    <Shield className="w-4 h-4 mr-2" />
-                    Create Account
-                  </>
-                )}
-              </Button>
+              {!registrationComplete && (
+                <Button type="submit" disabled={isSubmitting} className="w-full">
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Creating Organization...
+                    </>
+                  ) : (
+                    <>
+                      <Shield className="w-4 h-4 mr-2" />
+                      Continue
+                    </>
+                  )}
+                </Button>
+              )}
             </form>
 
             <div className="mt-4 text-center">
@@ -446,6 +478,14 @@ const SpecialistSignup = () => {
           </CardContent>
         </Card>
       </div>
+
+      {/* Step 2: Password Dialog */}
+      <SpecialistSetPasswordDialog
+        isOpen={showPasswordDialog}
+        onPasswordSet={handlePasswordSet}
+        organizationName={organizationName}
+        planDurationMonths={planInfo?.plan_duration_months}
+      />
     </div>
   );
 };
