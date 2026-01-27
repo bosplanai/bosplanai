@@ -14,6 +14,112 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_usage_limits: {
+        Row: {
+          created_at: string
+          id: string
+          is_enabled: boolean
+          limit_type: string
+          max_prompts: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_enabled?: boolean
+          limit_type: string
+          max_prompts?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_enabled?: boolean
+          limit_type?: string
+          max_prompts?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      ai_usage_tracking: {
+        Row: {
+          created_at: string
+          id: string
+          organization_id: string
+          period_end: string
+          period_start: string
+          period_type: string
+          prompt_count: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          organization_id: string
+          period_end: string
+          period_start: string
+          period_type: string
+          prompt_count?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          organization_id?: string
+          period_end?: string
+          period_start?: string
+          period_type?: string
+          prompt_count?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_usage_tracking_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      feature_usage_logs: {
+        Row: {
+          created_at: string
+          feature_category: string
+          feature_name: string
+          id: string
+          organization_id: string | null
+          page_path: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          feature_category?: string
+          feature_name: string
+          id?: string
+          organization_id?: string | null
+          page_path?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          feature_category?: string
+          feature_name?: string
+          id?: string
+          organization_id?: string | null
+          page_path?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "feature_usage_logs_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       organization_specialist_plans: {
         Row: {
           agreed_at: string | null
@@ -67,33 +173,53 @@ export type Database = {
           created_at: string
           employee_size: string
           id: string
+          is_suspended: boolean
           logo_url: string | null
           name: string
           scheduled_deletion_at: string | null
           slug: string
+          suspended_at: string | null
+          suspended_by: string | null
+          suspension_reason: string | null
           updated_at: string
         }
         Insert: {
           created_at?: string
           employee_size: string
           id?: string
+          is_suspended?: boolean
           logo_url?: string | null
           name: string
           scheduled_deletion_at?: string | null
           slug: string
+          suspended_at?: string | null
+          suspended_by?: string | null
+          suspension_reason?: string | null
           updated_at?: string
         }
         Update: {
           created_at?: string
           employee_size?: string
           id?: string
+          is_suspended?: boolean
           logo_url?: string | null
           name?: string
           scheduled_deletion_at?: string | null
           slug?: string
+          suspended_at?: string | null
+          suspended_by?: string | null
+          suspension_reason?: string | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "organizations_suspended_by_fkey"
+            columns: ["suspended_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       profiles: {
         Row: {
@@ -308,11 +434,79 @@ export type Database = {
         }
         Relationships: []
       }
+      virtual_assistants: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          email: string
+          first_name: string
+          id: string
+          job_role: string
+          last_name: string
+          organization_id: string | null
+          phone_number: string | null
+          status: string
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          email: string
+          first_name: string
+          id?: string
+          job_role: string
+          last_name: string
+          organization_id?: string | null
+          phone_number?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          email?: string
+          first_name?: string
+          id?: string
+          job_role?: string
+          last_name?: string
+          organization_id?: string | null
+          phone_number?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "virtual_assistants_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
-      [_ in never]: never
+      feature_usage_stats: {
+        Row: {
+          feature_category: string | null
+          feature_name: string | null
+          first_used_at: string | null
+          last_used_at: string | null
+          total_visits: number | null
+          unique_organizations: number | null
+          unique_users: number | null
+          visits_last_24h: number | null
+          visits_last_30d: number | null
+          visits_last_7d: number | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
+      check_ai_usage_allowed: { Args: { org_id: string }; Returns: boolean }
       complete_specialist_signup: {
         Args: {
           _employee_size: string
@@ -344,6 +538,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      increment_ai_usage: { Args: { org_id: string }; Returns: boolean }
       is_org_member: {
         Args: { _org_id: string; _user_id: string }
         Returns: boolean
