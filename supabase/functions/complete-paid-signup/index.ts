@@ -221,7 +221,7 @@ serve(async (req) => {
     if (!userId) throw new Error("User creation did not return a user id");
 
     console.log("[complete-paid-signup] Creating org/profile", { userId });
-    const { error: rpcError } = await supabaseAdmin.rpc(
+    const { data: orgId, error: rpcError } = await supabaseAdmin.rpc(
       "create_organization_and_profile",
       {
         _user_id: userId,
@@ -238,10 +238,22 @@ serve(async (req) => {
       throw new Error(rpcError.message || "Failed to create organization/profile");
     }
 
+    // Fetch the org slug to return it
+    const { data: orgData, error: orgFetchError } = await supabaseAdmin
+      .from("organizations")
+      .select("slug")
+      .eq("id", orgId)
+      .single();
+
+    if (orgFetchError) {
+      console.error("[complete-paid-signup] Error fetching org slug:", orgFetchError);
+    }
+
     return new Response(
       JSON.stringify({
         success: true,
         email,
+        organization_slug: orgData?.slug || null,
       }),
       {
         status: 200,

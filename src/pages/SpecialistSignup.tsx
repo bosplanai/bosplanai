@@ -67,6 +67,7 @@ const SpecialistSignup = () => {
   const [showPasswordDialog, setShowPasswordDialog] = useState(false);
   const [tempPassword, setTempPassword] = useState<string | null>(null);
   const [registrationComplete, setRegistrationComplete] = useState(false);
+  const [organizationSlug, setOrganizationSlug] = useState<string | null>(null);
 
   useEffect(() => {
     const validateCode = async () => {
@@ -184,18 +185,27 @@ const SpecialistSignup = () => {
         return;
       }
 
+      // Store org slug for navigation after password setup
+      if (result.organization_slug) {
+        setOrganizationSlug(result.organization_slug);
+      }
+
       // Step 2: Show password dialog
       if (result.requires_password_setup && result.temp_password) {
         setTempPassword(result.temp_password);
         setRegistrationComplete(true);
         setShowPasswordDialog(true);
       } else {
-        // Password was somehow provided - shouldn't happen in normal flow
+        // Password was somehow provided - navigate directly to onboarding
         toast({
           title: "Welcome to BosPlan!",
           description: `Your organization has been created with ${planInfo?.plan_duration_months} months of free access.`,
         });
-        navigate("/auth");
+        if (result.organization_slug) {
+          navigate(`/${result.organization_slug}/onboarding`);
+        } else {
+          navigate("/");
+        }
       }
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : "An unexpected error occurred";
@@ -246,7 +256,13 @@ const SpecialistSignup = () => {
       });
 
       setShowPasswordDialog(false);
-      navigate("/");
+      
+      // Navigate directly to onboarding using the stored org slug
+      if (organizationSlug) {
+        navigate(`/${organizationSlug}/onboarding`);
+      } else {
+        navigate("/");
+      }
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : "Failed to set password";
       toast({

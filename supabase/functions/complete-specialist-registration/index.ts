@@ -156,9 +156,21 @@ serve(async (req) => {
       );
     }
 
+    // Fetch the org slug to return it
+    const { data: orgData, error: orgFetchError } = await adminClient
+      .from("organizations")
+      .select("slug")
+      .eq("id", result.organization_id)
+      .single();
+
+    if (orgFetchError) {
+      console.error("Error fetching org slug:", orgFetchError);
+    }
+
     console.log("Specialist registration complete:", {
       userId,
       organizationId: result.organization_id,
+      organizationSlug: orgData?.slug,
       planName: result.plan_name,
       requiresPasswordSetup,
     });
@@ -167,6 +179,7 @@ serve(async (req) => {
       JSON.stringify({
         success: true,
         organization_id: result.organization_id,
+        organization_slug: orgData?.slug || null,
         plan_name: result.plan_name,
         expires_at: result.expires_at,
         requires_password_setup: requiresPasswordSetup,
