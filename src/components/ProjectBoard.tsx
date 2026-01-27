@@ -114,7 +114,7 @@ const ProjectBoard = () => {
   const [dueDateFilter, setDueDateFilter] = useState<DueDateFilter>("all");
   const [assignmentFilter, setAssignmentFilter] = useState<"all" | "assigned_to_me" | string>("all");
   const [userSearchQuery, setUserSearchQuery] = useState("");
-  
+
   // Debounce search query to reduce re-renders
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -122,8 +122,12 @@ const ProjectBoard = () => {
     }, 200);
     return () => clearTimeout(timer);
   }, [searchQuery]);
-const [archiveDialogOpen, setArchiveDialogOpen] = useState(false);
-const [taskToDelete, setTaskToDelete] = useState<{ id: string; title: string; status: string } | null>(null);
+  const [archiveDialogOpen, setArchiveDialogOpen] = useState(false);
+  const [taskToDelete, setTaskToDelete] = useState<{
+    id: string;
+    title: string;
+    status: string;
+  } | null>(null);
   const {
     user,
     signOut
@@ -150,10 +154,12 @@ const [taskToDelete, setTaskToDelete] = useState<{ id: string; title: string; st
   const {
     members
   } = useTeamMembers();
-const {
+  const {
     projects
   } = useProjects();
-const { archiveTask } = useArchive();
+  const {
+    archiveTask
+  } = useArchive();
   const {
     canCreateTasks,
     canDeleteTasks,
@@ -174,25 +180,26 @@ const { archiveTask } = useArchive();
     if (!user || !organization?.id) return;
     // Only admins and members (managers) who can create tasks should trigger reminders
     if (!isAdmin && !isMember) return;
-    
     try {
       await supabase.functions.invoke('task-request-reminders', {
-        body: { organizationId: organization.id }
+        body: {
+          organizationId: organization.id
+        }
       });
     } catch (error) {
       // Silently fail - this is a background check
       console.error('Failed to check task request reminders:', error);
     }
   }, [user, organization?.id, isAdmin, isMember]);
-
   useEffect(() => {
     // Run reminder check once when the board loads for admins/managers
     checkTaskRequestReminders();
   }, [checkTaskRequestReminders]);
-
-  const { triggerSparkle } = useSparkle();
+  const {
+    triggerSparkle
+  } = useSparkle();
   const completeColumnRef = useRef<HTMLDivElement>(null);
-  
+
   // Memoize team members for reassignment purposes (viewers need this for task request reassignment)
   const allTeamMembers = useMemo(() => members.map(m => ({
     id: m.id,
@@ -203,42 +210,42 @@ const { archiveTask } = useArchive();
   // Full Access (admin): can assign to anyone
   // Manager (member): can assign to member or viewer only (not admin)
   // Team (viewer): cannot assign tasks (handled in UI)
-  const teamMembers = useMemo(() => members
-    .filter(m => {
-      if (isAdmin) return true; // Admin can assign to anyone
-      if (isMember) return m.role !== "admin"; // Manager can assign to member/viewer
-      return false; // Viewer cannot assign
-    })
-    .map(m => ({
-      id: m.id,
-      full_name: m.full_name
-    })), [members, isAdmin, isMember]);
-    
+  const teamMembers = useMemo(() => members.filter(m => {
+    if (isAdmin) return true; // Admin can assign to anyone
+    if (isMember) return m.role !== "admin"; // Manager can assign to member/viewer
+    return false; // Viewer cannot assign
+  }).map(m => ({
+    id: m.id,
+    full_name: m.full_name
+  })), [members, isAdmin, isMember]);
+
   // Memoize project options
   const projectOptions = useMemo(() => projects.map(p => ({
     id: p.id,
     title: p.title
   })), [projects]);
-  const { navigate } = useOrgNavigation();
-  
+  const {
+    navigate
+  } = useOrgNavigation();
+
   // Configure sensors with delay for touch to prevent accidental drags while scrolling
-  const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: {
-        distance: 5
-      }
-    }),
-    useSensor(TouchSensor, {
-      activationConstraint: {
-        delay: 150,
-        tolerance: 8
-      }
-    })
-  );
+  const sensors = useSensors(useSensor(PointerSensor, {
+    activationConstraint: {
+      distance: 5
+    }
+  }), useSensor(TouchSensor, {
+    activationConstraint: {
+      delay: 150,
+      tolerance: 8
+    }
+  }));
   const showSubcategoryFilter = activeTab === "operational" || activeTab === "strategic";
-  
+
   // Memoize filtered tasks to prevent recalculation on every render
-  const { todoTasks, completeTasks } = useMemo(() => {
+  const {
+    todoTasks,
+    completeTasks
+  } = useMemo(() => {
     const filtered = tasks.filter(task => {
       const matchesCategory = task.category === activeTab;
       const matchesSearch = debouncedSearchQuery.trim() === "" || task.title.toLowerCase().includes(debouncedSearchQuery.toLowerCase());
@@ -283,16 +290,13 @@ const { archiveTask } = useArchive();
         const isInAssignments = task.task_assignments?.some(a => a.user_id === assignmentFilter);
         matchesAssignment = isDirectlyAssigned || isInAssignments;
       }
-
       return matchesCategory && matchesSearch && matchesPriority && matchesSubcategory && matchesDueDate && matchesAssignment;
     });
-    
     return {
       todoTasks: filtered.filter(task => task.status === "todo").sort((a, b) => a.position - b.position),
       completeTasks: filtered.filter(task => task.status === "complete").sort((a, b) => a.position - b.position)
     };
   }, [tasks, activeTab, debouncedSearchQuery, priorityFilter, subcategoryFilter, showSubcategoryFilter, dueDateFilter, assignmentFilter, user]);
-
   const handleAddTask = async (params: {
     title: string;
     icon: string;
@@ -316,8 +320,11 @@ const { archiveTask } = useArchive();
   const handleTaskCreationComplete = useCallback(() => {
     refetch();
   }, [refetch]);
-
-  const handleDeleteTask = useCallback((task: { id: string; title: string; status: string }) => {
+  const handleDeleteTask = useCallback((task: {
+    id: string;
+    title: string;
+    status: string;
+  }) => {
     if (task.status === "complete") {
       // Show choice dialog for completed tasks
       setTaskToDelete(task);
@@ -327,36 +334,29 @@ const { archiveTask } = useArchive();
       deleteTask(task.id);
     }
   }, [deleteTask]);
-  
+
   // Memoized task update callbacks to prevent unnecessary re-renders
   const handleTitleChange = useCallback((taskId: string, newTitle: string) => {
     updateTaskTitle(taskId, newTitle);
   }, [updateTaskTitle]);
-  
   const handleDescriptionChange = useCallback((taskId: string, newDesc: string) => {
     updateTaskDescription(taskId, newDesc);
   }, [updateTaskDescription]);
-  
   const handleAssignmentChange = useCallback((taskId: string, userId: string | null) => {
     updateTaskAssignment(taskId, userId);
   }, [updateTaskAssignment]);
-  
   const handleDueDateChange = useCallback((taskId: string, date: string | null) => {
     updateTaskDueDate(taskId, date);
   }, [updateTaskDueDate]);
-  
   const handleProjectChange = useCallback((taskId: string, projectId: string | null) => {
     updateTaskProject(taskId, projectId);
   }, [updateTaskProject]);
-  
   const handlePriorityChange = useCallback((taskId: string, priority: TaskPriority) => {
     updateTaskPriority(taskId, priority);
   }, [updateTaskPriority]);
-  
   const handleStatusChange = useCallback((taskId: string, status: "todo" | "complete") => {
     updateTaskStatus(taskId, status);
   }, [updateTaskStatus]);
-
   const handleArchiveTask = async () => {
     if (taskToDelete) {
       await archiveTask(taskToDelete.id);
@@ -364,7 +364,6 @@ const { archiveTask } = useArchive();
       setTaskToDelete(null);
     }
   };
-
   const handleRecycleBinTask = async () => {
     if (taskToDelete) {
       await deleteTask(taskToDelete.id);
@@ -434,11 +433,7 @@ const { archiveTask } = useArchive();
   };
 
   // Filter members for user search
-  const filteredMembers = members.filter(m => 
-    m.full_name?.toLowerCase().includes(userSearchQuery.toLowerCase()) ||
-    m.email?.toLowerCase().includes(userSearchQuery.toLowerCase())
-  );
-
+  const filteredMembers = members.filter(m => m.full_name?.toLowerCase().includes(userSearchQuery.toLowerCase()) || m.email?.toLowerCase().includes(userSearchQuery.toLowerCase()));
   return <DndContext sensors={sensors} collisionDetection={closestCorners} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
       <div className="flex min-h-screen bg-background pb-20 md:pb-0 overflow-x-hidden">
         <div className="flex-1 flex flex-col bg-card/50 w-full max-w-full">
@@ -447,7 +442,7 @@ const { archiveTask } = useArchive();
             {/* Header - responsive layout */}
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
               <div className="flex items-center gap-3 sm:gap-5">
-                <img alt="Bosplan" className="h-9 w-auto cursor-pointer sm:h-10 transition-transform duration-200 hover:scale-105" onClick={() => navigate("/")} src="/lovable-uploads/e5978d1c-bc8f-4c7b-bf94-b7703f9b5007.png" />
+                <img alt="Bosplan" className="h-9 w-auto cursor-pointer sm:h-10 transition-transform duration-200 hover:scale-105" onClick={() => navigate("/")} src="/lovable-uploads/ae2e0e00-979d-4807-aba7-9534bd9a71ed.png" />
                 <TabNavigation activeTab={activeTab} onTabChange={setActiveTab} />
               </div>
               {user && <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
@@ -483,21 +478,12 @@ const { archiveTask } = useArchive();
                 </div>
                 <Popover>
                   <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      className={`w-auto sm:w-[160px] justify-between rounded-full bg-card shadow-sm hover:shadow-md transition-all duration-300 border-brand-green text-sm gap-2 ${
-                        (priorityFilter !== "all" || dueDateFilter !== "all" || assignmentFilter !== "all") 
-                          ? "border-primary/50 bg-primary/5" 
-                          : ""
-                      }`}
-                    >
+                    <Button variant="outline" className={`w-auto sm:w-[160px] justify-between rounded-full bg-card shadow-sm hover:shadow-md transition-all duration-300 border-brand-green text-sm gap-2 ${priorityFilter !== "all" || dueDateFilter !== "all" || assignmentFilter !== "all" ? "border-primary/50 bg-primary/5" : ""}`}>
                       <Filter className="w-4 h-4 text-muted-foreground shrink-0" />
                       <span className="hidden sm:inline">Filter Tasks</span>
-                      {(priorityFilter !== "all" || dueDateFilter !== "all" || assignmentFilter !== "all") && (
-                        <span className="flex items-center justify-center w-5 h-5 rounded-full bg-primary text-primary-foreground text-xs font-medium">
+                      {(priorityFilter !== "all" || dueDateFilter !== "all" || assignmentFilter !== "all") && <span className="flex items-center justify-center w-5 h-5 rounded-full bg-primary text-primary-foreground text-xs font-medium">
                           {[priorityFilter !== "all", dueDateFilter !== "all", assignmentFilter !== "all"].filter(Boolean).length}
-                        </span>
-                      )}
+                        </span>}
                       <ChevronDown className="h-4 w-4 shrink-0 opacity-50" />
                     </Button>
                   </PopoverTrigger>
@@ -505,20 +491,13 @@ const { archiveTask } = useArchive();
                     <div className="p-3 border-b border-border">
                       <div className="flex items-center justify-between">
                         <h4 className="font-medium text-sm">Filter Tasks</h4>
-                        {(priorityFilter !== "all" || dueDateFilter !== "all" || assignmentFilter !== "all") && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-7 text-xs text-muted-foreground hover:text-foreground"
-                            onClick={() => {
-                              setPriorityFilter("all");
-                              setDueDateFilter("all");
-                              setAssignmentFilter("all");
-                            }}
-                          >
+                        {(priorityFilter !== "all" || dueDateFilter !== "all" || assignmentFilter !== "all") && <Button variant="ghost" size="sm" className="h-7 text-xs text-muted-foreground hover:text-foreground" onClick={() => {
+                        setPriorityFilter("all");
+                        setDueDateFilter("all");
+                        setAssignmentFilter("all");
+                      }}>
                             Clear all
-                          </Button>
-                        )}
+                          </Button>}
                       </div>
                     </div>
                     <div className="p-3 space-y-4">
@@ -530,11 +509,9 @@ const { archiveTask } = useArchive();
                             <SelectValue placeholder="All Priorities" />
                           </SelectTrigger>
                           <SelectContent className="rounded-xl border-border/60 shadow-lg bg-popover">
-                            {priorityFilterOptions.map(option => (
-                              <SelectItem key={option.value} value={option.value} className="rounded-lg">
+                            {priorityFilterOptions.map(option => <SelectItem key={option.value} value={option.value} className="rounded-lg">
                                 <span className={option.className}>{option.label}</span>
-                              </SelectItem>
-                            ))}
+                              </SelectItem>)}
                           </SelectContent>
                         </Select>
                       </div>
@@ -547,70 +524,49 @@ const { archiveTask } = useArchive();
                             <SelectValue placeholder="All Dates" />
                           </SelectTrigger>
                           <SelectContent className="rounded-xl border-border/60 shadow-lg bg-popover">
-                            {dueDateFilterOptions.map(option => (
-                              <SelectItem key={option.value} value={option.value} className="rounded-lg">
+                            {dueDateFilterOptions.map(option => <SelectItem key={option.value} value={option.value} className="rounded-lg">
                                 {option.label}
-                              </SelectItem>
-                            ))}
+                              </SelectItem>)}
                           </SelectContent>
                         </Select>
                       </div>
 
                       {/* Assignment Filter - only for admin/member */}
-                      {(isAdmin || isMember) && (
-                        <div className="space-y-2">
+                      {(isAdmin || isMember) && <div className="space-y-2">
                           <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Assigned To</label>
                           <Command className="rounded-lg border border-border">
-                            <CommandInput 
-                              placeholder="Search users..." 
-                              value={userSearchQuery}
-                              onValueChange={setUserSearchQuery}
-                              className="h-9"
-                            />
+                            <CommandInput placeholder="Search users..." value={userSearchQuery} onValueChange={setUserSearchQuery} className="h-9" />
                             <CommandList className="max-h-[150px]">
                               <CommandEmpty>No users found.</CommandEmpty>
                               <CommandGroup>
-                                <CommandItem
-                                  value="all"
-                                  onSelect={() => {
-                                    setAssignmentFilter("all");
-                                    setUserSearchQuery("");
-                                  }}
-                                >
+                                <CommandItem value="all" onSelect={() => {
+                              setAssignmentFilter("all");
+                              setUserSearchQuery("");
+                            }}>
                                   <Check className={`mr-2 h-4 w-4 ${assignmentFilter === "all" ? "opacity-100" : "opacity-0"}`} />
                                   All Tasks
                                 </CommandItem>
-                                <CommandItem
-                                  value="assigned_to_me"
-                                  onSelect={() => {
-                                    setAssignmentFilter("assigned_to_me");
-                                    setUserSearchQuery("");
-                                  }}
-                                >
+                                <CommandItem value="assigned_to_me" onSelect={() => {
+                              setAssignmentFilter("assigned_to_me");
+                              setUserSearchQuery("");
+                            }}>
                                   <Check className={`mr-2 h-4 w-4 ${assignmentFilter === "assigned_to_me" ? "opacity-100" : "opacity-0"}`} />
                                   Assigned to Me
                                 </CommandItem>
                               </CommandGroup>
                               <CommandSeparator />
                               <CommandGroup heading="Team Members">
-                                {filteredMembers.map((member) => (
-                                  <CommandItem
-                                    key={member.id}
-                                    value={member.full_name || member.email || member.id}
-                                    onSelect={() => {
-                                      setAssignmentFilter(member.id);
-                                      setUserSearchQuery("");
-                                    }}
-                                  >
+                                {filteredMembers.map(member => <CommandItem key={member.id} value={member.full_name || member.email || member.id} onSelect={() => {
+                              setAssignmentFilter(member.id);
+                              setUserSearchQuery("");
+                            }}>
                                     <Check className={`mr-2 h-4 w-4 ${assignmentFilter === member.id ? "opacity-100" : "opacity-0"}`} />
                                     {member.full_name || member.email}
-                                  </CommandItem>
-                                ))}
+                                  </CommandItem>)}
                               </CommandGroup>
                             </CommandList>
                           </Command>
-                        </div>
-                      )}
+                        </div>}
                     </div>
                   </PopoverContent>
                 </Popover>
@@ -630,25 +586,26 @@ const { archiveTask } = useArchive();
               <div className="text-muted-foreground animate-pulse">Loading tasks...</div>
             </div> : <div className="space-y-6 w-full max-w-full">
               {/* Pending Task Requests Section */}
-              <PendingTaskRequests 
-                teamMembers={allTeamMembers} 
-                currentUserId={user?.id} 
-              />
+              <PendingTaskRequests teamMembers={allTeamMembers} currentUserId={user?.id} />
               
               {/* Task Columns */}
               <div className="flex flex-col md:flex-row gap-4 sm:gap-6 w-full max-w-full">
               <SortableColumn id="todo" title="TO DO" variant="todo" items={todoTasks.map(t => t.id)}>
               {todoTasks.map(task => {
-              const IconComponent = iconMap[task.icon] || ListTodo;
-              // Team (viewer) users cannot change assignment, and assignment is only available in Product Management
-              const canAssign = (isAdmin || isMember) && activeTab === "product";
-              return <div key={task.id} className="relative group animate-fade-in">
-                      <SortableTaskCard id={task.id} title={task.title} description={task.description} icon={IconComponent} priority={task.priority} organizationId={task.organization_id || undefined} assignedUser={task.assigned_user} assignedUsers={task.task_assignments} createdByUser={task.created_by_user} project={task.project} teamMembers={teamMembers} projects={projectOptions} createdAt={task.created_at} dueDate={task.due_date} completedAt={task.completed_at} status="todo" canEditAttachments={canCreateTasks} onTitleChange={newTitle => handleTitleChange(task.id, newTitle)} onDescriptionChange={newDesc => handleDescriptionChange(task.id, newDesc)} onAssignmentChange={canAssign ? (userId => handleAssignmentChange(task.id, userId)) : undefined} onDueDateChange={date => handleDueDateChange(task.id, date)} onProjectChange={projectId => handleProjectChange(task.id, projectId)} onPriorityChange={priority => handlePriorityChange(task.id, priority)} onStatusChange={status => handleStatusChange(task.id, status)} />
-                      {canDeleteTasks && <button onClick={() => handleDeleteTask({ id: task.id, title: task.title, status: "todo" })} className="absolute top-2 right-2 p-1.5 rounded-lg bg-destructive/10 hover:bg-destructive/20 text-destructive opacity-100 md:opacity-0 group-hover:opacity-100 transition-all duration-200 z-10 hover:scale-105" title="Delete">
+                  const IconComponent = iconMap[task.icon] || ListTodo;
+                  // Team (viewer) users cannot change assignment, and assignment is only available in Product Management
+                  const canAssign = (isAdmin || isMember) && activeTab === "product";
+                  return <div key={task.id} className="relative group animate-fade-in">
+                      <SortableTaskCard id={task.id} title={task.title} description={task.description} icon={IconComponent} priority={task.priority} organizationId={task.organization_id || undefined} assignedUser={task.assigned_user} assignedUsers={task.task_assignments} createdByUser={task.created_by_user} project={task.project} teamMembers={teamMembers} projects={projectOptions} createdAt={task.created_at} dueDate={task.due_date} completedAt={task.completed_at} status="todo" canEditAttachments={canCreateTasks} onTitleChange={newTitle => handleTitleChange(task.id, newTitle)} onDescriptionChange={newDesc => handleDescriptionChange(task.id, newDesc)} onAssignmentChange={canAssign ? userId => handleAssignmentChange(task.id, userId) : undefined} onDueDateChange={date => handleDueDateChange(task.id, date)} onProjectChange={projectId => handleProjectChange(task.id, projectId)} onPriorityChange={priority => handlePriorityChange(task.id, priority)} onStatusChange={status => handleStatusChange(task.id, status)} />
+                      {canDeleteTasks && <button onClick={() => handleDeleteTask({
+                      id: task.id,
+                      title: task.title,
+                      status: "todo"
+                    })} className="absolute top-2 right-2 p-1.5 rounded-lg bg-destructive/10 hover:bg-destructive/20 text-destructive opacity-100 md:opacity-0 group-hover:opacity-100 transition-all duration-200 z-10 hover:scale-105" title="Delete">
                           <X className="w-3.5 h-3.5" />
                         </button>}
                     </div>;
-            })}
+                })}
                 {todoTasks.length === 0 && <div className="flex flex-col items-center justify-center py-8 sm:py-12 text-center">
                     <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-white/20 flex items-center justify-center mb-3">
                       <ListTodo className="w-5 h-5 sm:w-6 sm:h-6 text-white/70" />
@@ -660,16 +617,20 @@ const { archiveTask } = useArchive();
               
               <SortableColumn ref={completeColumnRef} id="complete" title="COMPLETE" variant="complete" items={completeTasks.map(t => t.id)}>
                 {completeTasks.map(task => {
-              const IconComponent = iconMap[task.icon] || ListTodo;
-              // Team (viewer) users cannot change assignment, and assignment is only available in Product Management
-              const canAssign = (isAdmin || isMember) && activeTab === "product";
-              return <div key={task.id} className="relative group animate-fade-in">
-                      <SortableTaskCard id={task.id} title={task.title} description={task.description} icon={IconComponent} priority={task.priority} organizationId={task.organization_id || undefined} assignedUser={task.assigned_user} assignedUsers={task.task_assignments} createdByUser={task.created_by_user} project={task.project} teamMembers={teamMembers} projects={projectOptions} createdAt={task.created_at} dueDate={task.due_date} completedAt={task.completed_at} status="complete" canEditAttachments={canCreateTasks} onTitleChange={newTitle => handleTitleChange(task.id, newTitle)} onDescriptionChange={newDesc => handleDescriptionChange(task.id, newDesc)} onAssignmentChange={canAssign ? (userId => handleAssignmentChange(task.id, userId)) : undefined} onDueDateChange={date => handleDueDateChange(task.id, date)} onProjectChange={projectId => handleProjectChange(task.id, projectId)} onPriorityChange={priority => handlePriorityChange(task.id, priority)} onStatusChange={status => handleStatusChange(task.id, status)} />
-                      {canDeleteTasks && <button onClick={() => handleDeleteTask({ id: task.id, title: task.title, status: "complete" })} className="absolute top-2 right-2 p-1.5 rounded-lg bg-destructive/10 hover:bg-destructive/20 text-destructive opacity-100 md:opacity-0 group-hover:opacity-100 transition-all duration-200 z-10 hover:scale-105" title="Delete">
+                  const IconComponent = iconMap[task.icon] || ListTodo;
+                  // Team (viewer) users cannot change assignment, and assignment is only available in Product Management
+                  const canAssign = (isAdmin || isMember) && activeTab === "product";
+                  return <div key={task.id} className="relative group animate-fade-in">
+                      <SortableTaskCard id={task.id} title={task.title} description={task.description} icon={IconComponent} priority={task.priority} organizationId={task.organization_id || undefined} assignedUser={task.assigned_user} assignedUsers={task.task_assignments} createdByUser={task.created_by_user} project={task.project} teamMembers={teamMembers} projects={projectOptions} createdAt={task.created_at} dueDate={task.due_date} completedAt={task.completed_at} status="complete" canEditAttachments={canCreateTasks} onTitleChange={newTitle => handleTitleChange(task.id, newTitle)} onDescriptionChange={newDesc => handleDescriptionChange(task.id, newDesc)} onAssignmentChange={canAssign ? userId => handleAssignmentChange(task.id, userId) : undefined} onDueDateChange={date => handleDueDateChange(task.id, date)} onProjectChange={projectId => handleProjectChange(task.id, projectId)} onPriorityChange={priority => handlePriorityChange(task.id, priority)} onStatusChange={status => handleStatusChange(task.id, status)} />
+                      {canDeleteTasks && <button onClick={() => handleDeleteTask({
+                      id: task.id,
+                      title: task.title,
+                      status: "complete"
+                    })} className="absolute top-2 right-2 p-1.5 rounded-lg bg-destructive/10 hover:bg-destructive/20 text-destructive opacity-100 md:opacity-0 group-hover:opacity-100 transition-all duration-200 z-10 hover:scale-105" title="Delete">
                           <X className="w-3.5 h-3.5" />
                         </button>}
                     </div>;
-            })}
+                })}
                 {completeTasks.length === 0 && <div className="flex flex-col items-center justify-center py-8 sm:py-12 text-center">
                     <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-white/20 flex items-center justify-center mb-3">
                       <CheckSquare className="w-5 h-5 sm:w-6 sm:h-6 text-white/70" />
@@ -690,14 +651,7 @@ const { archiveTask } = useArchive();
         {activeTask ? <TaskCard title={activeTask.title} description={activeTask.description} icon={getActiveIcon()} priority={activeTask.priority} assignedUser={activeTask.assigned_user} assignedUsers={activeTask.task_assignments} createdByUser={activeTask.created_by_user} project={activeTask.project} className="shadow-lg ring-2 ring-primary/20 rotate-2" /> : null}
       </DragOverlay>
 
-      <ArchiveChoiceDialog
-        open={archiveDialogOpen}
-        onOpenChange={setArchiveDialogOpen}
-        itemType="task"
-        itemTitle={taskToDelete?.title || ""}
-        onArchive={handleArchiveTask}
-        onRecycleBin={handleRecycleBinTask}
-      />
+      <ArchiveChoiceDialog open={archiveDialogOpen} onOpenChange={setArchiveDialogOpen} itemType="task" itemTitle={taskToDelete?.title || ""} onArchive={handleArchiveTask} onRecycleBin={handleRecycleBinTask} />
     </DndContext>;
 };
 export default ProjectBoard;
