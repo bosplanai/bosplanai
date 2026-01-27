@@ -137,14 +137,25 @@ const SuperAdminSettingsDialog = ({ currentEmail }: SuperAdminSettingsDialogProp
 
     setEmailLoading(true);
     try {
-      const { error } = await supabase.auth.updateUser({
-        email: newEmail.trim()
+      // Use edge function to bypass rate limits
+      const { data: sessionData } = await supabase.auth.getSession();
+      const response = await supabase.functions.invoke("update-super-admin-email", {
+        body: { newEmail: newEmail.trim() },
       });
 
-      if (error) throw error;
+      if (response.error) {
+        throw new Error(response.error.message || "Failed to update email");
+      }
 
-      toast.success("Email update initiated. Please check your new email for confirmation.");
+      if (response.data?.error) {
+        throw new Error(response.data.error);
+      }
+
+      toast.success("Email updated successfully!");
       setNewEmail("");
+      
+      // Refresh the session to get the updated email
+      await supabase.auth.refreshSession();
     } catch (error: any) {
       toast.error(error.message || "Failed to update email");
     } finally {
