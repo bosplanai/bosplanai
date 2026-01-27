@@ -83,6 +83,27 @@ serve(async (req) => {
 
     let userId: string | undefined;
 
+    const findUserIdByEmail = async (targetEmail: string) => {
+      // `listUsers` doesn't support filtering by email, so we paginate until we find it.
+      const normalized = targetEmail.trim().toLowerCase();
+      const perPage = 200;
+      const maxPages = 25; // safety cap
+      for (let page = 1; page <= maxPages; page++) {
+        const { data, error } = await supabaseAdmin.auth.admin.listUsers({
+          page,
+          perPage,
+        });
+        if (error) throw error;
+        const found = data?.users?.find(
+          (u) => (u.email || "").trim().toLowerCase() === normalized,
+        );
+        if (found) return found;
+        // If we got fewer than perPage users, we've reached the end.
+        if (!data?.users || data.users.length < perPage) break;
+      }
+      return null;
+    };
+
     console.log("[complete-paid-signup] Creating user", { email });
     const { data: created, error: createUserError } =
       await supabaseAdmin.auth.admin.createUser({
@@ -105,15 +126,7 @@ serve(async (req) => {
       ) {
         // Look up the existing user by email
         console.log("[complete-paid-signup] User exists, looking up by email");
-        const { data: usersData, error: listError } = 
-          await supabaseAdmin.auth.admin.listUsers();
-        
-        if (listError) {
-          console.error("[complete-paid-signup] listUsers error", listError);
-          throw new Error("Failed to look up existing user");
-        }
-        
-        const existingUser = usersData?.users?.find(u => u.email === email);
+        const existingUser = await findUserIdByEmail(email);
         if (!existingUser) {
           console.error("[complete-paid-signup] Could not find existing user by email");
           return new Response(
@@ -129,13 +142,57 @@ serve(async (req) => {
         
         userId = existingUser.id;
         console.log("[complete-paid-signup] Found existing user", { userId });
-        
+
         // Check if they already have a profile
         const { data: existingProfile } = await supabaseAdmin
           .from("profiles")
           .select("id")
           .eq("id", userId)
           .maybeSingle();
+
+        const isConfirmed =
+          !!(existingUser as any)?.email_confirmed_at ||
+          !!(existingUser as any)?.confirmed_at;
+
+        // If the account is already confirmed AND they don't have a profile yet,
+        // we don't have proof-of-ownership to finalize org/profile here.
+        if (isConfirmed && !existingProfile) {
+          return new Response(
+            JSON.stringify({
+              error:
+                "An account with this email already exists. Please sign in instead.",
+            }),
+            {
+              status: 409,
+              headers: { ...corsHeaders, "Content-Type": "application/json" },
+            },
+          );
+        }
+
+        // Critical fix: previously-created (unconfirmed) users can't log in.
+        // Confirm their email and set the password so the post-payment sign-in succeeds.
+        if (!isConfirmed) {
+          console.log(
+            "[complete-paid-signup] Confirming existing unverified user",
+          );
+          const { error: updateErr } =
+            await supabaseAdmin.auth.admin.updateUserById(userId, {
+              email_confirm: true,
+              password,
+              user_metadata: {
+                full_name: fullName,
+              },
+            });
+          if (updateErr) {
+            console.error(
+              "[complete-paid-signup] updateUserById error",
+              updateErr,
+            );
+            throw new Error(
+              updateErr.message || "Failed to confirm existing user account",
+            );
+          }
+        }
         
         if (existingProfile) {
           console.log("[complete-paid-signup] User already has profile, returning success");
