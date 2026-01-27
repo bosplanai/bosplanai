@@ -166,18 +166,22 @@ const AcceptInvite = () => {
         throw new Error("Failed to create user account");
       }
 
-      // Confirm the user's email via edge function (bypasses email confirmation requirement)
-      const { error: confirmError } = await supabase.functions.invoke("confirm-invited-user", {
+      // CRITICAL: Confirm the user's email via edge function BEFORE attempting sign-in
+      // This bypasses Supabase's email confirmation requirement for invited users
+      const { data: confirmData, error: confirmError } = await supabase.functions.invoke("confirm-invited-user", {
         body: {
           userId: authData.user.id,
-          inviteToken: inviteData.id
+          inviteToken: token // Use the original token from URL, not inviteData.id
         }
       });
 
       if (confirmError) {
         console.error("Error confirming user email:", confirmError);
-        // Continue anyway - the user might still be able to sign in
+        throw new Error("Failed to confirm your account. Please contact support.");
       }
+
+      // Small delay to ensure email confirmation is processed
+      await new Promise(resolve => setTimeout(resolve, 500));
 
       // Now sign the user in with their credentials
       const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
@@ -187,12 +191,11 @@ const AcceptInvite = () => {
       
       if (signInError) {
         console.error("Sign-in error after signup:", signInError);
-        toast({
-          title: "Account created",
-          description: "Your account was created. Please sign in with your credentials.",
-        });
-        navigate(`/auth?mode=login&email=${encodeURIComponent(inviteData.email)}`);
-        return;
+        // Provide more specific error message
+        if (signInError.message.includes("Email not confirmed")) {
+          throw new Error("Email confirmation failed. Please try again or contact support.");
+        }
+        throw signInError;
       }
 
       if (!signInData.session) {
