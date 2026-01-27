@@ -69,6 +69,21 @@ export const useRegistrationLinks = () => {
   const createLink = async (data: CreateRegistrationLinkData): Promise<RegistrationLink | null> => {
     try {
       const { data: userData } = await supabase.auth.getUser();
+      const userId = userData.user?.id;
+
+      // Check if user has a profile (created_by references profiles.id)
+      let createdBy: string | null = null;
+      if (userId) {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("id")
+          .eq("id", userId)
+          .maybeSingle();
+        
+        if (profile?.id) {
+          createdBy = profile.id;
+        }
+      }
       
       const newLink = {
         plan_id: data.plan_id,
@@ -78,7 +93,7 @@ export const useRegistrationLinks = () => {
         max_uses: data.max_uses ?? null,
         expires_at: data.expires_at || null,
         is_active: true,
-        created_by: userData.user?.id || null,
+        created_by: createdBy,
       };
 
       const { data: createdLink, error: createError } = await supabase
