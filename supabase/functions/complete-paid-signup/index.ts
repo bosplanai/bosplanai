@@ -81,6 +81,8 @@ serve(async (req) => {
 
     const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey);
 
+    let userId: string | undefined;
+
     console.log("[complete-paid-signup] Creating user", { email });
     const { data: created, error: createUserError } =
       await supabaseAdmin.auth.admin.createUser({
@@ -93,27 +95,72 @@ serve(async (req) => {
       });
 
     if (createUserError) {
-      // Common case: user already exists
       const msg = createUserError.message || "Failed to create user";
-      console.error("[complete-paid-signup] createUser error", msg);
+      console.log("[complete-paid-signup] createUser result", msg);
+      
+      // Check if user already exists
       if (
         msg.toLowerCase().includes("already") ||
         msg.toLowerCase().includes("registered")
       ) {
-        return new Response(
-          JSON.stringify({
-            error: "An account with this email already exists. Please sign in instead.",
-          }),
-          {
-            status: 409,
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-          },
-        );
+        // Look up the existing user by email
+        console.log("[complete-paid-signup] User exists, looking up by email");
+        const { data: usersData, error: listError } = 
+          await supabaseAdmin.auth.admin.listUsers();
+        
+        if (listError) {
+          console.error("[complete-paid-signup] listUsers error", listError);
+          throw new Error("Failed to look up existing user");
+        }
+        
+        const existingUser = usersData?.users?.find(u => u.email === email);
+        if (!existingUser) {
+          console.error("[complete-paid-signup] Could not find existing user by email");
+          return new Response(
+            JSON.stringify({
+              error: "An account with this email already exists. Please sign in instead.",
+            }),
+            {
+              status: 409,
+              headers: { ...corsHeaders, "Content-Type": "application/json" },
+            },
+          );
+        }
+        
+        userId = existingUser.id;
+        console.log("[complete-paid-signup] Found existing user", { userId });
+        
+        // Check if they already have a profile
+        const { data: existingProfile } = await supabaseAdmin
+          .from("profiles")
+          .select("id")
+          .eq("id", userId)
+          .maybeSingle();
+        
+        if (existingProfile) {
+          console.log("[complete-paid-signup] User already has profile, returning success");
+          return new Response(
+            JSON.stringify({
+              success: true,
+              email,
+              existingUser: true,
+            }),
+            {
+              status: 200,
+              headers: { ...corsHeaders, "Content-Type": "application/json" },
+            },
+          );
+        }
+        
+        // User exists but no profile - continue to create org/profile
+        console.log("[complete-paid-signup] User exists but no profile, creating org/profile");
+      } else {
+        throw new Error(msg);
       }
-      throw new Error(msg);
+    } else {
+      userId = created?.user?.id;
     }
 
-    const userId = created?.user?.id;
     if (!userId) throw new Error("User creation did not return a user id");
 
     console.log("[complete-paid-signup] Creating org/profile", { userId });
