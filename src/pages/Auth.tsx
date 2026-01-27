@@ -296,6 +296,12 @@ const Auth = () => {
         return;
       }
 
+      // Mark onboarding as complete for invited users (they join existing org)
+      await supabase
+        .from("profiles")
+        .update({ onboarding_completed: true })
+        .eq("id", authData.user.id);
+
       // Send welcome email for invite signup (fire and forget)
       supabase.functions.invoke("send-welcome-email", {
         body: {
@@ -309,8 +315,8 @@ const Auth = () => {
         description: `You've joined ${inviteData.organization.name} as a ${inviteData.role}`
       });
 
-      // Navigate directly to onboarding using the org slug from invite data
-      navigate(`/${inviteData.organization.slug}/onboarding`);
+      // Navigate directly to Tasks page (skip onboarding for invited users)
+      navigate(`/${inviteData.organization.slug}`);
     }
   };
   const handleRegularSignUp = async () => {
