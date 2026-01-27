@@ -41,10 +41,14 @@ serve(async (req) => {
       throw new Error("Session not found");
     }
 
+    // Extract customer email - check multiple sources
+    const customerObj = session.customer as Stripe.Customer | null;
+    const customerEmail = session.customer_email || customerObj?.email || null;
+
     console.log("Session retrieved:", {
       id: session.id,
       status: session.status,
-      customer_email: session.customer_email,
+      customer_email: customerEmail,
     });
 
     // Extract metadata from session or subscription
@@ -57,7 +61,7 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({
         success: true,
-        email: session.customer_email || (session.customer as Stripe.Customer)?.email,
+        email: customerEmail,
         organizationName: combinedMetadata.organizationName || "",
         employeeSize: combinedMetadata.employeeSize || "",
         fullName: combinedMetadata.fullName || "",
