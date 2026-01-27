@@ -60,34 +60,41 @@ export const useSuperAdminData = () => {
       // For each organization, fetch related data
       const orgsWithDetails = await Promise.all(
         (orgs || []).map(async (org) => {
-          // Fetch profiles (users) for this org
-          const { data: profiles } = await supabase
-            .from("profiles")
-            .select("id, full_name, job_role")
-            .eq("organization_id", org.id);
-
-          // Fetch user roles for these profiles
-          const profileIds = (profiles || []).map((p) => p.id);
-
-          let userRoles: { user_id: string; role: string }[] = [];
-          if (profileIds.length > 0) {
-            const { data: userRolesData, error: userRolesError } = await supabase
-              .from("user_roles")
-              .select("user_id, role")
-              .in("user_id", profileIds);
-
-            if (userRolesError) throw userRolesError;
-            userRoles = userRolesData || [];
+          // Fetch users with emails via edge function
+          let usersWithRoles: { id: string; full_name: string; job_role: string; email?: string; role?: string }[] = [];
+          
+          try {
+            const { data: session } = await supabase.auth.getSession();
+            const response = await fetch(
+              `https://qiikjhvzlwzysbtzhdcd.supabase.co/functions/v1/get-organization-users`,
+              {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  Authorization: `Bearer ${session?.session?.access_token}`,
+                },
+                body: JSON.stringify({ organization_id: org.id }),
+              }
+            );
+            
+            if (response.ok) {
+              const result = await response.json();
+              usersWithRoles = result.users || [];
+            }
+          } catch (err) {
+            console.error("Error fetching users for org:", org.id, err);
+            // Fallback to profiles without emails
+            const { data: profiles } = await supabase
+              .from("profiles")
+              .select("id, full_name, job_role")
+              .eq("organization_id", org.id);
+            
+            usersWithRoles = (profiles || []).map((p) => ({
+              ...p,
+              email: undefined,
+              role: "member",
+            }));
           }
-
-          // Get emails from auth (via backend function would be ideal, but we'll use what we have)
-          const usersWithRoles = (profiles || []).map((profile) => {
-            const roleData = userRoles.find((r) => r.user_id === profile.id);
-            return {
-              ...profile,
-              role: roleData?.role || "member",
-            };
-          });
 
           // Fetch subscription
           const { data: subscription } = await supabase
