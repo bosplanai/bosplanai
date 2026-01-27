@@ -112,28 +112,30 @@ const SideNavigation = ({ activeItem, onItemClick }: SideNavigationProps) => {
       <div className="hidden md:block w-16 flex-shrink-0" />
 
       {/* Mobile: horizontal bottom navigation bar */}
-      <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-background border-t border-border flex items-center justify-around py-2 px-1 safe-area-bottom">
-        {navItems.slice(0, 5).map((item) => {
-          const Icon = item.icon;
-          const isActive = getIsActive(item);
+      <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-background border-t border-border safe-area-bottom">
+        <div className="flex items-center gap-1 py-2 px-2 overflow-x-auto scrollbar-hide">
+          {navItems.map((item) => {
+            const Icon = item.icon;
+            const isActive = getIsActive(item);
 
-          return (
-            <button
-              key={item.id}
-              type="button"
-              onClick={() => handleClick(item)}
-              className={cn(
-                "flex flex-col items-center justify-center gap-0.5 px-3 py-2 rounded-lg transition-all duration-200 min-w-[56px]",
-                isActive
-                  ? "bg-sidebarIcon text-foreground"
-                  : "text-muted-foreground"
-              )}
-            >
-              <Icon className="w-5 h-5" />
-              <span className="text-[10px] font-medium truncate max-w-[56px]">{item.label.split(' ')[0]}</span>
-            </button>
-          );
-        })}
+            return (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => handleClick(item)}
+                className={cn(
+                  "flex flex-col items-center justify-center gap-0.5 px-3 py-2 rounded-lg transition-all duration-200 min-w-[60px] flex-shrink-0",
+                  isActive
+                    ? "bg-sidebarIcon text-foreground"
+                    : "text-muted-foreground"
+                )}
+              >
+                <Icon className="w-5 h-5" />
+                <span className="text-[10px] font-medium truncate max-w-[56px]">{item.label.split(' ')[0]}</span>
+              </button>
+            );
+          })}
+        </div>
       </div>
     </>
   );
