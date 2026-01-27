@@ -7,6 +7,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { DRIVE_STORAGE_QUERY_KEY } from "@/hooks/useDriveStorage";
+import { DATAROOM_STORAGE_QUERY_KEY } from "@/hooks/useDataroomStorage";
 
 const STORAGE_SESSION_KEY = "pending_storage_purchase";
 
@@ -105,13 +107,15 @@ const PaymentSuccess = () => {
             toast.success("Storage has been added to your account!");
           }
 
-          // Invalidate storage queries
-          const queryKey = purchaseInfo.product === "drive" 
-            ? ["drive-storage", purchaseInfo.orgId]
-            : ["dataroom-storage", purchaseInfo.orgId];
-          
-          await queryClient.invalidateQueries({ queryKey });
-          await queryClient.refetchQueries({ queryKey, exact: true });
+          // Invalidate ALL storage queries globally so the storage bar updates everywhere
+          // Use the exported query key constants for consistency
+          if (purchaseInfo.product === "drive") {
+            await queryClient.invalidateQueries({ queryKey: [DRIVE_STORAGE_QUERY_KEY] });
+            await queryClient.refetchQueries({ queryKey: [DRIVE_STORAGE_QUERY_KEY, purchaseInfo.orgId] });
+          } else {
+            await queryClient.invalidateQueries({ queryKey: [DATAROOM_STORAGE_QUERY_KEY] });
+            await queryClient.refetchQueries({ queryKey: [DATAROOM_STORAGE_QUERY_KEY, purchaseInfo.orgId] });
+          }
 
           // Clear stored purchase info
           sessionStorage.removeItem(STORAGE_SESSION_KEY);

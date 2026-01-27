@@ -27,6 +27,7 @@ import { FileUploadDialog } from "@/components/drive/FileUploadDialog";
 import { Badge } from "@/components/ui/badge";
 import { DocumentEditorDialog } from "@/components/drive/DocumentEditorDialog";
 import { NotificationBell } from "@/components/NotificationBell";
+import { useDriveStorage, DRIVE_STORAGE_QUERY_KEY } from "@/hooks/useDriveStorage";
 
 // Upload progress state type
 interface UploadProgress {
@@ -520,44 +521,8 @@ const Drive = () => {
     enabled: !!organization?.id && folders.length > 0
   });
 
-  // Calculate storage usage including purchased additional storage
-  const {
-    data: storageUsage = {
-      used: 0,
-      total: 100 * 1024 * 1024,
-      additionalGb: 0
-    }
-  } = useQuery({
-    queryKey: ["drive-storage", organization?.id],
-    queryFn: async () => {
-      if (!organization?.id) return {
-        used: 0,
-        total: 100 * 1024 * 1024,
-        additionalGb: 0
-      };
-
-      // Get file usage
-      const {
-        data: filesData
-      } = await supabase.from("drive_files").select("file_size").eq("organization_id", organization.id).is("deleted_at", null);
-      const used = filesData?.reduce((acc, f) => acc + (f.file_size || 0), 0) || 0;
-
-      // Get additional purchased storage
-      const {
-        data: storageData
-      } = await supabase.from("organization_storage").select("additional_storage_gb").eq("organization_id", organization.id).maybeSingle();
-      const additionalGb = storageData?.additional_storage_gb || 0;
-      const baseStorage = 100 * 1024 * 1024; // 100MB base
-      const additionalBytes = additionalGb * 1024 * 1024 * 1024; // Convert GB to bytes
-
-      return {
-        used,
-        total: baseStorage + additionalBytes,
-        additionalGb
-      };
-    },
-    enabled: !!organization?.id
-  });
+  // Use shared storage hook for real-time updates after purchases
+  const { data: storageUsage = { used: 0, total: 100 * 1024 * 1024, additionalGb: 0 }, invalidate: invalidateStorage } = useDriveStorage(organization?.id);
 
   // Fetch team members for assignee filter and reviewer dropdown
   const {
@@ -957,7 +922,7 @@ const Drive = () => {
             refetchType: 'all'
           });
           queryClient.invalidateQueries({
-            queryKey: ["drive-storage"],
+            queryKey: [DRIVE_STORAGE_QUERY_KEY],
             refetchType: 'all'
           });
           queryClient.invalidateQueries({
@@ -982,7 +947,7 @@ const Drive = () => {
         refetchType: 'all'
       });
       queryClient.invalidateQueries({
-        queryKey: ["drive-storage"],
+        queryKey: [DRIVE_STORAGE_QUERY_KEY],
         refetchType: 'all'
       });
       queryClient.invalidateQueries({
@@ -1156,7 +1121,7 @@ const Drive = () => {
         queryKey: ["drive-files"]
       });
       queryClient.invalidateQueries({
-        queryKey: ["drive-storage"]
+        queryKey: [DRIVE_STORAGE_QUERY_KEY]
       });
       toast.success("File deleted");
     }
@@ -1177,7 +1142,7 @@ const Drive = () => {
         queryKey: ["drive-files"]
       });
       queryClient.invalidateQueries({
-        queryKey: ["drive-storage"]
+        queryKey: [DRIVE_STORAGE_QUERY_KEY]
       });
       setSelectedFiles(new Set());
       toast.success("Files deleted");
@@ -1359,7 +1324,7 @@ const Drive = () => {
         queryKey: ["deleted-files"]
       });
       queryClient.invalidateQueries({
-        queryKey: ["drive-storage"]
+        queryKey: [DRIVE_STORAGE_QUERY_KEY]
       });
       toast.success("File restored");
     },
@@ -1382,7 +1347,7 @@ const Drive = () => {
         queryKey: ["deleted-files"]
       });
       queryClient.invalidateQueries({
-        queryKey: ["drive-storage"]
+        queryKey: [DRIVE_STORAGE_QUERY_KEY]
       });
       toast.success("File permanently deleted");
     },

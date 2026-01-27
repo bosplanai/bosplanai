@@ -35,6 +35,7 @@ import { AddToFolderDropdown } from "@/components/dataroom/AddToFolderDropdown";
 import { useNdaResignCheck } from "@/hooks/useNdaResignCheck";
 import { DataRoomRecyclingBin } from "@/components/dataroom/DataRoomRecyclingBin";
 import { DataRoomBins } from "@/components/dataroom/DataRoomBins";
+import { useDataroomStorage, DATAROOM_STORAGE_QUERY_KEY } from "@/hooks/useDataroomStorage";
 const emailSchema = z.string().trim().email("Please enter a valid email address");
 interface PreviewFile {
   id: string;
@@ -138,39 +139,8 @@ By signing below, you acknowledge that you have read, understood, and agree to b
   } = useToast();
   const queryClient = useQueryClient();
 
-  // Fetch data room storage usage
-  const { data: storageUsage = { used: 0, total: 100 * 1024 * 1024, additionalMb: 0 } } = useQuery({
-    queryKey: ["dataroom-storage", organization?.id],
-    queryFn: async () => {
-      if (!organization?.id) return { used: 0, total: 100 * 1024 * 1024, additionalMb: 0 };
-      
-      // Get all non-deleted files from all data rooms in this organization
-      const { data: filesData } = await supabase
-        .from("data_room_files")
-        .select("file_size")
-        .eq("organization_id", organization.id)
-        .is("deleted_at", null);
-      const used = filesData?.reduce((acc, f) => acc + (f.file_size || 0), 0) || 0;
-      
-      // Get additional purchased storage
-      const { data: storageData } = await supabase
-        .from("organization_dataroom_storage")
-        .select("additional_storage_gb")
-        .eq("organization_id", organization.id)
-        .maybeSingle();
-      
-      const additionalGb = storageData?.additional_storage_gb || 0;
-      const baseStorage = 100 * 1024 * 1024; // 100MB base
-      const additionalBytes = additionalGb * 1024 * 1024 * 1024; // Convert GB to bytes
-      
-      return {
-        used,
-        total: baseStorage + additionalBytes,
-        additionalMb: additionalGb * 1024
-      };
-    },
-    enabled: !!organization?.id
-  });
+  // Use shared storage hook for real-time updates after purchases
+  const { data: storageUsage = { used: 0, total: 100 * 1024 * 1024, additionalGb: 0, additionalMb: 0 }, invalidate: invalidateStorage } = useDataroomStorage(organization?.id);
 
   const storagePercentage = (storageUsage.used / storageUsage.total) * 100;
 
