@@ -110,7 +110,7 @@ const Auth = () => {
         if (error) throw error;
 
         // Pre-fill form with checkout data
-        if (data?.customerEmail) setEmail(data.customerEmail);
+        if (data?.email) setEmail(data.email);
         if (data?.organizationName) setOrganizationName(data.organizationName);
         if (data?.fullName) setFullName(data.fullName);
         if (data?.employeeSize) setEmployeeSize(data.employeeSize);
