@@ -139,18 +139,25 @@ const AcceptInvite = () => {
     setSubmitting(true);
 
     try {
-      // Create the user account with the password
-      const { data: authData, error: signUpError } = await supabase.auth.signUp({
-        email: inviteData.email,
-        password,
-        options: {
-          emailRedirectTo: `${window.location.origin}/`,
+      // Use the edge function to create user, profile, and role in one transaction
+      const { data: result, error: invokeError } = await supabase.functions.invoke("confirm-invited-user", {
+        body: {
+          email: inviteData.email,
+          password,
+          inviteToken: inviteData.id,
+          fullName: fullName.trim(),
+          jobRole: jobRole.trim(),
+          phoneNumber: phoneNumber.trim()
         }
       });
 
-      if (signUpError) {
-        // If user already exists, try to sign them in
-        if (signUpError.message.includes("already registered")) {
+      if (invokeError) {
+        throw new Error(invokeError.message || "Failed to create account");
+      }
+
+      if (!result.success) {
+        // Handle user already exists case
+        if (result.code === "USER_EXISTS") {
           toast({
             title: "Account already exists",
             description: "Please sign in with your existing password to join this organization.",
@@ -159,24 +166,7 @@ const AcceptInvite = () => {
           navigate(`/auth?mode=login&email=${encodeURIComponent(inviteData.email)}&invite=${token}`);
           return;
         }
-        throw signUpError;
-      }
-
-      if (!authData.user) {
-        throw new Error("Failed to create user account");
-      }
-
-      // Confirm the user's email via edge function (bypasses email confirmation requirement)
-      const { error: confirmError } = await supabase.functions.invoke("confirm-invited-user", {
-        body: {
-          userId: authData.user.id,
-          inviteToken: inviteData.id
-        }
-      });
-
-      if (confirmError) {
-        console.error("Error confirming user email:", confirmError);
-        // Continue anyway - the user might still be able to sign in
+        throw new Error(result.error || "Failed to create account");
       }
 
       // Now sign the user in with their credentials
@@ -186,7 +176,7 @@ const AcceptInvite = () => {
       });
       
       if (signInError) {
-        console.error("Sign-in error after signup:", signInError);
+        console.error("Sign-in error after account creation:", signInError);
         toast({
           title: "Account created",
           description: "Your account was created. Please sign in with your credentials.",
@@ -197,27 +187,6 @@ const AcceptInvite = () => {
 
       if (!signInData.session) {
         throw new Error("Failed to establish session");
-      }
-
-      // Accept the invite using the database function
-      const { data: result, error: acceptError } = await supabase.rpc("accept_invite", {
-        _token: token,
-        _user_id: authData.user.id,
-        _full_name: fullName.trim(),
-        _job_role: jobRole.trim(),
-        _phone_number: phoneNumber.trim()
-      });
-
-      const resultObj = result as {
-        success: boolean;
-        error?: string;
-        organization_slug?: string;
-        organization_name?: string;
-        role?: string;
-      } | null;
-
-      if (acceptError || !resultObj?.success) {
-        throw new Error(resultObj?.error || acceptError?.message || "Failed to accept invitation");
       }
 
       // Send welcome email (fire and forget)
@@ -233,8 +202,8 @@ const AcceptInvite = () => {
         description: `You've joined ${inviteData.org_name} as ${roleConfig[inviteData.role]?.label || inviteData.role}`
       });
 
-      // User is already authenticated - redirect directly to their dashboard/tasks page
-      navigate(`/${inviteData.org_slug}/tasks`);
+      // User is authenticated - redirect directly to their dashboard/tasks page
+      navigate(`/${result.organizationSlug || inviteData.org_slug}/tasks`);
     } catch (err: any) {
       console.error("Error accepting invite:", err);
       toast({
