@@ -41,11 +41,16 @@ export const useProjects = () => {
       if (error) throw error;
       setProjects((data as Project[]) || []);
     } catch (error: any) {
-      toast({
-        title: "Error fetching projects",
-        description: error.message,
-        variant: "destructive",
-      });
+      // Silently handle missing table errors (PGRST205) for new organizations
+      // that haven't had the projects feature set up yet (e.g., skipped onboarding)
+      if (error?.code !== 'PGRST205') {
+        console.error("Error fetching projects:", error);
+        toast({
+          title: "Error fetching projects",
+          description: error.message,
+          variant: "destructive",
+        });
+      }
     } finally {
       setLoading(false);
     }
