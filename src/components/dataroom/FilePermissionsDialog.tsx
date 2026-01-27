@@ -65,6 +65,8 @@ interface FilePermissionsDialogProps {
   organizationId: string;
   currentUserId: string;
   dataRoomCreatorId: string;
+  currentUserName?: string;
+  currentUserEmail?: string;
 }
 
 export function FilePermissionsDialog({
@@ -75,6 +77,8 @@ export function FilePermissionsDialog({
   organizationId,
   currentUserId,
   dataRoomCreatorId,
+  currentUserName = "Unknown",
+  currentUserEmail = "",
 }: FilePermissionsDialogProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -318,6 +322,24 @@ export function FilePermissionsDialog({
 
       await queryClient.invalidateQueries({ queryKey: ["data-room-files"] });
       await queryClient.invalidateQueries({ queryKey: ["file-permissions", file.id] });
+      await queryClient.invalidateQueries({ queryKey: ["data-room-file-permissions"] });
+      
+      // Log activity for permission change
+      await supabase.from("data_room_activity").insert({
+        data_room_id: dataRoomId,
+        organization_id: organizationId,
+        user_id: currentUserId,
+        user_name: currentUserName,
+        user_email: currentUserEmail,
+        action: "permissions_changed",
+        details: {
+          file_name: file.name,
+          file_id: file.id,
+          is_restricted: isRestricted,
+          granted_to_count: selectedUsers.length,
+        },
+        is_guest: false,
+      });
       
       toast({
         title: "Permissions updated",
