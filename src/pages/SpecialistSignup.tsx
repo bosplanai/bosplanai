@@ -201,11 +201,16 @@ const SpecialistSignup = () => {
           title: "Welcome to BosPlan!",
           description: `Your organization has been created with ${planInfo?.plan_duration_months} months of free access.`,
         });
-        if (result.organization_slug) {
-          navigate(`/${result.organization_slug}/onboarding`);
-        } else {
-          navigate("/");
-        }
+
+        // Requirement: after sign-up take user to Login page; after login, start onboarding.
+        const orgSlug = result.organization_slug;
+        navigate(
+          orgSlug
+            ? `/auth?mode=login&email=${encodeURIComponent(email.trim().toLowerCase())}&returnUrl=${encodeURIComponent(
+                `/${orgSlug}/onboarding`
+              )}`
+            : `/auth?mode=login&email=${encodeURIComponent(email.trim().toLowerCase())}`
+        );
       }
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : "An unexpected error occurred";
@@ -257,11 +262,18 @@ const SpecialistSignup = () => {
 
       setShowPasswordDialog(false);
       
-      // Navigate directly to onboarding using the stored org slug
+      // Requirement: after sign-up take user to Login page; after login, start onboarding.
+      await supabase.auth.signOut().catch(() => {
+        // ignore
+      });
       if (organizationSlug) {
-        navigate(`/${organizationSlug}/onboarding`);
+        navigate(
+          `/auth?mode=login&email=${encodeURIComponent(email.trim().toLowerCase())}&returnUrl=${encodeURIComponent(
+            `/${organizationSlug}/onboarding`
+          )}`
+        );
       } else {
-        navigate("/");
+        navigate(`/auth?mode=login&email=${encodeURIComponent(email.trim().toLowerCase())}`);
       }
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : "Failed to set password";
