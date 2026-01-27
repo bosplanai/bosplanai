@@ -145,13 +145,17 @@ export const useTasks = () => {
       );
 
       setTasks(tasksWithSignedUrls);
-    } catch (error) {
-      console.error("Error fetching tasks:", error);
-      toast({
-        title: "Error",
-        description: "Failed to load tasks",
-        variant: "destructive",
-      });
+    } catch (error: any) {
+      // Silently handle missing table errors (PGRST205) for new organizations
+      // that haven't had the tasks feature set up yet
+      if (error?.code !== 'PGRST205') {
+        console.error("Error fetching tasks:", error);
+        toast({
+          title: "Error",
+          description: "Failed to load tasks",
+          variant: "destructive",
+        });
+      }
     } finally {
       setLoading(false);
     }
