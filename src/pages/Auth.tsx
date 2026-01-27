@@ -459,9 +459,15 @@ const Auth = () => {
         })
         .catch((err) => console.error("Welcome email error:", err));
 
-      // Refetch organization data and navigate to dashboard
-      await refetch();
-      navigate("/");
+      // Navigate directly to onboarding using the returned org slug
+      const orgSlug = (data as any)?.organization_slug;
+      if (orgSlug) {
+        navigate(`/${orgSlug}/onboarding`);
+      } else {
+        // Fallback: refetch and navigate to root
+        await refetch();
+        navigate("/");
+      }
     } catch (err: any) {
       console.error("Paid signup error:", err);
       toast({
