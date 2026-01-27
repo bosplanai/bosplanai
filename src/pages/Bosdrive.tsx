@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Check, HardDrive, FileSignature, FolderLock, History, Shield, Users } from "lucide-react";
 import WelcomeHeader from "@/components/WelcomeHeader";
+import WelcomeFooter from "@/components/WelcomeFooter";
 import bosdriveHero from "@/assets/bosdrive-hero.png";
 import bosdriveVersions from "@/assets/bosdrive-versions.png";
 import bosdriveStatus from "@/assets/bosdrive-status.png";
@@ -355,30 +356,7 @@ const Bosdrive = () => {
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="container mx-auto px-4 py-8 border-t">
-        <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-          <p className="text-sm text-muted-foreground">
-            © {new Date().getFullYear()} Bosplan.com. All rights reserved.
-          </p>
-          <div className="flex items-center gap-6">
-            <Link
-              to="/terms-and-conditions"
-              className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-            >
-              Terms and Conditions
-            </Link>
-            <a
-              href="https://www.bosplan.com"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-            >
-              www.bosplan.com
-            </a>
-          </div>
-        </div>
-      </footer>
+      <WelcomeFooter />
     </div>
   );
 };
