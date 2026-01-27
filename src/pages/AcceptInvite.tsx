@@ -140,15 +140,11 @@ const AcceptInvite = () => {
 
     try {
       // Create the user account with the password
-      // Use data.email_confirm to auto-confirm invited users (no second email verification needed)
       const { data: authData, error: signUpError } = await supabase.auth.signUp({
         email: inviteData.email,
         password,
         options: {
           emailRedirectTo: `${window.location.origin}/`,
-          data: {
-            email_confirmed: true, // Mark as pre-confirmed for invited users
-          }
         }
       });
 
@@ -170,33 +166,36 @@ const AcceptInvite = () => {
         throw new Error("Failed to create user account");
       }
 
-      // If no session was returned (email confirmation required by Supabase settings),
-      // sign the user in directly since invited users don't need email confirmation
-      let activeSession = authData.session;
-      if (!activeSession) {
-        const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
-          email: inviteData.email,
-          password,
-        });
-        
-        if (signInError) {
-          // If sign-in fails due to email not confirmed, the Supabase project has
-          // "Confirm email" enabled. For invited users, we need to work around this.
-          if (signInError.message.includes("Email not confirmed")) {
-            toast({
-              title: "Email confirmation required",
-              description: "Please ask your administrator to disable email confirmation for invites, or check your email.",
-              variant: "destructive"
-            });
-            navigate("/auth?mode=login");
-            return;
-          }
-          throw signInError;
+      // Confirm the user's email via edge function (bypasses email confirmation requirement)
+      const { error: confirmError } = await supabase.functions.invoke("confirm-invited-user", {
+        body: {
+          userId: authData.user.id,
+          inviteToken: inviteData.id
         }
-        activeSession = signInData.session;
+      });
+
+      if (confirmError) {
+        console.error("Error confirming user email:", confirmError);
+        // Continue anyway - the user might still be able to sign in
       }
 
-      if (!activeSession) {
+      // Now sign the user in with their credentials
+      const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+        email: inviteData.email,
+        password,
+      });
+      
+      if (signInError) {
+        console.error("Sign-in error after signup:", signInError);
+        toast({
+          title: "Account created",
+          description: "Your account was created. Please sign in with your credentials.",
+        });
+        navigate(`/auth?mode=login&email=${encodeURIComponent(inviteData.email)}`);
+        return;
+      }
+
+      if (!signInData.session) {
         throw new Error("Failed to establish session");
       }
 
