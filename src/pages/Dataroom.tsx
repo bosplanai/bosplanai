@@ -513,6 +513,30 @@ By signing below, you acknowledge that you have read, understood, and agree to b
     return !!permission; // Any permission (view or edit) allows access to restricted folder
   };
 
+  // Helper function to check if user can view a file
+  const canViewFile = (file: any): boolean => {
+    // If file is not restricted, anyone in the data room can view
+    if (!file.is_restricted) return true;
+    // If user is the room owner/creator, they can view all files
+    if (selectedRoom?.created_by === user?.id) return true;
+    // If user uploaded the file, they can always view it
+    if (file.uploaded_by === user?.id) return true;
+    // Check if user has explicit permission for this file
+    return filePermissions.some(p => p.file_id === file.id);
+  };
+
+  // Helper function to check if user can edit a file
+  const canEditFile = (file: any): boolean => {
+    // If file is not restricted, anyone in the data room can edit
+    if (!file.is_restricted) return true;
+    // If user is the room owner/creator, they can edit all files
+    if (selectedRoom?.created_by === user?.id) return true;
+    // If user uploaded the file, they can always edit it
+    if (file.uploaded_by === user?.id) return true;
+    // Check if user has explicit edit permission for this file
+    return filePermissions.some(p => p.file_id === file.id && p.permission_level === 'edit');
+  };
+
   // Check if current user can edit in the current folder context
   const canEditCurrentFolder = canEditFolder(currentFolderId);
 
@@ -639,8 +663,9 @@ By signing below, you acknowledge that you have read, understood, and agree to b
     enabled: !!organization?.id && !!activeRoomId
   });
 
-  // Combine current folder files and surfaced files
-  const files = [...filesData.currentFiles, ...filesData.surfacedFiles];
+  // Combine current folder files and surfaced files, then filter to only show accessible files
+  const allFilesUnfiltered = [...filesData.currentFiles, ...filesData.surfacedFiles];
+  const files = allFilesUnfiltered.filter(file => canViewFile(file));
 
   // Fetch invites from database (filtered by room)
   const {
@@ -1725,8 +1750,8 @@ By signing below, you acknowledge that you have read, understood, and agree to b
                                       <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => handleViewFile(file.id, file.file_path, file.name, file.mime_type)} title="Preview">
                                         <Eye className="w-3.5 h-3.5" />
                                       </Button>
-                                      {/* Edit button - for editable documents */}
-                                      {isEditableDocument(file.mime_type) && (
+                                      {/* Edit button - for editable documents, requires edit permission */}
+                                      {isEditableDocument(file.mime_type) && canEditFile(file) && (
                                         <Button 
                                           variant="ghost" 
                                           size="sm" 
@@ -2289,6 +2314,8 @@ By signing below, you acknowledge that you have read, understood, and agree to b
         organizationId={selectedRoom?.organization_id || organization?.id || ""}
         currentUserId={user?.id || ""}
         dataRoomCreatorId={selectedRoom?.created_by || ""}
+        currentUserName={profile?.full_name || user?.user_metadata?.full_name || user?.email || "Unknown"}
+        currentUserEmail={user?.email || ""}
       />
 
       {/* Folder Permissions Dialog */}
@@ -2299,6 +2326,8 @@ By signing below, you acknowledge that you have read, understood, and agree to b
         dataRoomId={activeRoomId || ""}
         organizationId={selectedRoom?.organization_id || organization?.id || ""}
         currentUserId={user?.id || ""}
+        currentUserName={profile?.full_name || user?.user_metadata?.full_name || user?.email || "Unknown"}
+        currentUserEmail={user?.email || ""}
       />
 
       {/* Delete Folder Confirmation Dialog */}

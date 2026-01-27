@@ -64,6 +64,8 @@ interface FolderPermissionsDialogProps {
   dataRoomId: string;
   organizationId: string;
   currentUserId: string;
+  currentUserName?: string;
+  currentUserEmail?: string;
 }
 
 export function FolderPermissionsDialog({
@@ -73,6 +75,8 @@ export function FolderPermissionsDialog({
   dataRoomId,
   organizationId,
   currentUserId,
+  currentUserName = "Unknown",
+  currentUserEmail = "",
 }: FolderPermissionsDialogProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -261,6 +265,23 @@ export function FolderPermissionsDialog({
       await queryClient.invalidateQueries({ queryKey: ["data-room-all-folders", dataRoomId] });
       await queryClient.invalidateQueries({ queryKey: ["data-room-folder-permissions"] });
       await queryClient.invalidateQueries({ queryKey: ["folder-permissions", folder.id] });
+      
+      // Log activity for folder permission change
+      await supabase.from("data_room_activity").insert({
+        data_room_id: dataRoomId,
+        organization_id: organizationId,
+        user_id: currentUserId,
+        user_name: currentUserName,
+        user_email: currentUserEmail,
+        action: "folder_permissions_changed",
+        details: {
+          folder_name: folder.name,
+          folder_id: folder.id,
+          is_restricted: isRestricted,
+          granted_to_count: selectedUsers.length,
+        },
+        is_guest: false,
+      });
       
       toast({
         title: "Permissions updated",

@@ -1,7 +1,7 @@
 import { Card } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
-import { Activity, FileUp, UserPlus, MessageSquare, Eye, FileSignature, Trash2, Loader2, FolderInput } from "lucide-react";
+import { Activity, FileUp, UserPlus, MessageSquare, Eye, FileSignature, Trash2, Loader2, FolderInput, Lock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
@@ -42,6 +42,11 @@ const getActionIcon = (action: string) => {
     case "file_deleted":
     case "invite_revoked":
       return <Trash2 className="w-4 h-4 text-destructive" />;
+    case "permissions_changed":
+    case "folder_permissions_changed":
+      return <Lock className="w-4 h-4 text-amber-500" />;
+    case "folder_created":
+      return <FolderInput className="w-4 h-4 text-emerald-500" />;
     default:
       return <Activity className="w-4 h-4 text-muted-foreground" />;
   }
@@ -78,6 +83,14 @@ const getActionLabel = (action: string, details: Record<string, unknown> | null)
       return "created this data room";
     case "settings_updated":
       return "updated room settings";
+    case "permissions_changed":
+      const restricted = details?.is_restricted ? "restricted" : "opened";
+      return `${restricted} access to ${(details?.file_name as string) || "a file"}`;
+    case "folder_permissions_changed":
+      const folderRestricted = details?.is_restricted ? "restricted" : "opened";
+      return `${folderRestricted} access to folder "${(details?.folder_name as string) || "a folder"}"`;
+    case "folder_created":
+      return `created folder "${(details?.folder_name as string) || "a folder"}"`;
     default:
       return action.replace(/_/g, " ");
   }
