@@ -20,24 +20,22 @@ Deno.serve(async (req) => {
       );
     }
 
-    const supabase = createClient(
+    // Validate JWT (verify_jwt is disabled in config.toml)
+    const token = authHeader.replace(/^Bearer\s+/i, "").trim();
+    const authClient = createClient(
       Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_ANON_KEY")!,
-      { global: { headers: { Authorization: authHeader } } }
+      Deno.env.get("SUPABASE_ANON_KEY")!
     );
-
-    // Get authenticated user
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
-    
-    if (userError || !user) {
-      console.error("Auth error:", userError);
+    const { data: claimsData, error: claimsError } = await authClient.auth.getClaims(token);
+    if (claimsError || !claimsData?.claims?.sub) {
+      console.error("JWT claims error:", claimsError);
       return new Response(
         JSON.stringify({ error: "Invalid authentication" }),
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    const userId = user.id;
+    const userId = claimsData.claims.sub;
 
     // Get request body
     const { prompt, organization_id } = await req.json();
@@ -103,10 +101,17 @@ Deno.serve(async (req) => {
       );
     }
 
+    console.log("generate-tasks request", {
+      user_id: userId,
+      organization_id,
+      model: "google/gemini-3-flash-preview",
+    });
+
     const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        "Accept": "text/event-stream",
         "Authorization": `Bearer ${LOVABLE_API_KEY}`,
       },
       body: JSON.stringify({
@@ -131,10 +136,34 @@ Deno.serve(async (req) => {
 
     if (!aiResponse.ok) {
       const errorText = await aiResponse.text();
-      console.error("AI API error:", errorText);
+      console.error("AI API error:", aiResponse.status, errorText);
+
+      // Surface gateway billing/rate-limit errors explicitly
+      if (aiResponse.status === 429) {
+        return new Response(
+          JSON.stringify({ error: "Rate limit exceeded. Please try again in a moment." }),
+          { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      if (aiResponse.status === 402) {
+        return new Response(
+          JSON.stringify({ error: "AI credits exhausted. Please add credits to your Lovable AI workspace." }),
+          { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      // Attempt to pass through the gateway's message for easier debugging
+      let detailed = "Failed to generate tasks";
+      try {
+        const parsed = JSON.parse(errorText);
+        if (typeof parsed?.message === "string" && parsed.message.trim()) detailed = parsed.message;
+        if (typeof parsed?.error === "string" && parsed.error.trim()) detailed = parsed.error;
+      } catch {
+        // keep fallback
+      }
       return new Response(
-        JSON.stringify({ error: "Failed to generate tasks" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({ error: detailed }),
+        { status: aiResponse.status || 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
