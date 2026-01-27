@@ -394,6 +394,83 @@ const Auth = () => {
       }
     }
   };
+
+  const handlePaidSignUp = async () => {
+    if (!sessionId) return;
+
+    try {
+      const { data, error } = await supabase.functions.invoke("complete-paid-signup", {
+        body: {
+          sessionId,
+          password,
+          organizationName: organizationName.trim(),
+          employeeSize,
+          fullName: fullName.trim(),
+          jobRole: jobRole.trim(),
+          phoneNumber: phoneNumber.trim(),
+        },
+      });
+
+      // Supabase functions can return a transport error OR an error inside the JSON body
+      let errorMessage: string | null = null;
+      if (error) {
+        errorMessage = error.message;
+        const ctxBody = (error as any)?.context?.body;
+        if (typeof ctxBody === "string") {
+          try {
+            const parsed = JSON.parse(ctxBody);
+            if (parsed?.error) errorMessage = parsed.error;
+          } catch {
+            // ignore
+          }
+        }
+      }
+      if ((data as any)?.error) {
+        errorMessage = (data as any).error;
+      }
+
+      if (errorMessage) {
+        toast({
+          title: "Registration failed",
+          description: errorMessage,
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Now sign in (the edge function creates a confirmed user)
+      const { error: signInError } = await signIn(email, password);
+      if (signInError) {
+        toast({
+          title: "Login failed",
+          description: signInError.message,
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Send welcome email (fire and forget - don't block the flow)
+      supabase.functions
+        .invoke("send-welcome-email", {
+          body: {
+            organizationName: organizationName.trim(),
+            fullName: fullName.trim(),
+          },
+        })
+        .catch((err) => console.error("Welcome email error:", err));
+
+      // Refetch organization data and navigate to dashboard
+      await refetch();
+      navigate("/");
+    } catch (err: any) {
+      console.error("Paid signup error:", err);
+      toast({
+        title: "Registration failed",
+        description: err?.message || "Failed to complete signup. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!captchaVerified) {
@@ -450,7 +527,12 @@ const Auth = () => {
         if (inviteData) {
           await handleInviteSignUp();
         } else {
-          await handleRegularSignUp();
+          // If we have a Stripe checkout session, finalize signup server-side and then sign in.
+          if (sessionId) {
+            await handlePaidSignUp();
+          } else {
+            await handleRegularSignUp();
+          }
         }
       }
     } catch (error: any) {
@@ -604,7 +686,7 @@ const Auth = () => {
             {loading ? <>
                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                 Loading...
-              </> : isLogin ? "Sign In" : inviteData ? "Accept Invitation" : "Create"}
+              </> : isLogin ? "Sign In" : inviteData ? "Accept Invitation" : "Create Account"}
           </Button>
 
           
