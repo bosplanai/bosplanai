@@ -32,3 +32,6 @@ verify_jwt = false
 
 [functions.get-organization-users]
 verify_jwt = false
+
+[functions.send-invite]
+verify_jwt = false
