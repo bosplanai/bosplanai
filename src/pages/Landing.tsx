@@ -12,6 +12,7 @@ import { toast } from "sonner";
 import SetPasswordDialog from "@/components/SetPasswordDialog";
 import { DemoTaskBoard } from "@/components/demo/DemoTaskBoard";
 import WelcomeHeader from "@/components/WelcomeHeader";
+import WelcomeFooter from "@/components/WelcomeFooter";
 import bosplanLogo from "@/assets/bosplan-logo-full.png";
 import bosplanTagline from "@/assets/bosplan-tagline.png";
 import dashboardPreview1 from "@/assets/dashboard-preview-1.png";
@@ -580,20 +581,7 @@ const Landing = () => {
           </Card>
         </div>}
 
-      {/* Footer */}
-      <footer className="container mx-auto px-4 py-8 border-t border-[#176884]/20 mt-16 bg-white">
-        <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-2">
-            <img alt="BOSPLAN.COM" className="h-8 w-auto" src="/lovable-uploads/5359065e-b4e7-4d2c-ae56-83f375452bc5.png" />
-          </div>
-          <div className="flex items-center gap-6">
-            <a href="/terms-and-conditions" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
-              Terms and Conditions
-            </a>
-            <p className="text-sm text-muted-foreground">© 2026 BOSPLAN.COM LTD. All rights reserved.</p>
-          </div>
-        </div>
-      </footer>
+      <WelcomeFooter />
       <SetPasswordDialog />
     </div>;
 };

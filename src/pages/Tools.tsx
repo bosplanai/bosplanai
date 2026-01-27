@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Check, ArrowLeft } from "lucide-react";
 import WelcomeHeader from "@/components/WelcomeHeader";
+import WelcomeFooter from "@/components/WelcomeFooter";
 import toolMagicMerge from "@/assets/tool-magic-merge-new.png";
 import toolTaskFlow from "@/assets/tool-taskflow-new.png";
 import toolTaskPopulate from "@/assets/tool-taskpopulate-new.png";
@@ -307,20 +308,7 @@ const Tools = () => {
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="container mx-auto px-4 py-8 border-t border-[#176884]/20 mt-16 bg-white">
-        <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-2">
-            <img alt="BOSPLAN.COM" className="h-8 w-auto" src="/lovable-uploads/5359065e-b4e7-4d2c-ae56-83f375452bc5.png" />
-          </div>
-          <div className="flex items-center gap-6">
-            <a href="/terms-and-conditions" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
-              Terms and Conditions
-            </a>
-            <p className="text-sm text-muted-foreground">© 2026 BOSPLAN.COM LTD. All rights reserved.</p>
-          </div>
-        </div>
-      </footer>
+      <WelcomeFooter />
     </div>;
 };
 export default Tools;
