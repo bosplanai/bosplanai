@@ -220,11 +220,18 @@ const Onboarding = () => {
     }
     setIsGenerating(true);
     try {
-      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-tasks`, {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData?.session?.access_token;
+
+      if (!accessToken) {
+        throw new Error("Please log in to generate tasks");
+      }
+
+      const response = await fetch(`https://qiikjhvzlwzysbtzhdcd.supabase.co/functions/v1/generate-tasks`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`
+          Authorization: `Bearer ${accessToken}`
         },
         body: JSON.stringify({
           prompt: prompt.trim(),
