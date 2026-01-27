@@ -309,9 +309,8 @@ const Auth = () => {
         description: `You've joined ${inviteData.organization.name} as a ${inviteData.role}`
       });
 
-      // Refetch organization data - the useEffect will handle navigation
-      // and ProtectedRoute will check onboarding status
-      await refetch();
+      // Navigate directly to onboarding using the org slug from invite data
+      navigate(`/${inviteData.organization.slug}/onboarding`);
     }
   };
   const handleRegularSignUp = async () => {
@@ -379,11 +378,18 @@ const Auth = () => {
           description: `Your organization "${organizationName}" is ready.`
         });
 
-        // Refetch organization data and navigate to dashboard
-        await refetch();
+        // Generate the org slug and navigate directly to onboarding
+        const orgSlug = organizationName.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
         
-        // Navigate directly to dashboard since we have a session
-        navigate("/");
+        // Fetch the actual org slug from database to ensure accuracy
+        const { data: orgData } = await supabase
+          .from("organizations")
+          .select("slug")
+          .eq("id", orgId)
+          .single();
+        
+        const finalSlug = orgData?.slug || orgSlug;
+        navigate(`/${finalSlug}/onboarding`);
       } catch (error: any) {
         console.error("Unexpected registration error:", error);
         toast({
