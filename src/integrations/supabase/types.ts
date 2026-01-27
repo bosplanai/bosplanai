@@ -14,6 +14,54 @@ export type Database = {
   }
   public: {
     Tables: {
+      organization_specialist_plans: {
+        Row: {
+          agreed_at: string | null
+          agreed_to_terms: boolean
+          created_at: string
+          expires_at: string
+          id: string
+          organization_id: string
+          plan_id: string
+          referral_code: string | null
+        }
+        Insert: {
+          agreed_at?: string | null
+          agreed_to_terms?: boolean
+          created_at?: string
+          expires_at: string
+          id?: string
+          organization_id: string
+          plan_id: string
+          referral_code?: string | null
+        }
+        Update: {
+          agreed_at?: string | null
+          agreed_to_terms?: boolean
+          created_at?: string
+          expires_at?: string
+          id?: string
+          organization_id?: string
+          plan_id?: string
+          referral_code?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organization_specialist_plans_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: true
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "organization_specialist_plans_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "specialist_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       organizations: {
         Row: {
           created_at: string
@@ -21,6 +69,7 @@ export type Database = {
           id: string
           logo_url: string | null
           name: string
+          scheduled_deletion_at: string | null
           slug: string
           updated_at: string
         }
@@ -30,6 +79,7 @@ export type Database = {
           id?: string
           logo_url?: string | null
           name: string
+          scheduled_deletion_at?: string | null
           slug: string
           updated_at?: string
         }
@@ -39,6 +89,7 @@ export type Database = {
           id?: string
           logo_url?: string | null
           name?: string
+          scheduled_deletion_at?: string | null
           slug?: string
           updated_at?: string
         }
@@ -85,6 +136,116 @@ export type Database = {
           },
         ]
       }
+      registration_links: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          current_uses: number
+          description: string | null
+          expires_at: string | null
+          id: string
+          is_active: boolean
+          max_uses: number | null
+          name: string
+          plan_id: string
+          referral_code: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          current_uses?: number
+          description?: string | null
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean
+          max_uses?: number | null
+          name: string
+          plan_id: string
+          referral_code: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          current_uses?: number
+          description?: string | null
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean
+          max_uses?: number | null
+          name?: string
+          plan_id?: string
+          referral_code?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "registration_links_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "registration_links_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "specialist_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      specialist_plans: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          description: string | null
+          duration_months: number
+          id: string
+          is_active: boolean
+          max_users: number | null
+          name: string
+          registration_code: string
+          terms_and_conditions: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          duration_months: number
+          id?: string
+          is_active?: boolean
+          max_users?: number | null
+          name: string
+          registration_code: string
+          terms_and_conditions?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          duration_months?: number
+          id?: string
+          is_active?: boolean
+          max_users?: number | null
+          name?: string
+          registration_code?: string
+          terms_and_conditions?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "specialist_plans_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -116,6 +277,36 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      va_pricing: {
+        Row: {
+          created_at: string
+          hours_package: number
+          id: string
+          is_active: boolean
+          price_cents: number
+          stripe_price_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          hours_package: number
+          id?: string
+          is_active?: boolean
+          price_cents: number
+          stripe_price_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          hours_package?: number
+          id?: string
+          is_active?: boolean
+          price_cents?: number
+          stripe_price_id?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
     }
     Views: {
