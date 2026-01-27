@@ -138,7 +138,11 @@ export const usePersonalChecklist = () => {
 
       setItems(withSigned as ChecklistItem[]);
     } catch (error: any) {
-      console.error("Error fetching checklist items:", error);
+      // Silently handle missing table/relationship errors (PGRST205/PGRST200)
+      const ignoredCodes = ['PGRST205', 'PGRST200'];
+      if (!ignoredCodes.includes(error?.code)) {
+        console.error("Error fetching checklist items:", error);
+      }
     } finally {
       setLoading(false);
     }

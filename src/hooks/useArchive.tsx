@@ -49,17 +49,18 @@ export const useArchive = () => {
       const { data: tasksData, error: tasksError } = await supabase
         .from("tasks")
         .select(`
-          id, title, description, category, priority, completed_at, archived_at,
-          project:projects(id, title)
+          id, title, description, category, priority, completed_at, archived_at
         `)
         .eq("organization_id", profile.organization_id)
         .not("archived_at", "is", null)
         .is("deleted_at", null)
         .order("archived_at", { ascending: false });
 
-      if (tasksError) throw tasksError;
+      // Gracefully handle missing table/relationship errors
+      const ignoredCodes = ['PGRST205', 'PGRST200'];
+      if (tasksError && !ignoredCodes.includes(tasksError?.code)) throw tasksError;
 
-      // Fetch archived projects
+      // Fetch archived projects (gracefully handle missing table)
       const { data: projectsData, error: projectsError } = await supabase
         .from("projects")
         .select("id, title, description, status, due_date, archived_at, updated_at")
@@ -67,7 +68,7 @@ export const useArchive = () => {
         .not("archived_at", "is", null)
         .order("archived_at", { ascending: false });
 
-      if (projectsError) throw projectsError;
+      if (projectsError && !ignoredCodes.includes(projectsError?.code)) throw projectsError;
 
       setArchivedTasks(tasksData || []);
       setArchivedProjects(projectsData || []);
@@ -117,7 +118,9 @@ export const useArchive = () => {
         .eq("status", "done")
         .is("archived_at", null);
 
-      if (projectsQueryError) throw projectsQueryError;
+      // Gracefully handle missing table
+      const ignoredCodes = ['PGRST205', 'PGRST200'];
+      if (projectsQueryError && !ignoredCodes.includes(projectsQueryError?.code)) throw projectsQueryError;
 
       const projectsOlderThan10Days = (projectsToArchive || []).filter(p => {
         const updatedDate = new Date(p.updated_at);
@@ -130,10 +133,15 @@ export const useArchive = () => {
           .update({ archived_at: new Date().toISOString() })
           .in("id", projectsOlderThan10Days.map(p => p.id));
 
-        if (projectsUpdateError) throw projectsUpdateError;
+        const ignoredCodes = ['PGRST205', 'PGRST200'];
+        if (projectsUpdateError && !ignoredCodes.includes(projectsUpdateError?.code)) throw projectsUpdateError;
       }
-    } catch (error) {
-      console.error("Error auto-archiving items:", error);
+    } catch (error: any) {
+      // Silently handle missing table/relationship errors
+      const ignoredCodes = ['PGRST205', 'PGRST200'];
+      if (!ignoredCodes.includes(error?.code)) {
+        console.error("Error auto-archiving items:", error);
+      }
     }
   }, [user, profile?.organization_id]);
 
@@ -145,8 +153,7 @@ export const useArchive = () => {
       const { data: taskData, error: fetchError } = await supabase
         .from("tasks")
         .select(`
-          id, title, description, category, priority, completed_at,
-          project:projects(id, title)
+          id, title, description, category, priority, completed_at
         `)
         .eq("id", taskId)
         .single();

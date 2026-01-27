@@ -57,7 +57,6 @@ export const useTaskRequests = () => {
           assignment_status,
           created_at,
           organization_id,
-          project:projects!tasks_project_id_fkey(id, title),
           created_by_user:profiles!tasks_created_by_user_id_fkey(id, full_name)
         `
         )
@@ -70,8 +69,12 @@ export const useTaskRequests = () => {
       if (error) throw error;
 
       setPendingRequests(data as TaskRequest[]);
-    } catch (error) {
-      console.error("Error fetching pending task requests:", error);
+    } catch (error: any) {
+      // Silently handle missing table/relationship errors (PGRST205/PGRST200)
+      const ignoredCodes = ['PGRST205', 'PGRST200'];
+      if (!ignoredCodes.includes(error?.code)) {
+        console.error("Error fetching pending task requests:", error);
+      }
     } finally {
       setLoading(false);
     }

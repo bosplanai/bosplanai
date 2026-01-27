@@ -159,7 +159,7 @@ export const useTaskFlowData = () => {
         .in("id", userIds);
       
       // Fetch all tasks for the organization
-      const { data: tasks } = await supabase
+      const { data: tasks, error: tasksError } = await supabase
         .from("tasks")
         .select(`
           id,
@@ -173,12 +173,19 @@ export const useTaskFlowData = () => {
           assigned_user_id,
           project_id,
           category,
-          assigned_user:profiles!tasks_assigned_user_id_fkey(id, full_name),
-          project:projects!tasks_project_id_fkey(id, title)
+          assigned_user:profiles!tasks_assigned_user_id_fkey(id, full_name)
         `)
         .eq("organization_id", organization.id)
         .is("deleted_at", null)
         .order("created_at", { ascending: false });
+      
+      // Gracefully handle missing table/relationship errors
+      if (tasksError) {
+        const ignoredCodes = ['PGRST205', 'PGRST200'];
+        if (!ignoredCodes.includes(tasksError?.code)) {
+          throw tasksError;
+        }
+      }
       
       // Fetch task assignments for multi-user support
       const { data: assignments } = await supabase
@@ -320,7 +327,7 @@ export const useTaskFlowData = () => {
             assigned_user_id: task.assigned_user_id,
             assigned_user_name: (task.assigned_user as any)?.full_name || null,
             project_id: task.project_id,
-            project_title: (task.project as any)?.title || null,
+            project_title: null, // Projects table not yet available
             category: task.category,
             riskLevel: risk.level,
             riskReason: risk.reason,
@@ -496,8 +503,13 @@ export const useTaskFlowData = () => {
       
       setAlerts(newAlerts);
       
-    } catch (error) {
-      console.error("Error fetching TaskFlow data:", error);
+    } catch (error: any) {
+      // Silently handle missing table/relationship errors for new organizations
+      // PGRST205 = missing table, PGRST200 = missing relationship
+      const ignoredCodes = ['PGRST205', 'PGRST200'];
+      if (!ignoredCodes.includes(error?.code)) {
+        console.error("Error fetching TaskFlow data:", error);
+      }
     } finally {
       setLoading(false);
     }

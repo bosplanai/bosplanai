@@ -38,12 +38,17 @@ export const useTemplateFolders = () => {
       if (error) throw error;
       setFolders(data || []);
     } catch (error: any) {
-      console.error("Error fetching template folders:", error);
-      toast({
-        title: "Error",
-        description: "Failed to load folders",
-        variant: "destructive",
-      });
+      // Silently handle missing table/relationship errors for new organizations
+      // PGRST205 = missing table, PGRST200 = missing relationship
+      const ignoredCodes = ['PGRST205', 'PGRST200'];
+      if (!ignoredCodes.includes(error?.code)) {
+        console.error("Error fetching template folders:", error);
+        toast({
+          title: "Error",
+          description: "Failed to load folders",
+          variant: "destructive",
+        });
+      }
     } finally {
       setLoading(false);
     }

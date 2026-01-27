@@ -89,7 +89,6 @@ export const useTasks = () => {
           *,
           assigned_user:profiles!tasks_assigned_user_id_fkey(id, full_name),
           created_by_user:profiles!tasks_created_by_user_id_fkey(id, full_name),
-          project:projects!tasks_project_id_fkey(id, title),
           task_assignments(id, user_id, user:profiles!task_assignments_user_id_fkey(id, full_name))
         `)
         .eq("organization_id", organization.id)
@@ -146,9 +145,10 @@ export const useTasks = () => {
 
       setTasks(tasksWithSignedUrls);
     } catch (error: any) {
-      // Silently handle missing table errors (PGRST205) for new organizations
-      // that haven't had the tasks feature set up yet
-      if (error?.code !== 'PGRST205') {
+      // Silently handle missing table/relationship errors for new organizations
+      // PGRST205 = missing table, PGRST200 = missing relationship
+      const ignoredCodes = ['PGRST205', 'PGRST200'];
+      if (!ignoredCodes.includes(error?.code)) {
         console.error("Error fetching tasks:", error);
         toast({
           title: "Error",
@@ -249,8 +249,7 @@ export const useTasks = () => {
         .select(`
           *,
           assigned_user:profiles!tasks_assigned_user_id_fkey(id, full_name),
-          created_by_user:profiles!tasks_created_by_user_id_fkey(id, full_name),
-          project:projects!tasks_project_id_fkey(id, title)
+          created_by_user:profiles!tasks_created_by_user_id_fkey(id, full_name)
         `)
         .single();
 
@@ -626,9 +625,7 @@ export const useTasks = () => {
         .from("tasks")
         .update({ project_id: projectId })
         .eq("id", taskId)
-        .select(`
-          project:projects(id, title)
-        `)
+        .select(`*`)
         .single();
 
       if (error) throw error;
@@ -664,8 +661,7 @@ export const useTasks = () => {
         .select(`
           *,
           assigned_user:profiles!tasks_assigned_user_id_fkey(id, full_name),
-          created_by_user:profiles!tasks_created_by_user_id_fkey(id, full_name),
-          project:projects!tasks_project_id_fkey(id, title)
+          created_by_user:profiles!tasks_created_by_user_id_fkey(id, full_name)
         `)
         .eq("organization_id", organization.id)
         .eq("is_draft", true)
