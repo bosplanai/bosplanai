@@ -29,10 +29,7 @@ const showFatal = (title: string, details?: unknown) => {
   `;
 };
 
-if (rootEl) {
-  rootEl.innerHTML =
-    '<div style="min-height:100vh;padding:16px;font-family:ui-sans-serif,system-ui;background:#fff;color:#111;">Booting…</div>';
-}
+// Keep root element empty during initial load - React will render the app
 
 window.addEventListener("error", (e) => {
   // eslint-disable-next-line no-console
