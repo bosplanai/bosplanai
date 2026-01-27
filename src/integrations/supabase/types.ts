@@ -313,6 +313,18 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      complete_specialist_signup: {
+        Args: {
+          _employee_size: string
+          _full_name: string
+          _job_role: string
+          _org_name: string
+          _phone_number: string
+          _referral_code: string
+          _user_id: string
+        }
+        Returns: Json
+      }
       create_organization_and_profile: {
         Args: {
           _employee_size: string
@@ -337,6 +349,19 @@ export type Database = {
         Returns: boolean
       }
       is_super_admin: { Args: { _user_id: string }; Returns: boolean }
+      validate_referral_code: {
+        Args: { code: string }
+        Returns: {
+          error_message: string
+          is_valid: boolean
+          link_id: string
+          plan_duration_months: number
+          plan_id: string
+          plan_max_users: number
+          plan_name: string
+          plan_terms: string
+        }[]
+      }
     }
     Enums: {
       app_role: "admin" | "moderator" | "user" | "super_admin"
