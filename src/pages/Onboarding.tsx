@@ -352,6 +352,9 @@ const Onboarding = () => {
     }
     setIsCreating(true);
     try {
+      let createdCount = 0;
+      let totalToCreate = 0;
+
       // Create all tasks for completed boards.
       // Also include the current board if it has generated tasks that weren't explicitly confirmed,
       // ensuring tasks generated on the final step aren't accidentally lost.
@@ -361,31 +364,66 @@ const Onboarding = () => {
       if (generatedTasks[currentBoard.id]?.length > 0) {
         boardsToCreate.add(currentBoard.id);
       }
+
+      // Pre-compute totals so we can provide accurate feedback and avoid silently completing onboarding.
+      for (const boardId of boardsToCreate) {
+        const boardTasks = generatedTasks[boardId] || [];
+        totalToCreate += boardTasks.filter(t => (t?.title || "").trim()).length;
+      }
+
       for (const boardId of boardsToCreate) {
         const board = availableBoards.find(b => b.id === boardId);
         if (!board) continue;
-        const tasks = generatedTasks[boardId];
-        for (const task of tasks) {
-          try {
-            const cleanedTitle = task.title.trim();
-            const cleanedDescription = task.description?.trim() || "";
-            if (!cleanedTitle) continue;
-            if (isSingleBoardFlow && managerDestination === "personal") {
-              await addChecklistItem({
-                title: cleanedTitle,
-                description: cleanedDescription || undefined,
-                dueDate: null,
-                priority: "medium",
-                projectId: null,
-                icon: "ListTodo"
-              });
-            } else {
-              await addTask(cleanedTitle, "ListTodo", board.category, "medium" as TaskPriority, cleanedDescription, "weekly", null, null, null, [], false);
+
+        const tasksForBoard = generatedTasks[boardId] || [];
+        for (const task of tasksForBoard) {
+          const cleanedTitle = (task?.title || "").trim();
+          const cleanedDescription = (task?.description || "").trim();
+          if (!cleanedTitle) continue;
+
+          // IMPORTANT: Do not silently complete onboarding if task creation fails.
+          // addTask returns null on failure, so we must treat that as an error.
+          if (isSingleBoardFlow && managerDestination === "personal") {
+            await addChecklistItem({
+              title: cleanedTitle,
+              description: cleanedDescription || undefined,
+              dueDate: null,
+              priority: "medium",
+              projectId: null,
+              icon: "ListTodo"
+            });
+            createdCount++;
+          } else {
+            const createdId = await addTask(
+              cleanedTitle,
+              "ListTodo",
+              board.category,
+              "medium" as TaskPriority,
+              cleanedDescription,
+              "weekly",
+              null,
+              null,
+              null,
+              [],
+              false
+            );
+
+            if (!createdId) {
+              throw new Error("Task creation failed");
             }
-          } catch (error) {
-            console.error("Failed to create task:", error);
+            createdCount++;
           }
         }
+      }
+
+      // If the user clicked complete but nothing was created, don't mark onboarding complete.
+      if (totalToCreate > 0 && createdCount === 0) {
+        toast({
+          title: "No tasks created",
+          description: "Please try again.",
+          variant: "destructive",
+        });
+        return;
       }
 
       // Mark onboarding as completed
@@ -409,7 +447,7 @@ const Onboarding = () => {
       console.error("Onboarding completion error:", error);
       toast({
         title: "Something went wrong",
-        description: "Please try again",
+        description: "We couldn't save your tasks. Please try again.",
         variant: "destructive"
       });
     } finally {

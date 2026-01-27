@@ -100,9 +100,13 @@ export const useTasks = () => {
 
       if (error) throw error;
 
+      // Defensive: supabase-js should return an array here, but if it doesn't,
+      // avoid crashing and incorrectly showing a load error.
+      const rows = Array.isArray(data) ? data : [];
+
       // Generate signed URLs for attachments
       const tasksWithSignedUrls = await Promise.all(
-        data.map(async (t) => {
+        rows.map(async (t) => {
           let signedUrl: string | null = null;
           // Check if attachment_url is a file path (not a full URL)
           if (t.attachment_url && !t.attachment_url.startsWith('http')) {
@@ -149,7 +153,13 @@ export const useTasks = () => {
       // PGRST205 = missing table, PGRST200 = missing relationship
       const ignoredCodes = ['PGRST205', 'PGRST200'];
       if (!ignoredCodes.includes(error?.code)) {
-        console.error("Error fetching tasks:", error);
+        console.error("Error fetching tasks:", {
+          code: error?.code,
+          message: error?.message,
+          details: error?.details,
+          hint: error?.hint,
+          raw: error,
+        });
         toast({
           title: "Error",
           description: "Failed to load tasks",
