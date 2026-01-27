@@ -3,6 +3,9 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Menu, X } from "lucide-react";
+import bosplanLogoFull from "@/assets/bosplan-logo-welcome.png";
+import bosplanLogoSmall from "@/assets/bosplan-logo-icon.png";
+
 const navItems = [{
   label: "Home",
   path: "/welcome"
@@ -37,8 +40,8 @@ const WelcomeHeader = ({
     }
     return location.pathname === path;
   };
-  const logoSrc = "/lovable-uploads/ef0c289d-ee1b-4e69-8c1e-4f32a0574d7d.png";
-  const smallLogoSrc = "/lovable-uploads/5359065e-b4e7-4d2c-ae56-83f375452bc5.png";
+  const logoSrc = bosplanLogoFull;
+  const smallLogoSrc = bosplanLogoSmall;
   return <header className="container mx-auto px-4 py-6 bg-white">
       <nav className="flex items-center justify-between">
         {/* Logo */}
