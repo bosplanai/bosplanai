@@ -150,73 +150,71 @@ const SpecialistSignup = () => {
 
     setIsSubmitting(true);
     try {
-      // Sign up user
-      const redirectUrl = `${window.location.origin}/`;
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email,
-        password,
-        options: { emailRedirectTo: redirectUrl },
-      });
-
-      if (authError) {
-        if (authError.message.includes("already registered")) {
-          toast({
-            title: "Account exists",
-            description: "This email is already registered. Please sign in.",
-            variant: "destructive",
-          });
-        } else {
-          toast({
-            title: "Sign up failed",
-            description: authError.message,
-            variant: "destructive",
-          });
+      // Use edge function to create user with pre-confirmed email
+      const response = await fetch(
+        `https://qiikjhvzlwzysbtzhdcd.supabase.co/functions/v1/complete-specialist-registration`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            referralCode,
+            email: email.trim().toLowerCase(),
+            password,
+            organizationName: organizationName.trim(),
+            employeeSize,
+            fullName: fullName.trim(),
+            jobRole: jobRole.trim(),
+            phoneNumber: phoneNumber.trim(),
+          }),
         }
+      );
+
+      const result = await response.json();
+
+      if (!response.ok || result.error) {
+        toast({
+          title: "Registration failed",
+          description: result.error || "Failed to complete registration",
+          variant: "destructive",
+        });
         return;
       }
 
-      if (authData.user && authData.session) {
-        // Complete specialist signup
-        const { data: result, error: signupError } = await supabase.rpc("complete_specialist_signup", {
-          _user_id: authData.user.id,
-          _referral_code: referralCode!,
-          _org_name: organizationName.trim(),
-          _employee_size: employeeSize,
-          _full_name: fullName.trim(),
-          _job_role: jobRole.trim(),
-          _phone_number: phoneNumber.trim(),
-        });
+      // Sign in the user
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: email.trim().toLowerCase(),
+        password,
+      });
 
-        const resultObj = result as { success: boolean; error?: string; organization_id?: string; plan_name?: string; expires_at?: string } | null;
-
-        if (signupError || !resultObj?.success) {
-          toast({
-            title: "Registration failed",
-            description: resultObj?.error || signupError?.message || "Failed to complete registration",
-            variant: "destructive",
-          });
-          return;
-        }
-
-        // Send welcome email (fire and forget)
-        supabase.functions.invoke("send-welcome-email", {
-          body: {
-            organizationName: organizationName.trim(),
-            fullName: fullName.trim(),
-          },
-        }).catch((err) => console.error("Welcome email error:", err));
-
+      if (signInError) {
         toast({
-          title: "Welcome to BosPlan!",
-          description: `Your organization has been created with ${planInfo?.plan_duration_months} months of free access.`,
+          title: "Sign in failed",
+          description: "Your account was created but we couldn't sign you in. Please try signing in manually.",
+          variant: "destructive",
         });
-
-        navigate("/");
+        navigate("/auth");
+        return;
       }
-    } catch (error: any) {
+
+      // Send welcome email (fire and forget)
+      supabase.functions.invoke("send-welcome-email", {
+        body: {
+          organizationName: organizationName.trim(),
+          fullName: fullName.trim(),
+        },
+      }).catch((err) => console.error("Welcome email error:", err));
+
+      toast({
+        title: "Welcome to BosPlan!",
+        description: `Your organization has been created with ${planInfo?.plan_duration_months} months of free access.`,
+      });
+
+      navigate("/");
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "An unexpected error occurred";
       toast({
         title: "Error",
-        description: error.message || "An unexpected error occurred",
+        description: message,
         variant: "destructive",
       });
     } finally {
