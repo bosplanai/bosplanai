@@ -378,6 +378,164 @@ export type Database = {
           },
         ]
       }
+      task_assignments: {
+        Row: {
+          assigned_by: string | null
+          created_at: string
+          id: string
+          task_id: string
+          user_id: string
+        }
+        Insert: {
+          assigned_by?: string | null
+          created_at?: string
+          id?: string
+          task_id: string
+          user_id: string
+        }
+        Update: {
+          assigned_by?: string | null
+          created_at?: string
+          id?: string
+          task_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_assignments_assigned_by_fkey"
+            columns: ["assigned_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_assignments_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_assignments_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tasks: {
+        Row: {
+          archived_at: string | null
+          assigned_user_id: string | null
+          assignment_status: string
+          attachment_name: string | null
+          attachment_url: string | null
+          category: string
+          completed_at: string | null
+          created_at: string
+          created_by_user_id: string | null
+          decline_reason: string | null
+          deleted_at: string | null
+          description: string | null
+          due_date: string | null
+          icon: string
+          id: string
+          is_draft: boolean
+          is_recurring: boolean
+          last_reminder_sent_at: string | null
+          organization_id: string | null
+          position: number
+          priority: string
+          project_id: string | null
+          status: string
+          subcategory: string
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          archived_at?: string | null
+          assigned_user_id?: string | null
+          assignment_status?: string
+          attachment_name?: string | null
+          attachment_url?: string | null
+          category?: string
+          completed_at?: string | null
+          created_at?: string
+          created_by_user_id?: string | null
+          decline_reason?: string | null
+          deleted_at?: string | null
+          description?: string | null
+          due_date?: string | null
+          icon?: string
+          id?: string
+          is_draft?: boolean
+          is_recurring?: boolean
+          last_reminder_sent_at?: string | null
+          organization_id?: string | null
+          position?: number
+          priority?: string
+          project_id?: string | null
+          status?: string
+          subcategory?: string
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          archived_at?: string | null
+          assigned_user_id?: string | null
+          assignment_status?: string
+          attachment_name?: string | null
+          attachment_url?: string | null
+          category?: string
+          completed_at?: string | null
+          created_at?: string
+          created_by_user_id?: string | null
+          decline_reason?: string | null
+          deleted_at?: string | null
+          description?: string | null
+          due_date?: string | null
+          icon?: string
+          id?: string
+          is_draft?: boolean
+          is_recurring?: boolean
+          last_reminder_sent_at?: string | null
+          organization_id?: string | null
+          position?: number
+          priority?: string
+          project_id?: string | null
+          status?: string
+          subcategory?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tasks_assigned_user_id_fkey"
+            columns: ["assigned_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tasks_created_by_user_id_fkey"
+            columns: ["created_by_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tasks_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           created_at: string
