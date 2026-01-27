@@ -6,6 +6,9 @@ verify_jwt = false
 [functions.verify-checkout-session]
 verify_jwt = false
 
+[functions.complete-paid-signup]
+verify_jwt = false
+
 [functions.send-welcome-email]
 verify_jwt = false
 
