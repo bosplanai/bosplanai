@@ -37,7 +37,7 @@ import { useSuperAdmin } from "@/hooks/useSuperAdmin";
 import { useAuth } from "@/hooks/useAuth";
 import { useSuperAdminData } from "@/hooks/useSuperAdminData";
 import { format } from "date-fns";
-import bosplanLogo from "@/assets/bosplan-logo-superadmin.png";
+import bosplanLogo from "@/assets/bosplan-logo.png";
 
 const AccountStatus = () => {
   const navigate = useNavigate();

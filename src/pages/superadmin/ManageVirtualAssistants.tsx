@@ -19,7 +19,7 @@ import { useSuperAdminData } from "@/hooks/useSuperAdminData";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import bosplanLogo from "@/assets/bosplan-logo-superadmin.png";
+import bosplanLogo from "@/assets/bosplan-logo.png";
 
 // VA Job roles from the product cards
 const vaJobRoles = [
