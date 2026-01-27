@@ -82,6 +82,176 @@ export type Database = {
           },
         ]
       }
+      drive_files: {
+        Row: {
+          assigned_to: string | null
+          created_at: string
+          deleted_at: string | null
+          description: string | null
+          file_category: string | null
+          file_path: string
+          file_size: number
+          folder_id: string | null
+          id: string
+          is_restricted: boolean | null
+          last_viewed_at: string | null
+          mime_type: string | null
+          name: string
+          organization_id: string
+          parent_file_id: string | null
+          requires_signature: boolean | null
+          signature_status: string | null
+          signed_at: string | null
+          signed_by: string | null
+          status: string
+          updated_at: string
+          uploaded_by: string
+          version: number
+        }
+        Insert: {
+          assigned_to?: string | null
+          created_at?: string
+          deleted_at?: string | null
+          description?: string | null
+          file_category?: string | null
+          file_path: string
+          file_size?: number
+          folder_id?: string | null
+          id?: string
+          is_restricted?: boolean | null
+          last_viewed_at?: string | null
+          mime_type?: string | null
+          name: string
+          organization_id: string
+          parent_file_id?: string | null
+          requires_signature?: boolean | null
+          signature_status?: string | null
+          signed_at?: string | null
+          signed_by?: string | null
+          status?: string
+          updated_at?: string
+          uploaded_by: string
+          version?: number
+        }
+        Update: {
+          assigned_to?: string | null
+          created_at?: string
+          deleted_at?: string | null
+          description?: string | null
+          file_category?: string | null
+          file_path?: string
+          file_size?: number
+          folder_id?: string | null
+          id?: string
+          is_restricted?: boolean | null
+          last_viewed_at?: string | null
+          mime_type?: string | null
+          name?: string
+          organization_id?: string
+          parent_file_id?: string | null
+          requires_signature?: boolean | null
+          signature_status?: string | null
+          signed_at?: string | null
+          signed_by?: string | null
+          status?: string
+          updated_at?: string
+          uploaded_by?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "drive_files_assigned_to_fkey"
+            columns: ["assigned_to"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "drive_files_folder_id_fkey"
+            columns: ["folder_id"]
+            isOneToOne: false
+            referencedRelation: "drive_folders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "drive_files_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "drive_files_parent_file_id_fkey"
+            columns: ["parent_file_id"]
+            isOneToOne: false
+            referencedRelation: "drive_files"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "drive_files_signed_by_fkey"
+            columns: ["signed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "drive_files_uploaded_by_fkey"
+            columns: ["uploaded_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      drive_folders: {
+        Row: {
+          created_at: string
+          created_by: string
+          id: string
+          name: string
+          organization_id: string
+          parent_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          id?: string
+          name: string
+          organization_id: string
+          parent_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          id?: string
+          name?: string
+          organization_id?: string
+          parent_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "drive_folders_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "drive_folders_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "drive_folders_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "drive_folders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       feature_usage_logs: {
         Row: {
           created_at: string
