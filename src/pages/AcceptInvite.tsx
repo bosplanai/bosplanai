@@ -140,11 +140,15 @@ const AcceptInvite = () => {
 
     try {
       // Create the user account with the password
+      // Use data.email_confirm to auto-confirm invited users (no second email verification needed)
       const { data: authData, error: signUpError } = await supabase.auth.signUp({
         email: inviteData.email,
         password,
         options: {
           emailRedirectTo: `${window.location.origin}/`,
+          data: {
+            email_confirmed: true, // Mark as pre-confirmed for invited users
+          }
         }
       });
 
@@ -162,14 +166,38 @@ const AcceptInvite = () => {
         throw signUpError;
       }
 
-      if (!authData.user || !authData.session) {
-        // Email confirmation might be required
-        toast({
-          title: "Check your email",
-          description: "Please confirm your email address to complete registration."
+      if (!authData.user) {
+        throw new Error("Failed to create user account");
+      }
+
+      // If no session was returned (email confirmation required by Supabase settings),
+      // sign the user in directly since invited users don't need email confirmation
+      let activeSession = authData.session;
+      if (!activeSession) {
+        const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+          email: inviteData.email,
+          password,
         });
-        navigate("/auth?mode=login");
-        return;
+        
+        if (signInError) {
+          // If sign-in fails due to email not confirmed, the Supabase project has
+          // "Confirm email" enabled. For invited users, we need to work around this.
+          if (signInError.message.includes("Email not confirmed")) {
+            toast({
+              title: "Email confirmation required",
+              description: "Please ask your administrator to disable email confirmation for invites, or check your email.",
+              variant: "destructive"
+            });
+            navigate("/auth?mode=login");
+            return;
+          }
+          throw signInError;
+        }
+        activeSession = signInData.session;
+      }
+
+      if (!activeSession) {
+        throw new Error("Failed to establish session");
       }
 
       // Accept the invite using the database function
@@ -206,10 +234,8 @@ const AcceptInvite = () => {
         description: `You've joined ${inviteData.org_name} as ${roleConfig[inviteData.role]?.label || inviteData.role}`
       });
 
-      // Sign out and redirect to login (as per requirements)
-      await supabase.auth.signOut().catch(() => {});
-      
-      navigate(`/auth?mode=login&email=${encodeURIComponent(inviteData.email)}&returnUrl=/${inviteData.org_slug}`);
+      // User is already authenticated - redirect directly to their dashboard/tasks page
+      navigate(`/${inviteData.org_slug}/tasks`);
     } catch (err: any) {
       console.error("Error accepting invite:", err);
       toast({
