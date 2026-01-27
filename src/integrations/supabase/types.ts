@@ -1009,6 +1009,16 @@ export type Database = {
       }
     }
     Functions: {
+      accept_invite: {
+        Args: {
+          _full_name: string
+          _job_role: string
+          _phone_number: string
+          _token: string
+          _user_id: string
+        }
+        Returns: Json
+      }
       check_ai_usage_allowed: { Args: { org_id: string }; Returns: boolean }
       complete_specialist_signup: {
         Args: {
@@ -1034,6 +1044,21 @@ export type Database = {
         Returns: string
       }
       generate_org_slug: { Args: { org_name: string }; Returns: string }
+      get_invite_by_token: {
+        Args: { _token: string }
+        Returns: {
+          email: string
+          expires_at: string
+          id: string
+          invited_by_name: string
+          org_name: string
+          org_slug: string
+          organization_id: string
+          role: string
+          status: string
+          token: string
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]

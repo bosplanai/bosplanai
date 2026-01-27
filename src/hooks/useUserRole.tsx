@@ -14,10 +14,15 @@ interface UserRoleContextType {
   canCreateTasks: boolean;
   canDeleteTasks: boolean;
   canManageUsers: boolean;
+  canInviteUsers: boolean;
+  canAccessProductManagement: boolean;
   canAccessOperational: boolean;
   canAccessStrategic: boolean;
   canUseDrive: boolean;
+  canUseDataRoom: boolean;
+  canUseTools: boolean;
   canSwitchOrganizations: boolean;
+  canManageSettings: boolean;
   refetch: () => Promise<void>;
 }
 
@@ -62,25 +67,36 @@ export const UserRoleProvider = ({ children }: { children: ReactNode }) => {
     fetchRole();
   }, [user, organization]);
 
-  // Computed permissions
+  // Computed permissions based on role types:
+  // - admin (Full Access): Complete platform access, can manage users, boards, projects, settings
+  // - member (Manager): Can create/manage tasks on Product Management board, access tools
+  // - viewer (Team): Can view/complete assigned tasks, access Data Room and Drive
+  
   const isViewer = role === "viewer";
   const isMember = role === "member";
   const isAdmin = role === "admin";
 
-  // Viewer: restricted access
-  // Member: can create tasks, see all tasks
-  // Admin (Full Access): everything
+  // Task permissions
   const canCreateTasks = role === "member" || role === "admin";
   const canDeleteTasks = role === "admin";
+  
+  // User management - only Full Access
   const canManageUsers = role === "admin";
+  const canInviteUsers = role === "admin";
+  
+  // Board access
+  const canAccessProductManagement = role === "member" || role === "admin";
   const canAccessOperational = role === "admin";
   const canAccessStrategic = role === "admin";
   
-  // All users have full Drive access
+  // Tool access - Drive and Data Room available to all
   const canUseDrive = role !== null;
+  const canUseDataRoom = role !== null;
+  const canUseTools = role === "member" || role === "admin";
   
-  // Full Access (admin) and Manager (member) can switch organizations
+  // Organization management
   const canSwitchOrganizations = role === "admin" || role === "member";
+  const canManageSettings = role === "admin";
 
   return (
     <UserRoleContext.Provider
@@ -93,10 +109,15 @@ export const UserRoleProvider = ({ children }: { children: ReactNode }) => {
         canCreateTasks,
         canDeleteTasks,
         canManageUsers,
+        canInviteUsers,
+        canAccessProductManagement,
         canAccessOperational,
         canAccessStrategic,
         canUseDrive,
+        canUseDataRoom,
+        canUseTools,
         canSwitchOrganizations,
+        canManageSettings,
         refetch: fetchRole,
       }}
     >

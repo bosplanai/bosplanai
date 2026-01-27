@@ -15,6 +15,12 @@ interface InviteRequest {
   fullName?: string;
 }
 
+const roleLabels: Record<string, string> = {
+  admin: "Full Access",
+  member: "Manager",
+  viewer: "Team"
+};
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
@@ -26,6 +32,7 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const resendApiKey = Deno.env.get("RESEND_API_KEY");
     const fromEmail = Deno.env.get("RESEND_FROM_EMAIL") || "noreply@bosplan.com";
+    const siteUrl = Deno.env.get("SITE_URL") || "https://bosplansupabase.lovable.app";
 
     // Verify authentication
     const authHeader = req.headers.get("Authorization");
@@ -81,9 +88,10 @@ serve(async (req) => {
       );
     }
 
-    // Validate role
+    // Validate role - map to app_role enum values
     const validRoles = ["admin", "member", "viewer"];
-    if (!validRoles.includes(role)) {
+    const mappedRole = role === "moderator" ? "member" : role; // Handle legacy role names
+    if (!validRoles.includes(mappedRole)) {
       return new Response(
         JSON.stringify({ error: "Invalid role" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -104,6 +112,15 @@ serve(async (req) => {
         { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
+
+    // Get inviter's name for the email
+    const { data: inviterProfile } = await supabaseAdmin
+      .from("profiles")
+      .select("full_name")
+      .eq("id", inviterId)
+      .single();
+
+    const inviterName = inviterProfile?.full_name || "A team administrator";
 
     // Check if user already exists in this organization
     const { data: existingUsers } = await supabaseAdmin.auth.admin.listUsers();
@@ -152,7 +169,7 @@ serve(async (req) => {
       .from("organization_invites")
       .insert({
         email: email.toLowerCase(),
-        role,
+        role: mappedRole,
         organization_id: organizationId,
         invited_by: inviterId,
         status: "pending",
@@ -169,42 +186,80 @@ serve(async (req) => {
       );
     }
 
+    // Generate the accept invite link (uses the invite ID as token)
+    const acceptInviteLink = `${siteUrl}/accept-invite?token=${invite.id}`;
+    const roleLabel = roleLabels[mappedRole] || mappedRole;
+
     // Send invitation email if Resend is configured
     if (resendApiKey) {
-      const inviteLink = `${Deno.env.get("SITE_URL") || "https://bosplansupabase.lovable.app"}/accept-invite?token=${invite.id}`;
-
       const emailHtml = `
         <!DOCTYPE html>
         <html>
           <head>
             <meta charset="utf-8">
             <title>You've been invited to join ${organizationName}</title>
+            <style>
+              body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f5f5f5; }
+              .container { background-color: white; border-radius: 12px; padding: 40px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+              .header { text-align: center; margin-bottom: 30px; }
+              .header h1 { color: #0d7377; margin-bottom: 10px; font-size: 28px; }
+              .org-card { background: linear-gradient(135deg, #0d7377 0%, #14919b 100%); color: white; padding: 24px; border-radius: 8px; text-align: center; margin: 24px 0; }
+              .org-name { font-size: 24px; font-weight: bold; margin-bottom: 8px; }
+              .role-badge { display: inline-block; background: rgba(255,255,255,0.2); padding: 6px 16px; border-radius: 20px; font-size: 14px; }
+              .details { background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 24px 0; }
+              .details-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #eee; }
+              .details-row:last-child { border-bottom: none; }
+              .details-label { color: #666; }
+              .details-value { font-weight: 500; }
+              .cta-button { display: block; background-color: #0d7377; color: white !important; padding: 16px 32px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px; text-align: center; margin: 32px auto; max-width: 280px; }
+              .cta-button:hover { background-color: #0b6366; }
+              .footer { text-align: center; color: #666; font-size: 14px; margin-top: 40px; padding-top: 20px; border-top: 1px solid #eee; }
+              .expire-note { color: #666; font-size: 13px; text-align: center; margin-top: 16px; }
+            </style>
           </head>
-          <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
-            <div style="text-align: center; margin-bottom: 30px;">
-              <h1 style="color: #0d7377; margin-bottom: 10px;">You're Invited!</h1>
-            </div>
-            
-            <p>Hi${fullName ? ` ${fullName}` : ""},</p>
-            
-            <p>You've been invited to join <strong>${organizationName}</strong> on BosPlan as a <strong>${role}</strong>.</p>
-            
-            <p style="margin: 30px 0;">
-              <a href="${inviteLink}" style="background-color: #0d7377; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
+          <body>
+            <div class="container">
+              <div class="header">
+                <h1>You're Invited! 🎉</h1>
+                <p>${inviterName} has invited you to join their team on BosPlan</p>
+              </div>
+              
+              <div class="org-card">
+                <div class="org-name">${organizationName}</div>
+                <div class="role-badge">${roleLabel} Access</div>
+              </div>
+              
+              <div class="details">
+                <div class="details-row">
+                  <span class="details-label">Your email:</span>
+                  <span class="details-value">${email}</span>
+                </div>
+                <div class="details-row">
+                  <span class="details-label">Access level:</span>
+                  <span class="details-value">${roleLabel}</span>
+                </div>
+                <div class="details-row">
+                  <span class="details-label">Invited by:</span>
+                  <span class="details-value">${inviterName}</span>
+                </div>
+              </div>
+              
+              <p style="text-align: center;">Click the button below to set up your account and join the team:</p>
+              
+              <a href="${acceptInviteLink}" class="cta-button">
                 Accept Invitation
               </a>
-            </p>
-            
-            <p>This invitation will expire in 7 days.</p>
-            
-            <p style="margin-top: 30px; color: #666; font-size: 14px;">
-              If you didn't expect this invitation, you can safely ignore this email.
-            </p>
-            
-            <p style="margin-top: 30px;">
-              Best regards,<br>
-              The BosPlan Team
-            </p>
+              
+              <p class="expire-note">This invitation expires in 7 days.</p>
+              
+              <div class="footer">
+                <p>If you didn't expect this invitation, you can safely ignore this email.</p>
+                <p style="margin-top: 16px;">
+                  <strong>BosPlan</strong><br>
+                  Your Business Operations Platform
+                </p>
+              </div>
+            </div>
           </body>
         </html>
       `;
@@ -219,7 +274,7 @@ serve(async (req) => {
           body: JSON.stringify({
             from: fromEmail,
             to: [email],
-            subject: `You've been invited to join ${organizationName} on BosPlan`,
+            subject: `${inviterName} invited you to join ${organizationName} on BosPlan`,
             html: emailHtml,
           }),
         });

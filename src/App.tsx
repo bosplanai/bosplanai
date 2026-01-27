@@ -57,6 +57,7 @@ import ProjectManagementExplainer from "./pages/ProjectManagement.explainer";
 import CalendarExplainer from "./pages/CalendarExplainer";
 import Pricing from "./pages/Pricing";
 import VirtualAssistants from "./pages/VirtualAssistants";
+import AcceptInvite from "./pages/AcceptInvite";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 const queryClient = new QueryClient();
@@ -323,6 +324,7 @@ const AppRoutes = () => (
                 <Route path="/projects2" element={<ProjectManagementExplainer />} />
                 <Route path="/calendar2" element={<CalendarExplainer />} />
                 <Route path="/pricing" element={<Pricing />} />
+                <Route path="/accept-invite" element={<AcceptInvite />} />
                 
                 {/* Super Admin Routes - no org prefix */}
                 <Route path="/superadmin/login" element={<SuperAdminAuth />} />
