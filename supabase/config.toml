@@ -15,6 +15,9 @@ verify_jwt = false
 [functions.update-super-admin-email]
 verify_jwt = false
 
+[functions.confirm-invited-user]
+verify_jwt = false
+
 [functions.generate-tasks]
 verify_jwt = false
 
