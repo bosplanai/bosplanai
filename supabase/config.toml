@@ -44,3 +44,15 @@ verify_jwt = false
 
 [functions.customer-portal]
 verify_jwt = false
+
+[functions.create-storage-checkout]
+verify_jwt = false
+
+[functions.verify-storage-purchase]
+verify_jwt = false
+
+[functions.create-dataroom-storage-checkout]
+verify_jwt = false
+
+[functions.verify-dataroom-storage-purchase]
+verify_jwt = false
