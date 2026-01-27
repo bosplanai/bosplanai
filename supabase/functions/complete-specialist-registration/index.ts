@@ -9,12 +9,22 @@ const corsHeaders = {
 interface RegistrationRequest {
   referralCode: string;
   email: string;
-  password: string;
+  password?: string; // Optional - if not provided, user must set it later
   organizationName: string;
   employeeSize: string;
   fullName: string;
   jobRole: string;
   phoneNumber: string;
+}
+
+// Generate a secure temporary password
+function generateTempPassword(): string {
+  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%";
+  let password = "";
+  for (let i = 0; i < 32; i++) {
+    password += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return password;
 }
 
 serve(async (req) => {
@@ -33,8 +43,8 @@ serve(async (req) => {
     const body: RegistrationRequest = await req.json();
     const { referralCode, email, password, organizationName, employeeSize, fullName, jobRole, phoneNumber } = body;
 
-    // Validate required fields
-    if (!referralCode || !email || !password || !organizationName || !fullName || !jobRole || !phoneNumber) {
+    // Validate required fields (password is optional for two-step flow)
+    if (!referralCode || !email || !organizationName || !fullName || !jobRole || !phoneNumber) {
       return new Response(
         JSON.stringify({ error: "Missing required fields" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -63,6 +73,10 @@ serve(async (req) => {
       );
     }
 
+    // If no password provided, generate a temporary one (user will set their own after)
+    const userPassword = password || generateTempPassword();
+    const requiresPasswordSetup = !password;
+
     // Check if user already exists
     const { data: existingUsers } = await adminClient.auth.admin.listUsers();
     const existingUser = existingUsers?.users?.find((u) => u.email === email.toLowerCase());
@@ -89,8 +103,9 @@ serve(async (req) => {
 
       // Update their password and confirm email
       const { error: updateError } = await adminClient.auth.admin.updateUserById(userId, {
-        password,
+        password: userPassword,
         email_confirm: true,
+        user_metadata: { full_name: fullName.trim() },
       });
 
       if (updateError) {
@@ -104,8 +119,9 @@ serve(async (req) => {
       // Create new user with email pre-confirmed
       const { data: newUser, error: createError } = await adminClient.auth.admin.createUser({
         email: email.toLowerCase(),
-        password,
+        password: userPassword,
         email_confirm: true,
+        user_metadata: { full_name: fullName.trim() },
       });
 
       if (createError || !newUser?.user) {
@@ -144,6 +160,7 @@ serve(async (req) => {
       userId,
       organizationId: result.organization_id,
       planName: result.plan_name,
+      requiresPasswordSetup,
     });
 
     return new Response(
@@ -152,6 +169,8 @@ serve(async (req) => {
         organization_id: result.organization_id,
         plan_name: result.plan_name,
         expires_at: result.expires_at,
+        requires_password_setup: requiresPasswordSetup,
+        temp_password: requiresPasswordSetup ? userPassword : undefined, // Only send if needed for auto-login
         message: "Registration successful",
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
