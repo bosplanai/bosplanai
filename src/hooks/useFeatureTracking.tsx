@@ -75,11 +75,12 @@ export const useFeatureTracking = () => {
     // Log the feature usage
     const logUsage = async () => {
       try {
-        await supabase.from("feature_usage_logs").insert({
+        await (supabase.from("feature_usage_logs" as any) as any).insert({
           organization_id: organization?.id || null,
           user_id: user.id,
           feature_name: feature.name,
           feature_category: feature.category,
+          page_path: location.pathname,
         });
       } catch (error) {
         // Silently fail - we don't want tracking errors to affect user experience
