@@ -185,8 +185,9 @@ const Auth = () => {
   
   useEffect(() => {
     if (user && organization) {
-      // Navigate to returnUrl if provided, otherwise home
-      navigate(returnUrl || "/");
+      // Avoid bouncing through "/" (which can trigger RootRedirect -> /welcome during auth/org sync).
+      // If a returnUrl was provided, honor it; otherwise send the user to their org Tasks page.
+      navigate(returnUrl || `/${organization.slug}`, { replace: true });
     }
   }, [user, organization, navigate, returnUrl]);
   const loginSchema = z.object({
@@ -474,11 +475,40 @@ const Auth = () => {
       // Navigate directly to onboarding using the returned org slug
       const orgSlug = (data as any)?.organization_slug;
       if (orgSlug) {
-        navigate(`/${orgSlug}/onboarding`);
+        navigate(`/${orgSlug}/onboarding`, { replace: true });
       } else {
-        // Fallback: refetch and navigate to root
+        // Fallback: resolve org slug from DB (avoid navigating to "/" which can land on /welcome)
         await refetch();
-        navigate("/");
+
+        try {
+          const { data: userRes } = await supabase.auth.getUser();
+          const uid = userRes?.user?.id;
+          if (uid) {
+            const { data: profileRow } = await supabase
+              .from("profiles")
+              .select("organization_id")
+              .eq("id", uid)
+              .maybeSingle();
+
+            if (profileRow?.organization_id) {
+              const { data: orgRow } = await supabase
+                .from("organizations")
+                .select("slug")
+                .eq("id", profileRow.organization_id)
+                .maybeSingle();
+
+              if (orgRow?.slug) {
+                navigate(`/${orgRow.slug}/onboarding`, { replace: true });
+                return;
+              }
+            }
+          }
+        } catch {
+          // ignore and fall through to safe default
+        }
+
+        // Safe default: stay in-app; RootRedirect will send authed users to /auth if org isn't ready.
+        navigate("/", { replace: true });
       }
     } catch (err: any) {
       console.error("Paid signup error:", err);
