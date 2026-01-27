@@ -226,7 +226,9 @@ export type Database = {
           created_at: string
           full_name: string
           id: string
+          is_virtual_assistant: boolean
           job_role: string
+          onboarding_completed: boolean
           organization_id: string
           phone_number: string
           scheduled_deletion_at: string | null
@@ -236,7 +238,9 @@ export type Database = {
           created_at?: string
           full_name: string
           id: string
+          is_virtual_assistant?: boolean
           job_role: string
+          onboarding_completed?: boolean
           organization_id: string
           phone_number: string
           scheduled_deletion_at?: string | null
@@ -246,7 +250,9 @@ export type Database = {
           created_at?: string
           full_name?: string
           id?: string
+          is_virtual_assistant?: boolean
           job_role?: string
+          onboarding_completed?: boolean
           organization_id?: string
           phone_number?: string
           scheduled_deletion_at?: string | null
