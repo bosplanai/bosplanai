@@ -131,9 +131,10 @@ export const useTemplates = () => {
 
       setTemplates(templatesWithVersions as Template[]);
     } catch (error: any) {
-      // Silently handle missing table errors (PGRST205) for new organizations
-      // that haven't had the templates feature set up yet (e.g., skipped onboarding)
-      if (error?.code !== 'PGRST205') {
+      // Silently handle missing table/relationship errors for new organizations
+      // PGRST205 = missing table, PGRST200 = missing relationship
+      const ignoredCodes = ['PGRST205', 'PGRST200'];
+      if (!ignoredCodes.includes(error?.code)) {
         console.error("Error fetching templates:", error);
         toast({
           title: "Error",

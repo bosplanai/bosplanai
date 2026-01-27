@@ -41,9 +41,10 @@ export const useProjects = () => {
       if (error) throw error;
       setProjects((data as Project[]) || []);
     } catch (error: any) {
-      // Silently handle missing table errors (PGRST205) for new organizations
-      // that haven't had the projects feature set up yet (e.g., skipped onboarding)
-      if (error?.code !== 'PGRST205') {
+      // Silently handle missing table/relationship errors for new organizations
+      // PGRST205 = missing table, PGRST200 = missing relationship
+      const ignoredCodes = ['PGRST205', 'PGRST200'];
+      if (!ignoredCodes.includes(error?.code)) {
         console.error("Error fetching projects:", error);
         toast({
           title: "Error fetching projects",

@@ -176,8 +176,7 @@ export const DeclinedTaskReassignDialog = ({
           category,
           decline_reason,
           organization_id,
-          created_at,
-          project:projects!tasks_project_id_fkey(id, title)
+          created_at
         `)
         .eq("id", taskId)
         .single();
@@ -185,13 +184,17 @@ export const DeclinedTaskReassignDialog = ({
       if (error) throw error;
 
       setTask(data as TaskDetails);
-    } catch (error) {
-      console.error("Error fetching task details:", error);
-      toast({
-        title: "Error",
-        description: "Failed to load task details",
-        variant: "destructive",
-      });
+    } catch (error: any) {
+      // Silently handle missing table/relationship errors
+      const ignoredCodes = ['PGRST205', 'PGRST200'];
+      if (!ignoredCodes.includes(error?.code)) {
+        console.error("Error fetching task details:", error);
+        toast({
+          title: "Error",
+          description: "Failed to load task details",
+          variant: "destructive",
+        });
+      }
     } finally {
       setLoading(false);
     }
