@@ -100,7 +100,7 @@ export const usePersonalChecklist = () => {
   const getSignedUrl = async (filePath: string): Promise<string | null> => {
     try {
       const { data, error } = await supabase.storage
-        .from("task-attachments")
+        .from("personal-checklist-attachments")
         .createSignedUrl(filePath, 3600);
       if (error) throw error;
       return data.signedUrl;

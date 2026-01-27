@@ -114,10 +114,11 @@ const PersonalChecklistModal = () => {
 
     const fileExt = file.name.split(".").pop();
     const safeExt = fileExt ? `.${fileExt}` : "";
-    const filePath = `${userData.user.id}/personal-checklist/${Date.now()}_${crypto.randomUUID()}${safeExt}`;
+    // Path format: <user_id>/<timestamp>_<uuid>.<ext>
+    const filePath = `${userData.user.id}/${Date.now()}_${crypto.randomUUID()}${safeExt}`;
 
     const { data, error } = await supabase.storage
-      .from("task-attachments")
+      .from("personal-checklist-attachments")
       .upload(filePath, file);
 
     if (error) {
