@@ -20,6 +20,10 @@
 
   <body>
     <div id="root"></div>
+    <script>
+      // Clear any stale content immediately
+      document.getElementById('root').innerHTML = '';
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
