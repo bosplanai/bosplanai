@@ -19,8 +19,7 @@ export const useFeatureUsageStats = () => {
     queryKey: ["feature-usage-stats"],
     queryFn: async () => {
       // Query the view for aggregated stats
-      const { data, error } = await supabase
-        .from("feature_usage_stats")
+      const { data, error } = await (supabase.from("feature_usage_stats" as any) as any)
         .select("*")
         .order("total_visits", { ascending: false });
 

@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Table,
   TableBody,
@@ -17,6 +18,14 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   ArrowLeft,
   Building2,
@@ -32,6 +41,9 @@ import {
   Crown,
   AlertTriangle,
   Gift,
+  Ban,
+  CheckCircle,
+  Loader2,
 } from "lucide-react";
 import { useSuperAdmin } from "@/hooks/useSuperAdmin";
 import { useAuth } from "@/hooks/useAuth";
@@ -43,9 +55,14 @@ const CustomerList = () => {
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
   const { isSuperAdmin, loading: superAdminLoading } = useSuperAdmin();
-  const { organizations, loading: dataLoading } = useSuperAdminData();
+  const { organizations, loading: dataLoading, suspendOrganization, reactivateOrganization } = useSuperAdminData();
   const [searchQuery, setSearchQuery] = useState("");
   const [expandedOrgs, setExpandedOrgs] = useState<string[]>([]);
+  const [suspendDialogOpen, setSuspendDialogOpen] = useState(false);
+  const [reactivateDialogOpen, setReactivateDialogOpen] = useState(false);
+  const [selectedOrgId, setSelectedOrgId] = useState<string | null>(null);
+  const [suspensionReason, setSuspensionReason] = useState("");
+  const [isProcessing, setIsProcessing] = useState(false);
 
   const toggleExpanded = (orgId: string) => {
     setExpandedOrgs((prev) =>
@@ -60,6 +77,50 @@ const CustomerList = () => {
       org.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       org.slug.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  const handleSuspendClick = (orgId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setSelectedOrgId(orgId);
+    setSuspensionReason("");
+    setSuspendDialogOpen(true);
+  };
+
+  const handleReactivateClick = (orgId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setSelectedOrgId(orgId);
+    setReactivateDialogOpen(true);
+  };
+
+  const confirmSuspend = async () => {
+    if (!selectedOrgId || !suspensionReason.trim()) return;
+    
+    setIsProcessing(true);
+    try {
+      await suspendOrganization(selectedOrgId, suspensionReason.trim());
+      setSuspendDialogOpen(false);
+      setSelectedOrgId(null);
+      setSuspensionReason("");
+    } catch (error) {
+      console.error("Failed to suspend:", error);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const confirmReactivate = async () => {
+    if (!selectedOrgId) return;
+    
+    setIsProcessing(true);
+    try {
+      await reactivateOrganization(selectedOrgId);
+      setReactivateDialogOpen(false);
+      setSelectedOrgId(null);
+    } catch (error) {
+      console.error("Failed to reactivate:", error);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
 
   const getSubscriptionBadge = (org: typeof organizations[0]) => {
     // Specialist plan takes priority over subscription
@@ -111,6 +172,8 @@ const CustomerList = () => {
     navigate("/superadmin/login");
     return null;
   }
+
+  const selectedOrg = organizations.find(o => o.id === selectedOrgId);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
@@ -252,6 +315,28 @@ const CustomerList = () => {
                           </div>
                           <div className="flex items-center gap-4">
                             {getSubscriptionBadge(org)}
+                            {/* Suspend/Reactivate buttons */}
+                            {org.is_suspended ? (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="border-emerald-500/50 text-emerald-400 hover:bg-emerald-500/20"
+                                onClick={(e) => handleReactivateClick(org.id, e)}
+                              >
+                                <CheckCircle className="w-4 h-4 mr-1" />
+                                Reactivate
+                              </Button>
+                            ) : (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="border-red-500/50 text-red-400 hover:bg-red-500/20"
+                                onClick={(e) => handleSuspendClick(org.id, e)}
+                              >
+                                <Ban className="w-4 h-4 mr-1" />
+                                Suspend
+                              </Button>
+                            )}
                             {expandedOrgs.includes(org.id) ? (
                               <ChevronDown className="w-5 h-5 text-slate-400" />
                             ) : (
@@ -263,6 +348,25 @@ const CustomerList = () => {
 
                       <CollapsibleContent>
                         <div className="p-4 border-t border-slate-700 space-y-6">
+                          {/* Suspension info */}
+                          {org.is_suspended && org.suspension_reason && (
+                            <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4">
+                              <div className="flex items-center gap-2 mb-2">
+                                <Ban className="w-4 h-4 text-red-400" />
+                                <span className="font-medium text-red-400">Account Suspended</span>
+                              </div>
+                              <p className="text-sm text-slate-300">
+                                <span className="text-slate-400">Reason: </span>
+                                {org.suspension_reason}
+                              </p>
+                              {org.suspended_at && (
+                                <p className="text-xs text-slate-400 mt-1">
+                                  Suspended on {format(new Date(org.suspended_at), "MMM d, yyyy 'at' h:mm a")}
+                                </p>
+                              )}
+                            </div>
+                          )}
+
                           {/* Subscription / Specialist Plan Details */}
                           <div>
                             <h4 className="text-sm font-medium text-white mb-3 flex items-center gap-2">
@@ -426,6 +530,108 @@ const CustomerList = () => {
           </CardContent>
         </Card>
       </main>
+
+      {/* Suspend Dialog */}
+      <Dialog open={suspendDialogOpen} onOpenChange={setSuspendDialogOpen}>
+        <DialogContent className="bg-slate-800 border-slate-700">
+          <DialogHeader>
+            <DialogTitle className="text-white flex items-center gap-2">
+              <Ban className="w-5 h-5 text-red-400" />
+              Suspend Organisation
+            </DialogTitle>
+            <DialogDescription className="text-slate-400">
+              This will prevent all users in "{selectedOrg?.name}" from accessing the platform.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div>
+              <label className="text-sm font-medium text-slate-300 mb-2 block">
+                Reason for suspension <span className="text-red-400">*</span>
+              </label>
+              <Textarea
+                value={suspensionReason}
+                onChange={(e) => setSuspensionReason(e.target.value)}
+                placeholder="Enter the reason for suspending this organisation..."
+                className="bg-slate-900/50 border-slate-600 text-white placeholder:text-slate-500 min-h-[100px]"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setSuspendDialogOpen(false)}
+              className="border-slate-600 text-slate-300"
+              disabled={isProcessing}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={confirmSuspend}
+              disabled={!suspensionReason.trim() || isProcessing}
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
+              {isProcessing ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Suspending...
+                </>
+              ) : (
+                <>
+                  <Ban className="w-4 h-4 mr-2" />
+                  Suspend Organisation
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Reactivate Dialog */}
+      <Dialog open={reactivateDialogOpen} onOpenChange={setReactivateDialogOpen}>
+        <DialogContent className="bg-slate-800 border-slate-700">
+          <DialogHeader>
+            <DialogTitle className="text-white flex items-center gap-2">
+              <CheckCircle className="w-5 h-5 text-emerald-400" />
+              Reactivate Organisation
+            </DialogTitle>
+            <DialogDescription className="text-slate-400">
+              This will restore access for all users in "{selectedOrg?.name}".
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <p className="text-slate-300">
+              Are you sure you want to reactivate this organisation? All users will regain access to the platform immediately.
+            </p>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setReactivateDialogOpen(false)}
+              className="border-slate-600 text-slate-300"
+              disabled={isProcessing}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={confirmReactivate}
+              disabled={isProcessing}
+              className="bg-emerald-600 hover:bg-emerald-700 text-white"
+            >
+              {isProcessing ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Reactivating...
+                </>
+              ) : (
+                <>
+                  <CheckCircle className="w-4 h-4 mr-2" />
+                  Reactivate Organisation
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

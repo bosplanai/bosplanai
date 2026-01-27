@@ -36,8 +36,7 @@ const ManageAIUsage = () => {
 
   const fetchLimits = async () => {
     try {
-      const { data, error } = await supabase
-        .from('ai_usage_limits')
+      const { data, error } = await (supabase.from('ai_usage_limits' as any) as any)
         .select('*')
         .order('limit_type');
 
@@ -65,8 +64,7 @@ const ManageAIUsage = () => {
     setSaving(true);
     try {
       for (const limit of limits) {
-        const { error } = await supabase
-          .from('ai_usage_limits')
+        const { error } = await (supabase.from('ai_usage_limits' as any) as any)
           .update({
             max_prompts: limit.max_prompts,
             is_enabled: limit.is_enabled,

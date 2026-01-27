@@ -14,3 +14,15 @@ verify_jwt = false
 
 [functions.update-super-admin-email]
 verify_jwt = false
+
+[functions.generate-tasks]
+verify_jwt = false
+
+[functions.create-virtual-assistant]
+verify_jwt = false
+
+[functions.update-virtual-assistant]
+verify_jwt = false
+
+[functions.update-va-pricing]
+verify_jwt = false

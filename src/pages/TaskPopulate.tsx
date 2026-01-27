@@ -10,6 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useTasks, TaskPriority } from "@/hooks/useTasks";
 import { usePersonalChecklist } from "@/hooks/usePersonalChecklist";
 import { useOrganization } from "@/hooks/useOrganization";
+import { supabase } from "@/integrations/supabase/client";
 import TaskChecklistPreview from "@/components/taskpopulate/TaskChecklistPreview";
 import { ParsedTask } from "@/components/taskpopulate/GeneratedTaskItem";
 import { TaskDetails } from "@/components/taskpopulate/TaskDetailSheet";
@@ -173,13 +174,21 @@ const TaskPopulate = () => {
     setParsedTasks([]);
 
     try {
+      // Get session token for authentication
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData?.session?.access_token;
+      
+      if (!accessToken) {
+        throw new Error("Please log in to use this feature");
+      }
+
       const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-tasks`,
+        `https://qiikjhvzlwzysbtzhdcd.supabase.co/functions/v1/generate-tasks`,
         {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+            Authorization: `Bearer ${accessToken}`,
           },
           body: JSON.stringify({ 
             prompt: prompt.trim(),
