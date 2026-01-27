@@ -1045,6 +1045,66 @@ export type Database = {
           },
         ]
       }
+      user_appearance_settings: {
+        Row: {
+          brand_coral: string | null
+          brand_green: string | null
+          brand_orange: string | null
+          brand_teal: string | null
+          created_at: string
+          drive_file_text_size: number | null
+          id: string
+          project_card_text_size: number | null
+          secondary_background: string | null
+          secondary_foreground: string | null
+          status_complete_bg: string | null
+          status_in_progress_bg: string | null
+          status_todo_bg: string | null
+          task_card_text_size: number | null
+          theme: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          brand_coral?: string | null
+          brand_green?: string | null
+          brand_orange?: string | null
+          brand_teal?: string | null
+          created_at?: string
+          drive_file_text_size?: number | null
+          id?: string
+          project_card_text_size?: number | null
+          secondary_background?: string | null
+          secondary_foreground?: string | null
+          status_complete_bg?: string | null
+          status_in_progress_bg?: string | null
+          status_todo_bg?: string | null
+          task_card_text_size?: number | null
+          theme?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          brand_coral?: string | null
+          brand_green?: string | null
+          brand_orange?: string | null
+          brand_teal?: string | null
+          created_at?: string
+          drive_file_text_size?: number | null
+          id?: string
+          project_card_text_size?: number | null
+          secondary_background?: string | null
+          secondary_foreground?: string | null
+          status_complete_bg?: string | null
+          status_in_progress_bg?: string | null
+          status_todo_bg?: string | null
+          task_card_text_size?: number | null
+          theme?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string
