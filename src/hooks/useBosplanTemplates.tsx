@@ -56,12 +56,16 @@ export const useBosplanTemplates = () => {
       if (error) throw error;
       setTemplates((data || []) as BosplanTemplate[]);
     } catch (error: any) {
-      console.error("Error fetching Bosplan templates:", error);
-      toast({
-        title: "Error",
-        description: "Failed to load Bosplan templates",
-        variant: "destructive",
-      });
+      // Silently handle missing table errors (PGRST205) for new organizations
+      // that haven't had the templates feature set up yet (e.g., skipped onboarding)
+      if (error?.code !== 'PGRST205') {
+        console.error("Error fetching Bosplan templates:", error);
+        toast({
+          title: "Error",
+          description: "Failed to load Bosplan templates",
+          variant: "destructive",
+        });
+      }
     } finally {
       setLoading(false);
     }
