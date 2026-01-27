@@ -9,25 +9,31 @@ import { useSuperAdminData } from "@/hooks/useSuperAdminData";
 import { useSpecialistPlans } from "@/hooks/useSpecialistPlans";
 import bosplanLogo from "@/assets/bosplan-logo-superadmin.png";
 import SuperAdminSettingsDialog from "@/components/superadmin/SuperAdminSettingsDialog";
-
 const SuperAdminDashboard = () => {
   const navigate = useNavigate();
-  const { user, loading: authLoading } = useAuth();
-  const { isSuperAdmin, loading: superAdminLoading } = useSuperAdmin();
-  const { organizations, loading: dataLoading } = useSuperAdminData();
-  const { plans, loading: plansLoading } = useSpecialistPlans();
-
+  const {
+    user,
+    loading: authLoading
+  } = useAuth();
+  const {
+    isSuperAdmin,
+    loading: superAdminLoading
+  } = useSuperAdmin();
+  const {
+    organizations,
+    loading: dataLoading
+  } = useSuperAdminData();
+  const {
+    plans,
+    loading: plansLoading
+  } = useSpecialistPlans();
   if (authLoading || superAdminLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+    return <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
         <div className="text-white">Loading...</div>
-      </div>
-    );
+      </div>;
   }
-
   if (!user) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+    return <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
         <Card className="max-w-md w-full mx-4 bg-slate-800/50 border-slate-700">
           <CardHeader className="text-center">
             <Shield className="w-16 h-16 mx-auto text-amber-500 mb-4" />
@@ -42,13 +48,10 @@ const SuperAdminDashboard = () => {
             </Button>
           </CardContent>
         </Card>
-      </div>
-    );
+      </div>;
   }
-
   if (!isSuperAdmin) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+    return <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
         <Card className="max-w-md w-full mx-4 bg-slate-800/50 border-slate-700">
           <CardHeader className="text-center">
             <Shield className="w-16 h-16 mx-auto text-red-500 mb-4" />
@@ -58,118 +61,94 @@ const SuperAdminDashboard = () => {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <Button
-              variant="outline"
-              className="w-full border-slate-600 text-slate-300 hover:bg-slate-700"
-              onClick={() => navigate("/")}
-            >
+            <Button variant="outline" className="w-full border-slate-600 text-slate-300 hover:bg-slate-700" onClick={() => navigate("/")}>
               Return to Dashboard
             </Button>
           </CardContent>
         </Card>
-      </div>
-    );
+      </div>;
   }
-
-  const menuItems = [
-    {
-      category: "Customer Account Management",
-      description: "Manage customer organisations and their accounts",
+  const menuItems = [{
+    category: "Customer Account Management",
+    description: "Manage customer organisations and their accounts",
+    icon: Building2,
+    iconColor: "text-blue-400",
+    items: [{
+      title: "View All Customers",
+      description: "See full list of customers with users, plans, subscriptions, and usage data",
       icon: Building2,
-      iconColor: "text-blue-400",
-      items: [
-        {
-          title: "View All Customers",
-          description: "See full list of customers with users, plans, subscriptions, and usage data",
-          icon: Building2,
-          href: "/superadmin/customers",
-          color: "text-blue-500",
-          bgColor: "bg-blue-500/10",
-        },
-        {
-          title: "Suspend / Reactivate Accounts",
-          description: "Manage customer account status and access controls",
-          icon: UserX,
-          href: "/superadmin/account-status",
-          color: "text-orange-500",
-          bgColor: "bg-orange-500/10",
-        },
-        {
-          title: "Customer Activity",
-          description: "View feature usage heatmap and customer engagement metrics",
-          icon: Activity,
-          href: "/superadmin/customer-activity",
-          color: "text-cyan-500",
-          bgColor: "bg-cyan-500/10",
-        },
-      ],
-    },
-    {
-      category: "Virtual Assistants",
-      description: "Create and manage virtual assistant accounts",
-      icon: Bot,
-      iconColor: "text-pink-400",
-      items: [
-        {
-          title: "Manage Virtual Assistants",
-          description: "Create, view, and manage all virtual assistant accounts",
-          icon: UserPlus,
-          href: "/superadmin/virtual-assistants",
-          color: "text-pink-500",
-          bgColor: "bg-pink-500/10",
-        },
-      ],
-    },
-    {
-      category: "Specialist Plans",
-      description: "Create and manage custom plans for specialist customers",
+      href: "/superadmin/customers",
+      color: "text-blue-500",
+      bgColor: "bg-blue-500/10"
+    }, {
+      title: "Suspend / Reactivate Accounts",
+      description: "Manage customer account status and access controls",
+      icon: UserX,
+      href: "/superadmin/account-status",
+      color: "text-orange-500",
+      bgColor: "bg-orange-500/10"
+    }, {
+      title: "Customer Activity",
+      description: "View feature usage heatmap and customer engagement metrics",
+      icon: Activity,
+      href: "/superadmin/customer-activity",
+      color: "text-cyan-500",
+      bgColor: "bg-cyan-500/10"
+    }]
+  }, {
+    category: "Virtual Assistants",
+    description: "Create and manage virtual assistant accounts",
+    icon: Bot,
+    iconColor: "text-pink-400",
+    items: [{
+      title: "Manage Virtual Assistants",
+      description: "Create, view, and manage all virtual assistant accounts",
+      icon: UserPlus,
+      href: "/superadmin/virtual-assistants",
+      color: "text-pink-500",
+      bgColor: "bg-pink-500/10"
+    }]
+  }, {
+    category: "Specialist Plans",
+    description: "Create and manage custom plans for specialist customers",
+    icon: Gift,
+    iconColor: "text-emerald-400",
+    items: [{
+      title: "Create Specialist Plan",
+      description: "Set plans for specialist customers (6, 12, 18 months free with unlimited users)",
       icon: Gift,
-      iconColor: "text-emerald-400",
-      items: [
-        {
-          title: "Create Specialist Plan",
-          description: "Set plans for specialist customers (6, 12, 18 months free with unlimited users)",
-          icon: Gift,
-          href: "/superadmin/specialist-plans/create",
-          color: "text-emerald-500",
-          bgColor: "bg-emerald-500/10",
-        },
-        {
-          title: "Manage Registration Links",
-          description: "Generate unique registration links with referral codes and T&Cs",
-          icon: Link,
-          href: "/superadmin/registration-links",
-          color: "text-purple-500",
-          bgColor: "bg-purple-500/10",
-        },
-      ],
-    },
-    {
-      category: "AI Usage",
-      description: "Control and monitor AI usage across the platform",
+      href: "/superadmin/specialist-plans/create",
+      color: "text-emerald-500",
+      bgColor: "bg-emerald-500/10"
+    }, {
+      title: "Manage Registration Links",
+      description: "Generate unique registration links with referral codes and T&Cs",
+      icon: Link,
+      href: "/superadmin/registration-links",
+      color: "text-purple-500",
+      bgColor: "bg-purple-500/10"
+    }]
+  }, {
+    category: "AI Usage",
+    description: "Control and monitor AI usage across the platform",
+    icon: Sparkles,
+    iconColor: "text-amber-400",
+    items: [{
+      title: "Manage AI Usage",
+      description: "Set daily, monthly, and yearly AI prompt limits for all organisations",
       icon: Sparkles,
-      iconColor: "text-amber-400",
-      items: [
-        {
-          title: "Manage AI Usage",
-          description: "Set daily, monthly, and yearly AI prompt limits for all organisations",
-          icon: Sparkles,
-          href: "/superadmin/ai-usage",
-          color: "text-amber-500",
-          bgColor: "bg-amber-500/10",
-        },
-      ],
-    },
-  ];
-
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+      href: "/superadmin/ai-usage",
+      color: "text-amber-500",
+      bgColor: "bg-amber-500/10"
+    }]
+  }];
+  return <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
       {/* Header */}
       <header className="border-b border-slate-700/50 bg-slate-900/80 backdrop-blur-sm sticky top-0 z-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <img src={bosplanLogo} alt="BosPlan" className="w-10 h-10 object-contain" />
+              <img alt="BosPlan" className="w-10 h-10 object-contain" src="/lovable-uploads/b6261fac-7267-4233-94da-7a3ba7597f78.png" />
               <div>
                 <h1 className="text-xl font-bold text-white">Super Admin Dashboard</h1>
                 <p className="text-sm text-slate-400">Platform Management Console</p>
@@ -181,12 +160,7 @@ const SuperAdminDashboard = () => {
                 Super Admin
               </Badge>
               <SuperAdminSettingsDialog currentEmail={user?.email || ""} />
-              <Button
-                variant="ghost"
-                size="sm"
-                className="text-slate-400 hover:text-white hover:bg-slate-700"
-                onClick={() => navigate("/")}
-              >
+              <Button variant="ghost" size="sm" className="text-slate-400 hover:text-white hover:bg-slate-700" onClick={() => navigate("/")}>
                 Exit to Main App
               </Button>
             </div>
@@ -243,7 +217,7 @@ const SuperAdminDashboard = () => {
                 </div>
                 <div>
                   <p className="text-2xl font-bold text-white">
-                    {plansLoading ? "—" : plans.filter((p) => p.is_active).length}
+                    {plansLoading ? "—" : plans.filter(p => p.is_active).length}
                   </p>
                   <p className="text-sm text-slate-400">Specialist Plans</p>
                 </div>
@@ -258,7 +232,7 @@ const SuperAdminDashboard = () => {
                 </div>
                 <div>
                   <p className="text-2xl font-bold text-white">
-                    {dataLoading ? "—" : organizations.filter((org) => org.is_suspended).length}
+                    {dataLoading ? "—" : organizations.filter(org => org.is_suspended).length}
                   </p>
                   <p className="text-sm text-slate-400">Suspended Accounts</p>
                 </div>
@@ -270,9 +244,8 @@ const SuperAdminDashboard = () => {
         {/* Menu Sections */}
         <div className="space-y-8">
           {menuItems.map((section, sectionIndex) => {
-            const SectionIcon = section.icon;
-            return (
-              <div key={sectionIndex}>
+          const SectionIcon = section.icon;
+          return <div key={sectionIndex}>
                 <div className="mb-4">
                   <h3 className="text-lg font-semibold text-white flex items-center gap-2">
                     <SectionIcon className={`w-5 h-5 ${section.iconColor}`} />
@@ -282,12 +255,7 @@ const SuperAdminDashboard = () => {
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {section.items.map((item, itemIndex) => (
-                    <Card
-                      key={itemIndex}
-                      className="bg-slate-800/50 border-slate-700 hover:border-slate-600 transition-all duration-200 cursor-pointer group"
-                      onClick={() => navigate(item.href)}
-                    >
+                  {section.items.map((item, itemIndex) => <Card key={itemIndex} className="bg-slate-800/50 border-slate-700 hover:border-slate-600 transition-all duration-200 cursor-pointer group" onClick={() => navigate(item.href)}>
                       <CardContent className="p-6">
                         <div className="flex items-start justify-between">
                           <div className="flex items-start gap-4">
@@ -304,12 +272,10 @@ const SuperAdminDashboard = () => {
                           <ArrowRight className="w-5 h-5 text-slate-500 group-hover:text-amber-400 group-hover:translate-x-1 transition-all" />
                         </div>
                       </CardContent>
-                    </Card>
-                  ))}
+                    </Card>)}
                 </div>
-              </div>
-            );
-          })}
+              </div>;
+        })}
         </div>
       </main>
 
@@ -322,8 +288,6 @@ const SuperAdminDashboard = () => {
           </div>
         </div>
       </footer>
-    </div>
-  );
+    </div>;
 };
-
 export default SuperAdminDashboard;
