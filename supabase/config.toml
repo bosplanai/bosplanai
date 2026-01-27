@@ -26,3 +26,9 @@ verify_jwt = false
 
 [functions.update-va-pricing]
 verify_jwt = false
+
+[functions.complete-specialist-registration]
+verify_jwt = false
+
+[functions.get-organization-users]
+verify_jwt = false
