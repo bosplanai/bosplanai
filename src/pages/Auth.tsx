@@ -61,6 +61,8 @@ const Auth = () => {
   const inviteToken = searchParams.get("invite");
   const checkoutSuccess = searchParams.get("checkout_success");
   const sessionId = searchParams.get("session_id");
+  const modeParam = searchParams.get("mode");
+  const emailParam = searchParams.get("email");
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -92,6 +94,30 @@ const Auth = () => {
   const {
     toast
   } = useToast();
+
+  const returnUrl = searchParams.get("returnUrl");
+
+  const redirectToLogin = (nextPath?: string) => {
+    // Keep the user inside /auth (public route), avoiding RootRedirect ("/") bouncing them to /welcome.
+    const params = new URLSearchParams();
+    params.set("mode", "login");
+    if (nextPath) params.set("returnUrl", nextPath);
+    if (email.trim()) params.set("email", email.trim().toLowerCase());
+    navigate(`/auth?${params.toString()}`, { replace: true });
+    setIsLogin(true);
+    setPassword("");
+  };
+
+  useEffect(() => {
+    if (modeParam === "login") setIsLogin(true);
+    if (modeParam === "signup") setIsLogin(false);
+  }, [modeParam]);
+
+  useEffect(() => {
+    if (emailParam && !email) {
+      setEmail(emailParam);
+    }
+  }, [emailParam, email]);
 
   // Fetch checkout session data when coming from Stripe payment
   useEffect(() => {
@@ -181,7 +207,6 @@ const Auth = () => {
     };
     fetchInvite();
   }, [inviteToken]);
-  const returnUrl = searchParams.get("returnUrl");
   
   useEffect(() => {
     if (user && organization) {
@@ -316,8 +341,11 @@ const Auth = () => {
         description: `You've joined ${inviteData.organization.name} as a ${inviteData.role}`
       });
 
-      // Navigate directly to Tasks page (skip onboarding for invited users)
-      navigate(`/${inviteData.organization.slug}`);
+      // Requirement: after sign-up take user to Login page; after login, redirect them into the app.
+      await supabase.auth.signOut().catch(() => {
+        // ignore
+      });
+      redirectToLogin(`/${inviteData.organization.slug}`);
     }
   };
   const handleRegularSignUp = async () => {
@@ -385,7 +413,7 @@ const Auth = () => {
           description: `Your organization "${organizationName}" is ready.`
         });
 
-        // Generate the org slug and navigate directly to onboarding
+        // Generate the org slug (and fetch the actual slug from DB to ensure accuracy)
         const orgSlug = organizationName.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
         
         // Fetch the actual org slug from database to ensure accuracy
@@ -396,7 +424,12 @@ const Auth = () => {
           .single();
         
         const finalSlug = orgData?.slug || orgSlug;
-        navigate(`/${finalSlug}/onboarding`);
+
+        // Requirement: after sign-up take user to Login page; after login, start onboarding.
+        await supabase.auth.signOut().catch(() => {
+          // ignore
+        });
+        redirectToLogin(`/${finalSlug}/onboarding`);
       } catch (error: any) {
         console.error("Unexpected registration error:", error);
         toast({
@@ -405,6 +438,13 @@ const Auth = () => {
           variant: "destructive"
         });
       }
+    } else if (authData.user && !authData.session) {
+      // Email confirmation might be enabled; user won't have a session yet.
+      toast({
+        title: "Check your email",
+        description: "Please confirm your email, then log in to start onboarding.",
+      });
+      redirectToLogin();
     }
   };
 
@@ -451,17 +491,6 @@ const Auth = () => {
         return;
       }
 
-      // Now sign in (the edge function creates a confirmed user)
-      const { error: signInError } = await signIn(email, password);
-      if (signInError) {
-        toast({
-          title: "Login failed",
-          description: signInError.message,
-          variant: "destructive",
-        });
-        return;
-      }
-
       // Send welcome email (fire and forget - don't block the flow)
       supabase.functions
         .invoke("send-welcome-email", {
@@ -472,44 +501,13 @@ const Auth = () => {
         })
         .catch((err) => console.error("Welcome email error:", err));
 
-      // Navigate directly to onboarding using the returned org slug
-      const orgSlug = (data as any)?.organization_slug;
-      if (orgSlug) {
-        navigate(`/${orgSlug}/onboarding`, { replace: true });
-      } else {
-        // Fallback: resolve org slug from DB (avoid navigating to "/" which can land on /welcome)
-        await refetch();
-
-        try {
-          const { data: userRes } = await supabase.auth.getUser();
-          const uid = userRes?.user?.id;
-          if (uid) {
-            const { data: profileRow } = await supabase
-              .from("profiles")
-              .select("organization_id")
-              .eq("id", uid)
-              .maybeSingle();
-
-            if (profileRow?.organization_id) {
-              const { data: orgRow } = await supabase
-                .from("organizations")
-                .select("slug")
-                .eq("id", profileRow.organization_id)
-                .maybeSingle();
-
-              if (orgRow?.slug) {
-                navigate(`/${orgRow.slug}/onboarding`, { replace: true });
-                return;
-              }
-            }
-          }
-        } catch {
-          // ignore and fall through to safe default
-        }
-
-        // Safe default: stay in-app; RootRedirect will send authed users to /auth if org isn't ready.
-        navigate("/", { replace: true });
-      }
+      // Requirement: after paid sign-up take user to Login page; after login, start onboarding.
+      // (Do NOT auto-login here.)
+      const orgSlug = (data as any)?.organization_slug || generateSlug(organizationName.trim());
+      await supabase.auth.signOut().catch(() => {
+        // ignore
+      });
+      redirectToLogin(`/${orgSlug}/onboarding`);
     } catch (err: any) {
       console.error("Paid signup error:", err);
       toast({
