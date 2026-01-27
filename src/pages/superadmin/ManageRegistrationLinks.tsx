@@ -14,7 +14,7 @@ import { useSuperAdmin } from "@/hooks/useSuperAdmin";
 import { useAuth } from "@/hooks/useAuth";
 import { useSpecialistPlans } from "@/hooks/useSpecialistPlans";
 import { useRegistrationLinks } from "@/hooks/useRegistrationLinks";
-import bosplanLogo from "@/assets/bosplan-logo-superadmin.png";
+import bosplanLogo from "@/assets/bosplan-logo.png";
 import { format } from "date-fns";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 const ManageRegistrationLinks = () => {
@@ -124,7 +124,7 @@ const ManageRegistrationLinks = () => {
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <img alt="BosPlan" className="w-10 h-10 object-contain" src="/lovable-uploads/2a41b7e9-ae18-47b2-883d-bd0ebe9fd69f.png" />
+              <img src={bosplanLogo} alt="BosPlan" className="w-10 h-10 object-contain" />
               <div>
                 <h1 className="text-xl font-bold text-white">Manage Registration Links</h1>
                 <p className="text-sm text-slate-400">Create unique signup links for specialist customers</p>

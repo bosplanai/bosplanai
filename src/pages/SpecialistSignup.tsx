@@ -11,7 +11,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Gift, Loader2, Clock, Users, Shield, CheckCircle2, AlertTriangle } from "lucide-react";
 import { z } from "zod";
 import MathCaptcha from "@/components/MathCaptcha";
-import bosplanLogo from "@/assets/bosplan-specialist-logo.png";
+import bosplanLogo from "@/assets/bosplan-logo.png";
 
 const employeeSizeOptions = [
   { value: "1-10", label: "1-10 employees" },

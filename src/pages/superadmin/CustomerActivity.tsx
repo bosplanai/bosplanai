@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import { useSuperAdmin } from "@/hooks/useSuperAdmin";
 import { useAuth } from "@/hooks/useAuth";
-import bosplanLogo from "@/assets/bosplan-logo-superadmin.png";
+import bosplanLogo from "@/assets/bosplan-logo.png";
 import CustomerActivityHeatmap from "@/components/superadmin/CustomerActivityHeatmap";
 
 const CustomerActivity = () => {

@@ -24,7 +24,7 @@ import {
 import { useSuperAdmin } from "@/hooks/useSuperAdmin";
 import { useAuth } from "@/hooks/useAuth";
 import { useSpecialistPlans } from "@/hooks/useSpecialistPlans";
-import bosplanLogo from "@/assets/bosplan-logo-superadmin.png";
+import bosplanLogo from "@/assets/bosplan-logo.png";
 
 const CreateSpecialistPlan = () => {
   const navigate = useNavigate();
