@@ -576,6 +576,9 @@ export const useTasks = () => {
         .update({ 
           assigned_user_id: assignedUserId,
           assignment_status: assignmentStatus,
+          // Reset decline reason and reminder when reassigning
+          decline_reason: null,
+          last_reminder_sent_at: null,
         })
         .eq("id", taskId)
         .select(`
@@ -585,18 +588,30 @@ export const useTasks = () => {
 
       if (error) throw error;
 
-      setTasks((prev) =>
-        prev.map((t) =>
-          t.id === taskId
-            ? {
-                ...t,
-                assigned_user_id: assignedUserId,
-                assigned_user: data.assigned_user as TaskUser | null,
-                assignment_status: assignmentStatus as AssignmentStatus,
-              }
-            : t
-        )
-      );
+      if (assignmentStatus === 'pending') {
+        // Task is now pending - remove from local state as it won't appear in the 'accepted' task list
+        // The assignee will see it in their pending task requests
+        setTasks((prev) => prev.filter((t) => t.id !== taskId));
+        
+        toast({
+          title: "Task request sent",
+          description: `${data.assigned_user?.full_name || 'The user'} will need to accept or decline this task`,
+        });
+      } else {
+        // Self-assigned or unassigned - update in place
+        setTasks((prev) =>
+          prev.map((t) =>
+            t.id === taskId
+              ? {
+                  ...t,
+                  assigned_user_id: assignedUserId,
+                  assigned_user: data.assigned_user as TaskUser | null,
+                  assignment_status: assignmentStatus as AssignmentStatus,
+                }
+              : t
+          )
+        );
+      }
     } catch (error) {
       console.error("Error updating task assignment:", error);
       toast({
