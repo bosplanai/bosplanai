@@ -1478,7 +1478,8 @@ const Drive = () => {
     }
   };
   const storagePercentage = storageUsage.used / storageUsage.total * 100;
-  return <div className="min-h-screen bg-background flex relative" onDragEnter={handleDragEnter} onDragLeave={handleDragLeave} onDragOver={handleDragOver} onDrop={handleDrop}>
+  return <div className="flex flex-col min-h-screen bg-background">
+    <div className="flex flex-1 relative" onDragEnter={handleDragEnter} onDragLeave={handleDragLeave} onDragOver={handleDragOver} onDrop={handleDrop}>
       {/* Drop zone overlay */}
       {isDragging && <div className="absolute inset-0 z-50 bg-primary/10 backdrop-blur-sm flex items-center justify-center pointer-events-none">
           <div className="bg-card border-4 border-dashed border-primary rounded-2xl p-8 sm:p-12 text-center shadow-xl mx-4">
@@ -2094,8 +2095,8 @@ const Drive = () => {
             </Button>}
         </div>
       </div>
-      </div>
-      <SideNavigation />
+        </div>
+        <SideNavigation />
 
       {/* Recycle Bin Panel */}
       <div className={`fixed bottom-4 right-20 z-40 transition-all duration-300 ${trashPanelOpen ? "w-80" : "w-auto"}`}>
@@ -2563,6 +2564,7 @@ const Drive = () => {
         </DialogContent>
       </Dialog>
 
+      </div>
       <BetaFooter />
     </div>;
 };

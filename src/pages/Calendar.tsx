@@ -271,8 +271,9 @@ const Calendar = () => {
   };
 
   return (
-    <div className="flex min-h-screen w-full">
-      <div className="flex-1 p-4 sm:p-6 md:p-8 overflow-auto pb-24 sm:pb-8">
+    <div className="flex flex-col min-h-screen w-full">
+      <div className="flex flex-1">
+        <div className="flex-1 p-4 sm:p-6 md:p-8 overflow-auto pb-24 sm:pb-8">
         <div className="max-w-7xl mx-auto">
           {/* Header */}
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 mb-6 sm:mb-8">
@@ -618,9 +619,10 @@ const Calendar = () => {
             </CardContent>
           </Card>
         </div>
-      </div>
+        </div>
     
-      <SideNavigation />
+        <SideNavigation />
+      </div>
 
       {/* Task Notes Dialog */}
       {selectedTaskForNotes && (

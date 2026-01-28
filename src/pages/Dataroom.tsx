@@ -1395,9 +1395,10 @@ By signing below, you acknowledge that you have read, understood, and agree to b
     description: `Invitation sent to ${invite.email}`,
     timestamp: format(new Date(invite.created_at), "dd/MM/yyyy HH:mm")
   }))].sort((a, b) => b.timestamp.localeCompare(a.timestamp)).slice(0, 5);
-  return <div className="min-h-screen bg-background flex">
-      {/* Main Content */}
-      <div className="flex-1 flex flex-col">
+  return <div className="flex flex-col min-h-screen bg-background">
+      <div className="flex flex-1">
+        {/* Main Content */}
+        <div className="flex-1 flex flex-col">
         {/* Header */}
         <header className="border-b border-border/60 bg-card/80 backdrop-blur-sm px-4 sm:px-6 py-4 sm:py-5 shadow-sm">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
@@ -2031,8 +2032,8 @@ By signing below, you acknowledge that you have read, understood, and agree to b
               </div>}
           </div>
         </main>
-      </div>
-      <SideNavigation />
+        </div>
+        <SideNavigation />
 
       {/* File Preview Modal with Comments */}
       <DataRoomFilePreviewDialog
@@ -2487,6 +2488,7 @@ By signing below, you acknowledge that you have read, understood, and agree to b
         dataRoomId={activeRoomId || ""}
         organizationId={selectedRoom?.organization_id || organization?.id || ""}
       />
+      </div>
       <BetaFooter />
     </div>;
 };

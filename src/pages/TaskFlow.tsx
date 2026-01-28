@@ -147,8 +147,9 @@ const TaskFlow = () => {
     : 0;
 
   return (
-    <div className="flex min-h-screen bg-background">
-      <div className="flex-1 flex flex-col">
+    <div className="flex flex-col min-h-screen bg-background">
+      <div className="flex flex-1">
+        <div className="flex-1 flex flex-col">
         {/* Header */}
         <header className="bg-card border-b border-border px-4 sm:px-6 py-4 sm:py-5">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
@@ -286,9 +287,10 @@ const TaskFlow = () => {
             </div>
           )}
         </main>
-      </div>
+        </div>
       
-      <SideNavigation />
+        <SideNavigation />
+      </div>
       <BetaFooter />
       
       {/* Dialogs */}

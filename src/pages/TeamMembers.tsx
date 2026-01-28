@@ -635,8 +635,9 @@ const TeamMembers = () => {
         <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
       </div>;
   }
-  return <div className="min-h-screen bg-background">
-      <div className="max-w-4xl mx-auto p-6 md:p-8">
+  return <div className="flex flex-col min-h-screen bg-background">
+      <div className="flex-1">
+        <div className="max-w-4xl mx-auto p-6 md:p-8">
         <div className="mb-8">
           <div className="flex items-center gap-5 mb-6">
             
@@ -1440,6 +1441,7 @@ const TeamMembers = () => {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
       <BetaFooter />
     </div>;

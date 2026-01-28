@@ -481,9 +481,10 @@ const TaskPopulate = () => {
   const selectedTasks = parsedTasks.filter((t) => t.selected);
 
   return (
-    <div className="min-h-screen bg-background flex">
-      {/* Main Content */}
-      <div className="flex-1 flex flex-col">
+    <div className="flex flex-col min-h-screen bg-background">
+      <div className="flex flex-1">
+        {/* Main Content */}
+        <div className="flex-1 flex flex-col">
         {/* Header */}
         <header className="border-b border-border/60 bg-card/80 backdrop-blur-sm px-4 sm:px-6 py-4 sm:py-5 shadow-sm">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
@@ -639,9 +640,10 @@ const TaskPopulate = () => {
             )}
           </div>
         </main>
-      </div>
+        </div>
       
-      <SideNavigation />
+        <SideNavigation />
+      </div>
       <BetaFooter />
     </div>
   );
