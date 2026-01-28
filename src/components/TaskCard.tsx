@@ -88,15 +88,13 @@ const TaskCard = memo(({
             {description}
           </p>
         )}
-        {/* Project badge */}
-        {project && (
-          <div className="flex items-center gap-1 mt-2">
-            <FolderKanban className="w-3 h-3 text-primary" />
-            <span className="text-xs text-primary font-medium truncate max-w-[150px]">
-              {project.title}
-            </span>
-          </div>
-        )}
+        {/* Project badge - always visible */}
+        <div className="flex items-center gap-1 mt-2">
+          <FolderKanban className="w-3 h-3 text-primary" />
+          <span className="text-xs text-primary font-medium truncate max-w-[150px]">
+            {project ? project.title : "No Project"}
+          </span>
+        </div>
         {/* User avatars */}
         <div className="flex items-center gap-2 mt-2">
           {createdByUser && (
