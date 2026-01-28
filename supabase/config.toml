@@ -95,3 +95,6 @@ verify_jwt = false
 
 [functions.check-pending-task-reminders]
 verify_jwt = false
+
+[functions.check-policy-expirations]
+verify_jwt = false
