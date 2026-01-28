@@ -36,7 +36,7 @@ const ProductManagement = () => {
               <span className="hidden sm:inline text-sm text-muted-foreground font-medium truncate max-w-[150px]">
                 {profile?.full_name || user.email}
               </span>
-              <Button variant="ghost" size="icon" className="rounded-xl hover:bg-secondary/80 transition-all duration-200 btn-smooth h-9 w-9 sm:h-10 sm:w-10" onClick={() => navigate("/settings/team")} title="Team Members">
+              <Button variant="ghost" size="icon" className="rounded-xl hover:bg-secondary/80 transition-all duration-200 btn-smooth h-9 w-9 sm:h-10 sm:w-10" onClick={() => navigate("/team-members")} title="Team Members">
                 <Users2 className="w-4 h-4" />
               </Button>
               <Button variant="ghost" size="icon" className="rounded-xl hover:bg-secondary/80 transition-all duration-200 btn-smooth h-9 w-9 sm:h-10 sm:w-10" onClick={() => navigate("/settings/organization")} title="Organisation Settings">

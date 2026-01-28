@@ -466,7 +466,7 @@ const AppRoutes = () => (
                   }
                 />
                 <Route
-                  path="/:orgSlug/settings/team"
+                  path="/:orgSlug/team-members"
                   element={
                     <OrgSlugValidator>
                       <AdminRoute>
@@ -526,7 +526,7 @@ const AppRoutes = () => (
                 <Route path="/templates" element={<RootRedirect />} />
                 <Route path="/settings" element={<RootRedirect />} />
                 <Route path="/settings/appearance" element={<RootRedirect />} />
-                <Route path="/settings/team" element={<RootRedirect />} />
+                <Route path="/team-members" element={<RootRedirect />} />
                 <Route path="/dataroom" element={<RootRedirect />} />
                 <Route path="/drive" element={<RootRedirect />} />
                 <Route path="/policies" element={<RootRedirect />} />
