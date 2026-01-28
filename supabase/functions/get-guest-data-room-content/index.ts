@@ -142,22 +142,40 @@ Deno.serve(async (req) => {
     }
 
     // Get folders in current directory
-    const { data: folders } = await supabaseAdmin
+    let foldersQuery = supabaseAdmin
       .from("data_room_folders")
       .select("id, name, created_at")
       .eq("data_room_id", dataRoom.id)
-      .is("deleted_at", null)
-      .eq("parent_id", folderId || null as any)
-      .order("name");
+      .is("deleted_at", null);
+    
+    // Use .is() for null, .eq() for actual values
+    if (folderId) {
+      foldersQuery = foldersQuery.eq("parent_id", folderId);
+    } else {
+      foldersQuery = foldersQuery.is("parent_id", null);
+    }
+    
+    const { data: folders, error: foldersError } = await foldersQuery.order("name");
+    
+    console.log("Folders query result:", { count: folders?.length, error: foldersError, folderId });
 
     // Get files in current directory
-    const { data: files } = await supabaseAdmin
+    let filesQuery = supabaseAdmin
       .from("data_room_files")
       .select("id, name, file_path, file_size, mime_type, created_at, updated_at, folder_id, is_restricted, uploaded_by")
       .eq("data_room_id", dataRoom.id)
-      .is("deleted_at", null)
-      .eq("folder_id", folderId || null as any)
-      .order("name");
+      .is("deleted_at", null);
+    
+    // Use .is() for null, .eq() for actual values
+    if (folderId) {
+      filesQuery = filesQuery.eq("folder_id", folderId);
+    } else {
+      filesQuery = filesQuery.is("folder_id", null);
+    }
+    
+    const { data: files, error: filesError } = await filesQuery.order("name");
+    
+    console.log("Files query result:", { count: files?.length, error: filesError, folderId });
 
     // Filter restricted files - get guest's permissions
     const fileIds = files?.map(f => f.id) || [];
