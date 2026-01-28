@@ -235,7 +235,6 @@ By signing below, you acknowledge that you have read, understood, and agree to b
           signer_name: signerName.trim(),
           nda_content_hash: hashHex,
           signed_at: new Date().toISOString(),
-          signature_url: signatureUrl,
         });
 
       if (error) throw error;
