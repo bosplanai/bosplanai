@@ -752,17 +752,21 @@ export const useTasks = () => {
         ? 'pending' 
         : 'accepted';
 
-      const { error } = await supabase
+      const { data: updatedData, error } = await supabase
         .from("tasks")
         .update({ 
           is_draft: false,
           assignment_status: assignmentStatus,
-          // Ensure task has a user_id (owner) - use current user if not set
-          user_id: user?.id,
         } as any)
-        .eq("id", taskId);
+        .eq("id", taskId)
+        .select("id, is_draft");
 
       if (error) throw error;
+      
+      // Verify the update actually happened (RLS may silently block)
+      if (!updatedData || updatedData.length === 0 || updatedData[0].is_draft !== false) {
+        throw new Error("Failed to publish draft - update was blocked");
+      }
 
       // Refetch tasks to update the board
       await fetchTasks();
