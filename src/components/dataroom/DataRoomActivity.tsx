@@ -23,6 +23,7 @@ interface ActivityItem {
 const getActionIcon = (action: string) => {
   switch (action) {
     case "file_upload":
+    case "file_uploaded":
       return <FileUp className="w-4 h-4 text-emerald-500" />;
     case "invite_sent":
     case "member_added":
@@ -55,6 +56,7 @@ const getActionIcon = (action: string) => {
 const getActionLabel = (action: string, details: Record<string, unknown> | null) => {
   switch (action) {
     case "file_upload":
+    case "file_uploaded":
       return `uploaded ${(details?.file_name as string) || (details?.fileName as string) || "a file"}`;
     case "invite_sent":
       return `invited ${(details?.email as string) || "a user"}`;

@@ -784,6 +784,19 @@ By signing below, you acknowledge that you have read, understood, and agree to b
         created_by: user.id
       }).select().single();
       if (error) throw error;
+
+      // Log activity for folder creation
+      await supabase.from("data_room_activity").insert({
+        data_room_id: activeRoomId,
+        organization_id: roomOrgId,
+        user_id: user.id,
+        user_name: profile?.full_name || user?.user_metadata?.full_name || user?.email || "Unknown",
+        user_email: user?.email || "",
+        action: "folder_created",
+        details: { folder_name: name, parent_id: currentFolderId },
+        is_guest: false
+      });
+
       return data;
     },
     onMutate: async (name: string) => {
@@ -1023,6 +1036,19 @@ By signing below, you acknowledge that you have read, understood, and agree to b
         folder_id: currentFolderId
       });
       if (dbError) throw dbError;
+
+      // Log activity for file upload
+      await supabase.from("data_room_activity").insert({
+        data_room_id: activeRoomId,
+        organization_id: roomOrgId,
+        user_id: user.id,
+        user_name: profile?.full_name || user?.user_metadata?.full_name || user?.email || "Unknown",
+        user_email: user?.email || "",
+        action: "file_uploaded",
+        details: { file_name: file.name, file_size: file.size, mime_type: file.type, folder_id: currentFolderId },
+        is_guest: false
+      });
+
       return file.name;
     },
     onError: error => {
@@ -1099,12 +1125,28 @@ By signing below, you acknowledge that you have read, understood, and agree to b
     mutationFn: async (file: {
       id: string;
       file_path: string;
+      name?: string;
     }) => {
+      if (!activeRoomId || !selectedRoom || !user?.id) {
+        throw new Error("Not authenticated or no room selected");
+      }
       // Soft delete - just set deleted_at timestamp
       const {
         error: dbError
       } = await supabase.from("data_room_files").update({ deleted_at: new Date().toISOString() }).eq("id", file.id);
       if (dbError) throw dbError;
+
+      // Log activity for file deletion
+      await supabase.from("data_room_activity").insert({
+        data_room_id: activeRoomId,
+        organization_id: selectedRoom.organization_id,
+        user_id: user.id,
+        user_name: profile?.full_name || user?.user_metadata?.full_name || user?.email || "Unknown",
+        user_email: user?.email || "",
+        action: "file_deleted",
+        details: { file_name: file.name || "Unknown file", file_id: file.id },
+        is_guest: false
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({
