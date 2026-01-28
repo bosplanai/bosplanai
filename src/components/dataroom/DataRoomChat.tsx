@@ -125,6 +125,18 @@ const DataRoomChat = ({ dataRoomId, organizationId, userId, userName, userEmail 
       });
 
       if (error) throw error;
+
+      // Log activity for message sent
+      await supabase.from("data_room_activity").insert({
+        data_room_id: dataRoomId,
+        organization_id: effectiveOrganizationId,
+        user_id: userId,
+        user_name: userName,
+        user_email: userEmail,
+        action: "message_sent",
+        details: { message_preview: message.substring(0, 100) },
+        is_guest: false,
+      });
     },
     onSuccess: () => {
       setNewMessage("");
