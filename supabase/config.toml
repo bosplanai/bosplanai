@@ -59,3 +59,12 @@ verify_jwt = false
 
 [functions.verify-dataroom-storage-purchase]
 verify_jwt = false
+
+[functions.create-invited-user]
+verify_jwt = false
+
+[functions.remove-team-member-by-email]
+verify_jwt = false
+
+[functions.get-member-emails]
+verify_jwt = false

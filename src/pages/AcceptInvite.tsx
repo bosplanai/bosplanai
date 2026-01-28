@@ -148,27 +148,44 @@ const AcceptInvite = () => {
         }
       });
 
+      // supabase.functions.invoke returns an error for non-2xx responses, but the body is in error.context
+      // We need to extract the actual response to check for USER_EXISTS code
+      let responseBody = createData;
       if (createError) {
-        console.error("Error creating user:", createError);
-        throw new Error("Failed to create your account. Please try again.");
+        // Try to extract body from error context
+        const ctxBody = (createError as any)?.context?.body;
+        if (typeof ctxBody === "string") {
+          try {
+            responseBody = JSON.parse(ctxBody);
+          } catch {
+            responseBody = null;
+          }
+        } else if (ctxBody && typeof ctxBody === "object") {
+          responseBody = ctxBody;
+        }
       }
 
-      // Handle case where user already exists
-      if (createData?.code === "USER_EXISTS") {
+      // Handle case where user already exists - redirect to login
+      if (responseBody?.code === "USER_EXISTS") {
         toast({
           title: "Account already exists",
           description: "Please sign in with your existing password to join this organization.",
-          variant: "destructive"
         });
         navigate(`/auth?mode=login&email=${encodeURIComponent(inviteData.email)}&invite=${token}`);
         return;
       }
 
-      if (!createData?.success || !createData?.userId) {
-        throw new Error(createData?.error || "Failed to create user account");
+      // If there was an error and it wasn't USER_EXISTS, throw
+      if (createError && !responseBody?.success) {
+        console.error("Error creating user:", createError);
+        throw new Error(responseBody?.error || "Failed to create your account. Please try again.");
       }
 
-      const userId = createData.userId;
+      if (!responseBody?.success || !responseBody?.userId) {
+        throw new Error(responseBody?.error || "Failed to create user account");
+      }
+
+      const userId = responseBody.userId;
 
       // Sign the user in immediately - no confirmation email was sent
       const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
