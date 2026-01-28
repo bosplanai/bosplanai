@@ -141,8 +141,8 @@ const TaskUrlsList = ({
         </Dialog>
       )}
 
-      {/* Add URL Button (when no URLs exist or as secondary action) */}
-      {canEdit && (
+      {/* Add URL Button - only show when no URLs exist */}
+      {canEdit && urls.length === 0 && (
         <Dialog>
           <DialogTrigger asChild>
             <button

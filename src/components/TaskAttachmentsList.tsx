@@ -125,8 +125,8 @@ const TaskAttachmentsList = ({
         </Dialog>
       )}
 
-      {/* Add Attachment Button */}
-      {canEdit && (
+      {/* Add Attachment Button - only show when no attachments exist */}
+      {canEdit && attachments.length === 0 && (
         <button
           onClick={(e) => {
             e.stopPropagation();
