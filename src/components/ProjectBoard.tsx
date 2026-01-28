@@ -220,7 +220,7 @@ const ProjectBoard = () => {
   // Team (viewer): cannot assign tasks (handled in UI)
   const teamMembers = useMemo(() => members.filter(m => {
     if (isAdmin) return true; // Admin can assign to anyone
-    if (isMember) return m.role !== "admin"; // Manager can assign to member/viewer
+    if (isMember) return true; // Manager can assign to anyone in the organization
     return false; // Viewer cannot assign
   }).map(m => ({
     id: m.id,
