@@ -230,19 +230,7 @@ export const DeclinedTaskReassignDialog = ({
 
       if (updateError) throw updateError;
 
-      // Create notification for new assignee
-      const { error: notificationError } = await supabase.from("notifications").insert({
-        user_id: selectedAssignee,
-        // Use the task's org (not the currently active org)
-        organization_id: task.organization_id,
-        type: "task_assigned",
-        title: "New Task Request",
-        message: `You have been assigned a task: "${task.title}"`,
-        reference_id: task.id,
-        reference_type: "task",
-      });
-
-      if (notificationError) throw notificationError;
+      // Notification handled by notify_task_reassigned trigger
 
       // Invalidate queries to refresh data
       queryClient.invalidateQueries({ queryKey: ["tasks"] });

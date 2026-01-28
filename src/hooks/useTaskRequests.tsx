@@ -253,57 +253,7 @@ export const useTaskRequests = () => {
 
       if (error) throw error;
 
-      // Create notifications for reassignment
-      const task = pendingRequests.find((r) => r.id === taskId);
-      if (task) {
-        // Fetch both the previous assignee (current user) and new assignee names
-        const [previousAssigneeResult, newAssigneeResult] = await Promise.all([
-          supabase
-            .from("profiles")
-            .select("full_name")
-            .eq("id", user!.id)
-            .single(),
-          supabase
-            .from("profiles")
-            .select("full_name")
-            .eq("id", newAssigneeId)
-            .single(),
-        ]);
-        
-        const previousAssigneeName = previousAssigneeResult.data?.full_name || "A team member";
-        const newAssigneeName = newAssigneeResult.data?.full_name || "another team member";
-        
-        // Build notifications array
-        const notifications = [];
-        
-        // Notify the task creator about reassignment
-        if (task.created_by_user_id) {
-          notifications.push({
-            user_id: task.created_by_user_id,
-            organization_id: task.organization_id,
-            type: "task_reassigned",
-            title: "Task Reassigned",
-            message: `${previousAssigneeName} reassigned "${task.title}" to ${newAssigneeName}. Reason: ${reason}`,
-            reference_id: taskId,
-            reference_type: "task",
-          });
-        }
-        
-        // Notify the new assignee about the reassignment
-        notifications.push({
-          user_id: newAssigneeId,
-          organization_id: task.organization_id,
-          type: "task_request",
-          title: "Task Reassigned to You",
-          message: `${previousAssigneeName} has reassigned "${task.title}" to you. Reason: ${reason}`,
-          reference_id: taskId,
-          reference_type: "task",
-        });
-        
-        if (notifications.length > 0) {
-          await supabase.from("notifications").insert(notifications);
-        }
-      }
+      // Notifications are handled by the notify_task_reassigned trigger
 
       setPendingRequests((prev) => prev.filter((r) => r.id !== taskId));
       
