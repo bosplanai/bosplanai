@@ -59,8 +59,8 @@ const Templates = () => {
   const [moveToFolderDialogOpen, setMoveToFolderDialogOpen] = useState(false);
   const [templateToMove, setTemplateToMove] = useState<Template | null>(null);
 
-  // Check if user has access (admin or member)
-  const hasAccess = isAdmin || role === "member";
+  // Check if user has access (all roles including Team accounts can access)
+  const hasAccess = role !== null;
 
   const filteredTemplates = templates.filter((template) => {
     const matchesSearch = template.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
