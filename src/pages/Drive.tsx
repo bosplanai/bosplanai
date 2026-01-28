@@ -2385,6 +2385,33 @@ const Drive = () => {
                 </SelectContent>
               </Select>
             </div>
+            <div>
+              <Label>Assign to</Label>
+              <Select 
+                value={editFileAssignedTo || "unassigned"} 
+                onValueChange={val => setEditFileAssignedTo(val === "unassigned" ? null : val)}
+              >
+                <SelectTrigger className="mt-2">
+                  <SelectValue placeholder="Select team member" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="unassigned">
+                    <div className="flex items-center gap-2">
+                      <Users className="w-4 h-4 text-muted-foreground" />
+                      Unassigned
+                    </div>
+                  </SelectItem>
+                  {teamMembers.map(member => (
+                    <SelectItem key={member.id} value={member.id}>
+                      <div className="flex items-center gap-2">
+                        <Users className="w-4 h-4 text-primary" />
+                        {member.full_name}
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
             
           </div>
           <DialogFooter>
