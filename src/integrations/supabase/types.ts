@@ -82,6 +82,308 @@ export type Database = {
           },
         ]
       }
+      data_room_files: {
+        Row: {
+          created_at: string
+          data_room_id: string
+          file_path: string
+          file_size: number
+          folder_id: string | null
+          id: string
+          mime_type: string | null
+          name: string
+          organization_id: string
+          updated_at: string
+          uploaded_by: string
+        }
+        Insert: {
+          created_at?: string
+          data_room_id: string
+          file_path: string
+          file_size?: number
+          folder_id?: string | null
+          id?: string
+          mime_type?: string | null
+          name: string
+          organization_id: string
+          updated_at?: string
+          uploaded_by: string
+        }
+        Update: {
+          created_at?: string
+          data_room_id?: string
+          file_path?: string
+          file_size?: number
+          folder_id?: string | null
+          id?: string
+          mime_type?: string | null
+          name?: string
+          organization_id?: string
+          updated_at?: string
+          uploaded_by?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "data_room_files_data_room_id_fkey"
+            columns: ["data_room_id"]
+            isOneToOne: false
+            referencedRelation: "data_rooms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "data_room_files_folder_id_fkey"
+            columns: ["folder_id"]
+            isOneToOne: false
+            referencedRelation: "data_room_folders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "data_room_files_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "data_room_files_uploaded_by_fkey"
+            columns: ["uploaded_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      data_room_folders: {
+        Row: {
+          created_at: string
+          created_by: string
+          data_room_id: string
+          id: string
+          name: string
+          organization_id: string
+          parent_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          data_room_id: string
+          id?: string
+          name: string
+          organization_id: string
+          parent_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          data_room_id?: string
+          id?: string
+          name?: string
+          organization_id?: string
+          parent_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "data_room_folders_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "data_room_folders_data_room_id_fkey"
+            columns: ["data_room_id"]
+            isOneToOne: false
+            referencedRelation: "data_rooms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "data_room_folders_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "data_room_folders_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "data_room_folders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      data_room_invites: {
+        Row: {
+          access_id: string | null
+          created_at: string
+          data_room_id: string
+          email: string
+          expires_at: string
+          guest_name: string | null
+          id: string
+          invited_by: string | null
+          organization_id: string
+          status: string
+        }
+        Insert: {
+          access_id?: string | null
+          created_at?: string
+          data_room_id: string
+          email: string
+          expires_at?: string
+          guest_name?: string | null
+          id?: string
+          invited_by?: string | null
+          organization_id: string
+          status?: string
+        }
+        Update: {
+          access_id?: string | null
+          created_at?: string
+          data_room_id?: string
+          email?: string
+          expires_at?: string
+          guest_name?: string | null
+          id?: string
+          invited_by?: string | null
+          organization_id?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "data_room_invites_data_room_id_fkey"
+            columns: ["data_room_id"]
+            isOneToOne: false
+            referencedRelation: "data_rooms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "data_room_invites_invited_by_fkey"
+            columns: ["invited_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "data_room_invites_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      data_room_nda_signatures: {
+        Row: {
+          data_room_id: string
+          id: string
+          ip_address: string | null
+          nda_content_hash: string | null
+          signed_at: string
+          signer_email: string
+          signer_name: string
+          user_id: string | null
+        }
+        Insert: {
+          data_room_id: string
+          id?: string
+          ip_address?: string | null
+          nda_content_hash?: string | null
+          signed_at?: string
+          signer_email: string
+          signer_name: string
+          user_id?: string | null
+        }
+        Update: {
+          data_room_id?: string
+          id?: string
+          ip_address?: string | null
+          nda_content_hash?: string | null
+          signed_at?: string
+          signer_email?: string
+          signer_name?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "data_room_nda_signatures_data_room_id_fkey"
+            columns: ["data_room_id"]
+            isOneToOne: false
+            referencedRelation: "data_rooms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "data_room_nda_signatures_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      data_rooms: {
+        Row: {
+          archived_at: string | null
+          created_at: string
+          created_by: string
+          deleted_at: string | null
+          description: string | null
+          id: string
+          name: string
+          nda_content: string | null
+          nda_content_hash: string | null
+          nda_required: boolean
+          organization_id: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          archived_at?: string | null
+          created_at?: string
+          created_by: string
+          deleted_at?: string | null
+          description?: string | null
+          id?: string
+          name: string
+          nda_content?: string | null
+          nda_content_hash?: string | null
+          nda_required?: boolean
+          organization_id: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          archived_at?: string | null
+          created_at?: string
+          created_by?: string
+          deleted_at?: string | null
+          description?: string | null
+          id?: string
+          name?: string
+          nda_content?: string | null
+          nda_content_hash?: string | null
+          nda_required?: boolean
+          organization_id?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "data_rooms_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "data_rooms_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       drive_files: {
         Row: {
           assigned_to: string | null
