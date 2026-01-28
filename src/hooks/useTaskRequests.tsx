@@ -109,7 +109,7 @@ export const useTaskRequests = () => {
     };
   }, [user, organization]);
 
-  const acceptTask = async (taskId: string): Promise<boolean> => {
+  const acceptTask = async (taskId: string, onSuccess?: () => void): Promise<boolean> => {
     try {
       const { error } = await supabase
         .from("tasks")
@@ -122,8 +122,14 @@ export const useTaskRequests = () => {
 
       setPendingRequests((prev) => prev.filter((r) => r.id !== taskId));
       
-      // Invalidate tasks query to refresh main task board
+      // Invalidate all task-related queries to refresh main task board immediately
       queryClient.invalidateQueries({ queryKey: ["tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["task-requests"] });
+      
+      // Call the success callback to trigger any additional refreshes (e.g., useTasks refetch)
+      if (onSuccess) {
+        onSuccess();
+      }
       
       toast({
         title: "Task accepted",
