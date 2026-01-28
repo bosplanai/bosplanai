@@ -14,7 +14,10 @@ export interface TaskAssignment {
   };
 }
 
-export const useTaskAssignments = (taskId: string) => {
+export const useTaskAssignments = (
+  taskId: string,
+  onTaskBecamePending?: (taskId: string) => void
+) => {
   const [assignments, setAssignments] = useState<TaskAssignment[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
@@ -96,6 +99,9 @@ export const useTaskAssignments = (taskId: string) => {
 
         if (updateError) {
           console.error("Error updating task assignment status:", updateError);
+        } else {
+          // Notify parent that task became pending so it can be removed from the board
+          onTaskBecamePending?.(taskId);
         }
       }
 
