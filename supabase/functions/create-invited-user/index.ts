@@ -37,36 +37,66 @@ Deno.serve(async (req) => {
       .eq("status", "pending")
       .single();
 
+    // IMPORTANT: For expected/handled states, return 200 with a structured body.
+    // This avoids Supabase `functions.invoke` treating non-2xx as a transport error,
+    // which is brittle to parse on the frontend.
     if (inviteError || !invite) {
-      console.error("Invalid or expired invite token:", inviteError);
       return new Response(
-        JSON.stringify({ error: "Invalid or expired invitation" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({
+          success: false,
+          code: "INVITE_INVALID",
+          error: "This invitation is invalid, has expired, or has already been used.",
+        }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
     // Verify the email matches the invitation
     if (invite.email.toLowerCase() !== email.toLowerCase()) {
       return new Response(
-        JSON.stringify({ error: "Email does not match invitation" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({
+          success: false,
+          code: "EMAIL_MISMATCH",
+          error: "Email does not match invitation",
+        }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // Check if user already exists
-    const { data: existingUsers } = await supabaseAdmin.auth.admin.listUsers();
-    const existingUser = existingUsers?.users?.find(
-      (u) => u.email?.toLowerCase() === email.toLowerCase()
-    );
+    // Check if user already exists.
+    // NOTE: auth-js in edge runtime doesn't expose getUserByEmail, so we page through listUsers()
+    // with early-exit to keep this reliable.
+    const emailLower = email.toLowerCase();
+    let existingUserId: string | null = null;
+    for (let page = 1; page <= 5 && !existingUserId; page += 1) {
+      const { data: existingUsers, error: listError } = await supabaseAdmin.auth.admin.listUsers({
+        page,
+        perPage: 1000,
+      });
 
-    if (existingUser) {
+      if (listError) {
+        console.error("listUsers error:", listError);
+        break;
+      }
+
+      const found = existingUsers?.users?.find(
+        (u) => (u.email ?? "").toLowerCase() === emailLower
+      );
+      if (found?.id) existingUserId = found.id;
+
+      // If we got less than a full page, we can stop.
+      if ((existingUsers?.users?.length ?? 0) < 1000) break;
+    }
+
+    if (existingUserId) {
       return new Response(
-        JSON.stringify({ 
-          error: "User already exists", 
+        JSON.stringify({
+          success: false,
           code: "USER_EXISTS",
-          userId: existingUser.id 
+          userId: existingUserId,
+          email,
         }),
-        { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
@@ -81,7 +111,7 @@ Deno.serve(async (req) => {
     if (createError) {
       console.error("Failed to create user:", createError);
       return new Response(
-        JSON.stringify({ error: createError.message }),
+        JSON.stringify({ success: false, code: "CREATE_FAILED", error: createError.message }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -100,7 +130,7 @@ Deno.serve(async (req) => {
     const errorMessage = error instanceof Error ? error.message : "Unknown error";
     console.error("Error in create-invited-user:", errorMessage);
     return new Response(
-      JSON.stringify({ error: errorMessage }),
+      JSON.stringify({ success: false, code: "UNHANDLED", error: errorMessage }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }

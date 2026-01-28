@@ -197,7 +197,10 @@ const Auth = () => {
           }
         });
         setEmail(inviteRow.email);
-        setIsLogin(false); // Default to signup for invites
+        // Respect explicit mode if provided; otherwise default invite flow to signup.
+        if (modeParam === "login") setIsLogin(true);
+        else if (modeParam === "signup") setIsLogin(false);
+        else setIsLogin(false);
       } catch (error: any) {
         console.error("Error fetching invite:", error);
         setInviteError("Failed to load invitation details.");
@@ -206,7 +209,7 @@ const Auth = () => {
       }
     };
     fetchInvite();
-  }, [inviteToken]);
+  }, [inviteToken, modeParam]);
   
   useEffect(() => {
     if (user && organization) {
@@ -327,14 +330,6 @@ const Auth = () => {
         .from("profiles")
         .update({ onboarding_completed: true })
         .eq("id", authData.user.id);
-
-      // Send welcome email for invite signup (fire and forget)
-      supabase.functions.invoke("send-welcome-email", {
-        body: {
-          organizationName: inviteData.organization.name,
-          fullName: fullName.trim()
-        }
-      }).catch(err => console.error("Welcome email error:", err));
 
       toast({
         title: "Welcome to the team!",

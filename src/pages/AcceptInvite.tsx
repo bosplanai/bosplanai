@@ -148,17 +148,15 @@ const AcceptInvite = () => {
         }
       });
 
-      // supabase.functions.invoke returns an error for non-2xx responses, but the body is in error.context
-      // We need to extract the actual response to check for USER_EXISTS code
-      let responseBody = createData;
+      // Normalize response body (sometimes invoke surfaces JSON through error.context.body)
+      let responseBody: any = createData;
       if (createError) {
-        // Try to extract body from error context
         const ctxBody = (createError as any)?.context?.body;
         if (typeof ctxBody === "string") {
           try {
             responseBody = JSON.parse(ctxBody);
           } catch {
-            responseBody = null;
+            // keep fallback
           }
         } else if (ctxBody && typeof ctxBody === "object") {
           responseBody = ctxBody;
@@ -166,12 +164,36 @@ const AcceptInvite = () => {
       }
 
       // Handle case where user already exists - redirect to login
-      if (responseBody?.code === "USER_EXISTS") {
+      if (responseBody?.code === "USER_EXISTS" || (createError as any)?.context?.status === 409) {
         toast({
           title: "Account already exists",
-          description: "Please sign in with your existing password to join this organization.",
+          description: "Please sign in with your existing password (or reset it) to join this organization.",
         });
-        navigate(`/auth?mode=login&email=${encodeURIComponent(inviteData.email)}&invite=${token}`);
+        navigate(
+          `/auth?mode=login&email=${encodeURIComponent(inviteData.email)}&invite=${token}&returnUrl=${encodeURIComponent(
+            `/${inviteData.org_slug}`
+          )}`
+        );
+        return;
+      }
+
+      // Handled non-success states from the edge function (these come back as 200)
+      if (responseBody && responseBody.success === false) {
+        const message =
+          responseBody?.error ||
+          (responseBody?.code === "INVITE_INVALID"
+            ? "This invitation is invalid, has expired, or has already been used."
+            : "Failed to create your account. Please try again.");
+
+        toast({
+          title: "Unable to continue",
+          description: message,
+          variant: "destructive",
+        });
+        // If the invite is invalid, show the dedicated invalid state UI.
+        if (responseBody?.code === "INVITE_INVALID") {
+          setError(message);
+        }
         return;
       }
 
@@ -222,14 +244,6 @@ const AcceptInvite = () => {
       if (acceptError || !resultObj?.success) {
         throw new Error(resultObj?.error || acceptError?.message || "Failed to accept invitation");
       }
-
-      // Send welcome email (fire and forget)
-      supabase.functions.invoke("send-welcome-email", {
-        body: {
-          organizationName: inviteData.org_name,
-          fullName: fullName.trim()
-        }
-      }).catch(err => console.error("Welcome email error:", err));
 
       toast({
         title: "Welcome to the team!",
