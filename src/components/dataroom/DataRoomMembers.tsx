@@ -149,9 +149,8 @@ const DataRoomMembers = ({
         .insert({
           data_room_id: dataRoomId,
           user_id: userId,
-          organization_id: organizationId,
           role: "member",
-          added_by: currentUserId,
+         created_by: currentUserId,
         });
 
       if (error) throw error;
