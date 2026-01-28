@@ -2,12 +2,41 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
+
+async function getStripePriceCurrency(
+  stripeSecretKey: string,
+  priceId: string | null | undefined,
+): Promise<string | null> {
+  if (!priceId) return null;
+
+  try {
+    const res = await fetch(`https://api.stripe.com/v1/prices/${priceId}`, {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${stripeSecretKey}`,
+      },
+    });
+
+    if (!res.ok) {
+      const text = await res.text();
+      console.error("Failed to fetch Stripe price:", priceId, text);
+      return null;
+    }
+
+    const price = await res.json();
+    return typeof price?.currency === "string" ? price.currency : null;
+  } catch (err) {
+    console.error("Error fetching Stripe price currency:", err);
+    return null;
+  }
+}
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
+    return new Response("ok", { headers: corsHeaders });
   }
 
   try {
@@ -84,8 +113,27 @@ Deno.serve(async (req) => {
 
       // Update Stripe price if we have the secret key
       let newStripePriceId = currentPricing.stripe_price_id;
-      
-      if (STRIPE_SECRET_KEY && priceCents !== currentPricing.price_cents) {
+
+      // Important: Stripe prices are immutable (amount & currency), so we must create a new
+      // price not only when amount changes, but also when the existing price is in GBP.
+      let existingStripeCurrency: string | null = null;
+      if (STRIPE_SECRET_KEY) {
+        existingStripeCurrency = await getStripePriceCurrency(
+          STRIPE_SECRET_KEY,
+          currentPricing.stripe_price_id,
+        );
+      }
+
+      const shouldCreateNewStripePrice =
+        !!STRIPE_SECRET_KEY &&
+        (
+          priceCents !== currentPricing.price_cents ||
+          // If we can't determine currency, err on the side of recreating.
+          !existingStripeCurrency ||
+          existingStripeCurrency.toLowerCase() !== "usd"
+        );
+
+      if (shouldCreateNewStripePrice) {
         try {
           // Create a new price in Stripe (prices are immutable, so we create new ones)
           const stripeResponse = await fetch("https://api.stripe.com/v1/prices", {
