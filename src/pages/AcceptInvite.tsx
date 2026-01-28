@@ -139,62 +139,45 @@ const AcceptInvite = () => {
     setSubmitting(true);
 
     try {
-      // Create the user account with the password
-      const { data: authData, error: signUpError } = await supabase.auth.signUp({
-        email: inviteData.email,
-        password,
-        options: {
-          emailRedirectTo: `${window.location.origin}/`,
-        }
-      });
-
-      if (signUpError) {
-        // If user already exists, try to sign them in
-        if (signUpError.message.includes("already registered")) {
-          toast({
-            title: "Account already exists",
-            description: "Please sign in with your existing password to join this organization.",
-            variant: "destructive"
-          });
-          navigate(`/auth?mode=login&email=${encodeURIComponent(inviteData.email)}&invite=${token}`);
-          return;
-        }
-        throw signUpError;
-      }
-
-      if (!authData.user) {
-        throw new Error("Failed to create user account");
-      }
-
-      // CRITICAL: Confirm the user's email via edge function BEFORE attempting sign-in
-      // This bypasses Supabase's email confirmation requirement for invited users
-      const { data: confirmData, error: confirmError } = await supabase.functions.invoke("confirm-invited-user", {
+      // Create the user via Admin API edge function - this bypasses confirmation email entirely
+      const { data: createData, error: createError } = await supabase.functions.invoke("create-invited-user", {
         body: {
-          userId: authData.user.id,
-          inviteToken: token // Use the original token from URL, not inviteData.id
+          email: inviteData.email,
+          password,
+          inviteToken: token
         }
       });
 
-      if (confirmError) {
-        console.error("Error confirming user email:", confirmError);
-        throw new Error("Failed to confirm your account. Please contact support.");
+      if (createError) {
+        console.error("Error creating user:", createError);
+        throw new Error("Failed to create your account. Please try again.");
       }
 
-      // Small delay to ensure email confirmation is processed
-      await new Promise(resolve => setTimeout(resolve, 500));
+      // Handle case where user already exists
+      if (createData?.code === "USER_EXISTS") {
+        toast({
+          title: "Account already exists",
+          description: "Please sign in with your existing password to join this organization.",
+          variant: "destructive"
+        });
+        navigate(`/auth?mode=login&email=${encodeURIComponent(inviteData.email)}&invite=${token}`);
+        return;
+      }
 
-      // Now sign the user in with their credentials
+      if (!createData?.success || !createData?.userId) {
+        throw new Error(createData?.error || "Failed to create user account");
+      }
+
+      const userId = createData.userId;
+
+      // Sign the user in immediately - no confirmation email was sent
       const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
         email: inviteData.email,
         password,
       });
       
       if (signInError) {
-        console.error("Sign-in error after signup:", signInError);
-        // Provide more specific error message
-        if (signInError.message.includes("Email not confirmed")) {
-          throw new Error("Email confirmation failed. Please try again or contact support.");
-        }
+        console.error("Sign-in error after user creation:", signInError);
         throw signInError;
       }
 
@@ -205,7 +188,7 @@ const AcceptInvite = () => {
       // Accept the invite using the database function
       const { data: result, error: acceptError } = await supabase.rpc("accept_invite", {
         _token: token,
-        _user_id: authData.user.id,
+        _user_id: userId,
         _full_name: fullName.trim(),
         _job_role: jobRole.trim(),
         _phone_number: phoneNumber.trim()
