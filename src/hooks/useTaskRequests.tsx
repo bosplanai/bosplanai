@@ -115,7 +115,6 @@ export const useTaskRequests = () => {
         .from("tasks")
         .update({
           assignment_status: "accepted",
-          assignment_responded_at: new Date().toISOString(),
         })
         .eq("id", taskId);
 
@@ -177,7 +176,6 @@ export const useTaskRequests = () => {
         .from("tasks")
         .update({
           assignment_status: "declined",
-          assignment_responded_at: new Date().toISOString(),
           decline_reason: reason.trim(),
           assigned_user_id: null, // Clear the assigned user
         })
@@ -241,7 +239,6 @@ export const useTaskRequests = () => {
         .update({
           assigned_user_id: newAssigneeId,
           assignment_status: "pending",
-          assignment_responded_at: null,
           decline_reason: null,
           last_reminder_sent_at: null,
         })
