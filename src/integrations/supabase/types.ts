@@ -138,6 +138,135 @@ export type Database = {
           },
         ]
       }
+      data_room_activity: {
+        Row: {
+          action: string
+          created_at: string
+          data_room_id: string
+          details: Json | null
+          id: string
+          is_guest: boolean
+          organization_id: string
+          user_email: string
+          user_id: string | null
+          user_name: string
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          data_room_id: string
+          details?: Json | null
+          id?: string
+          is_guest?: boolean
+          organization_id: string
+          user_email: string
+          user_id?: string | null
+          user_name: string
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          data_room_id?: string
+          details?: Json | null
+          id?: string
+          is_guest?: boolean
+          organization_id?: string
+          user_email?: string
+          user_id?: string | null
+          user_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "data_room_activity_data_room_id_fkey"
+            columns: ["data_room_id"]
+            isOneToOne: false
+            referencedRelation: "data_rooms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "data_room_activity_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "data_room_activity_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      data_room_file_comments: {
+        Row: {
+          comment: string
+          commenter_email: string
+          commenter_id: string | null
+          commenter_name: string
+          created_at: string
+          data_room_id: string
+          file_id: string
+          id: string
+          is_guest: boolean
+          organization_id: string
+        }
+        Insert: {
+          comment: string
+          commenter_email: string
+          commenter_id?: string | null
+          commenter_name: string
+          created_at?: string
+          data_room_id: string
+          file_id: string
+          id?: string
+          is_guest?: boolean
+          organization_id: string
+        }
+        Update: {
+          comment?: string
+          commenter_email?: string
+          commenter_id?: string | null
+          commenter_name?: string
+          created_at?: string
+          data_room_id?: string
+          file_id?: string
+          id?: string
+          is_guest?: boolean
+          organization_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "data_room_file_comments_commenter_id_fkey"
+            columns: ["commenter_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "data_room_file_comments_data_room_id_fkey"
+            columns: ["data_room_id"]
+            isOneToOne: false
+            referencedRelation: "data_rooms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "data_room_file_comments_file_id_fkey"
+            columns: ["file_id"]
+            isOneToOne: false
+            referencedRelation: "data_room_files"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "data_room_file_comments_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       data_room_file_permissions: {
         Row: {
           created_at: string
@@ -485,6 +614,64 @@ export type Database = {
           {
             foreignKeyName: "data_room_members_user_id_fkey"
             columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      data_room_messages: {
+        Row: {
+          created_at: string
+          data_room_id: string
+          id: string
+          is_guest: boolean
+          message: string
+          organization_id: string
+          sender_email: string
+          sender_id: string | null
+          sender_name: string
+        }
+        Insert: {
+          created_at?: string
+          data_room_id: string
+          id?: string
+          is_guest?: boolean
+          message: string
+          organization_id: string
+          sender_email: string
+          sender_id?: string | null
+          sender_name: string
+        }
+        Update: {
+          created_at?: string
+          data_room_id?: string
+          id?: string
+          is_guest?: boolean
+          message?: string
+          organization_id?: string
+          sender_email?: string
+          sender_id?: string | null
+          sender_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "data_room_messages_data_room_id_fkey"
+            columns: ["data_room_id"]
+            isOneToOne: false
+            referencedRelation: "data_rooms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "data_room_messages_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "data_room_messages_sender_id_fkey"
+            columns: ["sender_id"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
