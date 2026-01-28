@@ -89,6 +89,7 @@ export const useTasks = () => {
           *,
           assigned_user:profiles!tasks_assigned_user_id_fkey(id, full_name),
           created_by_user:profiles!tasks_created_by_user_id_fkey(id, full_name),
+          project:projects!tasks_project_id_fkey(id, title),
           task_assignments(id, user_id, user:profiles!task_assignments_user_id_fkey(id, full_name))
         `)
         .eq("organization_id", organization.id)
@@ -259,7 +260,8 @@ export const useTasks = () => {
         .select(`
           *,
           assigned_user:profiles!tasks_assigned_user_id_fkey(id, full_name),
-          created_by_user:profiles!tasks_created_by_user_id_fkey(id, full_name)
+          created_by_user:profiles!tasks_created_by_user_id_fkey(id, full_name),
+          project:projects!tasks_project_id_fkey(id, title)
         `)
         .single();
 
@@ -635,7 +637,7 @@ export const useTasks = () => {
         .from("tasks")
         .update({ project_id: projectId })
         .eq("id", taskId)
-        .select(`*`)
+        .select(`project:projects!tasks_project_id_fkey(id, title)`)
         .single();
 
       if (error) throw error;
@@ -671,7 +673,8 @@ export const useTasks = () => {
         .select(`
           *,
           assigned_user:profiles!tasks_assigned_user_id_fkey(id, full_name),
-          created_by_user:profiles!tasks_created_by_user_id_fkey(id, full_name)
+          created_by_user:profiles!tasks_created_by_user_id_fkey(id, full_name),
+          project:projects!tasks_project_id_fkey(id, title)
         `)
         .eq("organization_id", organization.id)
         .eq("is_draft", true)

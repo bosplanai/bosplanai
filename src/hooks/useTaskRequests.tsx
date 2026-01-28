@@ -52,6 +52,7 @@ export const useTaskRequests = () => {
           due_date,
           category,
           project_id,
+          project:projects!tasks_project_id_fkey(id, title),
           created_by_user_id,
           assigned_user_id,
           assignment_status,

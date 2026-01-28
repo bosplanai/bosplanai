@@ -66,6 +66,32 @@ export const useTaskAttachments = (taskId: string | null) => {
     fetchAttachments();
   }, [fetchAttachments]);
 
+  // Realtime updates so newly uploaded attachments (e.g. right after task creation)
+  // show up on the card without requiring a full tasks refetch.
+  useEffect(() => {
+    if (!taskId) return;
+
+    const channel = supabase
+      .channel(`task-attachments-${taskId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "task_attachments",
+          filter: `task_id=eq.${taskId}`,
+        },
+        () => {
+          fetchAttachments();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [taskId, fetchAttachments]);
+
   const uploadAttachment = async (
     file: File,
     organizationId: string
