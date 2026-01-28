@@ -51,15 +51,18 @@ export const useTaskAssignments = (taskId: string) => {
 
   const addAssignment = async (userId: string) => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("Not authenticated");
+      const { data: { user: currentUser } } = await supabase.auth.getUser();
+      if (!currentUser) throw new Error("Not authenticated");
+
+      // Check if assigning to someone else (not self) - triggers pending request flow
+      const isAssigningToOther = userId !== currentUser.id;
 
       const { data, error } = await supabase
         .from("task_assignments")
         .insert({
           task_id: taskId,
           user_id: userId,
-          assigned_by: user.id,
+          assigned_by: currentUser.id,
         })
         .select(`
           *,
@@ -79,11 +82,36 @@ export const useTaskAssignments = (taskId: string) => {
         throw error;
       }
 
+      // If assigning to someone else, update task assignment_status to 'pending'
+      if (isAssigningToOther) {
+        const { error: updateError } = await supabase
+          .from("tasks")
+          .update({ 
+            assignment_status: 'pending',
+            assigned_user_id: userId,
+            decline_reason: null,
+            last_reminder_sent_at: null,
+          })
+          .eq("id", taskId);
+
+        if (updateError) {
+          console.error("Error updating task assignment status:", updateError);
+        }
+      }
+
       setAssignments((prev) => [...prev, data]);
-      toast({
-        title: "User assigned",
-        description: "User has been assigned to this task",
-      });
+      
+      if (isAssigningToOther) {
+        toast({
+          title: "Task request sent",
+          description: `${data.user?.full_name || 'The user'} will need to accept or decline this task`,
+        });
+      } else {
+        toast({
+          title: "User assigned",
+          description: "You have been assigned to this task",
+        });
+      }
     } catch (error) {
       console.error("Error adding assignment:", error);
       toast({
