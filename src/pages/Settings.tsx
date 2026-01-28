@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
-import { ArrowLeft, User, Building2, CreditCard } from "lucide-react";
+import { ArrowLeft, User, Building2, CreditCard, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import SideNavigation from "@/components/SideNavigation";
@@ -34,10 +34,10 @@ const Settings = () => {
     }
   }, [searchParams]);
 
-  // Removed "Team" tab - Team Members is now a separate standalone page
   const tabs = [
     { id: "account", label: "Account", icon: User, adminOnly: false },
     { id: "organization", label: "Organisation", icon: Building2, adminOnly: true },
+    { id: "team", label: "Team", icon: Users, adminOnly: true, isLink: true },
     { id: "billing", label: "Billing", icon: CreditCard, adminOnly: true },
   ];
 
@@ -70,6 +70,19 @@ const Settings = () => {
               <TabsList className="w-full h-auto flex-wrap justify-start gap-1 bg-muted/50 p-1 rounded-xl mb-6">
                 {visibleTabs.map((tab) => {
                   const Icon = tab.icon;
+                  if (tab.isLink) {
+                    return (
+                      <Button
+                        key={tab.id}
+                        variant="ghost"
+                        onClick={() => navigateOrg("/team-members")}
+                        className="flex items-center gap-2 px-3 py-2 text-sm rounded-lg text-muted-foreground hover:text-foreground hover:bg-background"
+                      >
+                        <Icon className="w-4 h-4" />
+                        <span className="hidden sm:inline">{tab.label}</span>
+                      </Button>
+                    );
+                  }
                   return (
                     <TabsTrigger
                       key={tab.id}
