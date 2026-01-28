@@ -792,6 +792,41 @@ export type Database = {
           },
         ]
       }
+      drive_file_access: {
+        Row: {
+          created_at: string
+          file_id: string
+          granted_by: string | null
+          granted_to: string
+          id: string
+          permission_level: string
+        }
+        Insert: {
+          created_at?: string
+          file_id: string
+          granted_by?: string | null
+          granted_to: string
+          id?: string
+          permission_level?: string
+        }
+        Update: {
+          created_at?: string
+          file_id?: string
+          granted_by?: string | null
+          granted_to?: string
+          id?: string
+          permission_level?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "drive_file_access_file_id_fkey"
+            columns: ["file_id"]
+            isOneToOne: false
+            referencedRelation: "drive_files"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       drive_files: {
         Row: {
           assigned_to: string | null
@@ -1257,6 +1292,65 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      policies: {
+        Row: {
+          category: string | null
+          content: string | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          effective_date: string | null
+          expiry_date: string | null
+          id: string
+          last_reviewed_at: string | null
+          organization_id: string
+          review_frequency_days: number | null
+          status: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          category?: string | null
+          content?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          effective_date?: string | null
+          expiry_date?: string | null
+          id?: string
+          last_reviewed_at?: string | null
+          organization_id: string
+          review_frequency_days?: number | null
+          status?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          category?: string | null
+          content?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          effective_date?: string | null
+          expiry_date?: string | null
+          id?: string
+          last_reviewed_at?: string | null
+          organization_id?: string
+          review_frequency_days?: number | null
+          status?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "policies_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
         ]
@@ -2141,6 +2235,7 @@ export type Database = {
         Returns: boolean
       }
       is_super_admin: { Args: { _user_id: string }; Returns: boolean }
+      notify_policy_expired: { Args: never; Returns: undefined }
       validate_referral_code: {
         Args: { code: string }
         Returns: {
