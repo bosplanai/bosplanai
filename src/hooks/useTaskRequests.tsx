@@ -64,6 +64,8 @@ export const useTaskRequests = () => {
         .eq("organization_id", organization.id)
         .eq("assigned_user_id", user.id)
         .eq("assignment_status", "pending")
+        // Draft tasks should NOT create visible requests for assignees until published
+        .eq("is_draft", false)
         .is("deleted_at", null)
         .order("created_at", { ascending: false });
 
