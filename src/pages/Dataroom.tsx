@@ -1020,7 +1020,6 @@ By signing below, you acknowledge that you have read, understood, and agree to b
         file_size: file.size,
         mime_type: file.type,
         uploaded_by: user.id,
-        permission: "view",
         folder_id: currentFolderId
       });
       if (dbError) throw dbError;
