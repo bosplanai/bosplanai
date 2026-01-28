@@ -135,7 +135,7 @@ const parseTasksFromContent = (content: string): ParsedTask[] => {
 
 const TaskPopulate = () => {
   const { navigate } = useOrgNavigation();
-  const { isAdmin, isMember, canAccessOperational, canAccessStrategic, loading: roleLoading } = useUserRole();
+  const { isAdmin, isMember, canAccessOperational, canAccessStrategic, canUseTaskPopulate, loading: roleLoading } = useUserRole();
   const { toast } = useToast();
   const { addTask } = useTasks();
   const { addItem: addChecklistItem } = usePersonalChecklist();
@@ -147,8 +147,9 @@ const TaskPopulate = () => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
 
-  // Only Full Access (admin) and Manager (member) users can access
-  const canAccess = isAdmin || isMember;
+  // Only Full Access (admin) and Manager (member) users can access TaskPopulate
+  // Viewer (Team) users have NO access
+  const canAccess = canUseTaskPopulate;
 
   const handleGenerate = async () => {
     if (!prompt.trim()) {
@@ -284,8 +285,9 @@ const TaskPopulate = () => {
         });
       } else {
         // Set default destination based on role permissions
-        // Managers (member role) default to "product" board only
-        const defaultDestination = canAccessOperational ? "personal" : "product";
+        // Managers (member role) can ONLY generate tasks for Product Management
+        // They cannot access Operational or Strategic boards
+        const defaultDestination = "product"; // Always default to product
         const tasksWithDefaults = tasks.map(task => ({
           ...task,
           destination: task.destination || defaultDestination,
