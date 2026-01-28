@@ -224,7 +224,6 @@ export const DeclinedTaskReassignDialog = ({
         .update({
           assigned_user_id: selectedAssignee,
           assignment_status: selectedAssignee === user?.id ? "accepted" : "pending",
-          assignment_responded_at: null,
           decline_reason: null,
         })
         .eq("id", task.id);
