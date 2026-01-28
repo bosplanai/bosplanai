@@ -2003,10 +2003,13 @@ const Drive = () => {
                                 <Edit3 className="w-4 h-4" />
                                 Edit Document
                               </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => deleteFileMutation.mutate(file.id)} className="gap-2 text-destructive focus:text-destructive">
-                                <Trash2 className="w-4 h-4" />
-                                Delete
-                              </DropdownMenuItem>
+                              {/* Delete: Admins can delete any file, others can only delete their own */}
+                              {(isAdmin || file.uploaded_by === user?.id) && (
+                                <DropdownMenuItem onClick={() => deleteFileMutation.mutate(file.id)} className="gap-2 text-destructive focus:text-destructive">
+                                  <Trash2 className="w-4 h-4" />
+                                  Delete
+                                </DropdownMenuItem>
+                              )}
                             </DropdownMenuContent>
                           </DropdownMenu>
                         </div>
