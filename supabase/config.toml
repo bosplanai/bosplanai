@@ -68,3 +68,12 @@ verify_jwt = false
 
 [functions.get-member-emails]
 verify_jwt = false
+
+[functions.create-va-checkout]
+verify_jwt = false
+
+[functions.get-va-subscriptions]
+verify_jwt = false
+
+[functions.cancel-va-subscription]
+verify_jwt = false
