@@ -523,7 +523,14 @@ const Drive = () => {
   });
 
   // Use shared storage hook for real-time updates after purchases
-  const { data: storageUsage = { used: 0, total: 100 * 1024 * 1024, additionalGb: 0 }, invalidate: invalidateStorage } = useDriveStorage(organization?.id);
+  const {
+    data: storageUsage = {
+      used: 0,
+      total: 100 * 1024 * 1024,
+      additionalGb: 0
+    },
+    invalidate: invalidateStorage
+  } = useDriveStorage(organization?.id);
 
   // Fetch team members for assignee filter and reviewer dropdown
   const {
@@ -1499,9 +1506,9 @@ const Drive = () => {
               </span>
             </div>
             <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => {
-          setShowUploadProgress(false);
-          setUploadProgress([]);
-        }}>
+            setShowUploadProgress(false);
+            setUploadProgress([]);
+          }}>
               <X className="w-4 h-4" />
             </Button>
           </div>
@@ -1549,8 +1556,8 @@ const Drive = () => {
                 <span className="hidden sm:inline">/ {formatFileSize(storageUsage.total)}</span>
                 <div className="w-16 sm:w-20 h-2 bg-muted rounded-full overflow-hidden">
                   <div className="h-full bg-primary rounded-full transition-all duration-300" style={{
-                  width: `${Math.min(storagePercentage, 100)}%`
-                }} />
+                    width: `${Math.min(storagePercentage, 100)}%`
+                  }} />
                 </div>
                 <Button variant="ghost" size="sm" className="h-6 px-2 text-xs text-[#E4452C] hover:text-[#E4452C] hover:bg-[#E4452C]/10 ml-1" onClick={handleBuyMoreStorage}>
                   <CreditCard className="w-3 h-3 mr-1" />
@@ -1596,24 +1603,24 @@ const Drive = () => {
             <div className="relative group flex-1 min-w-[140px] max-w-[280px]">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground transition-colors duration-200 group-focus-within:text-primary" />
               <Input type="text" placeholder="Search..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="pl-9 w-full rounded-full bg-background/80 backdrop-blur-sm shadow-sm hover:shadow-md focus:shadow-md transition-all duration-300 text-sm" style={{
-                borderColor: '#8CC646'
-              }} />
+                  borderColor: '#8CC646'
+                }} />
               {searchQuery && <button className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors duration-200 p-0.5 rounded-full hover:bg-muted" onClick={() => setSearchQuery("")}>
                   <X className="w-4 h-4" />
                 </button>}
             </div>
             
             <input type="file" ref={fileInputRef} className="hidden" multiple onChange={e => {
-              if (!e.target.files || e.target.files.length === 0) return;
+                if (!e.target.files || e.target.files.length === 0) return;
 
-              // Open the upload dialog with pre-selected files
-              setPendingUploadFiles(e.target.files);
-              setPendingUploadFolderId(currentFolderId);
-              setUploadDialogOpen(true);
+                // Open the upload dialog with pre-selected files
+                setPendingUploadFiles(e.target.files);
+                setPendingUploadFolderId(currentFolderId);
+                setUploadDialogOpen(true);
 
-              // Allow re-uploading the same file name without needing a refresh
-              if (fileInputRef.current) fileInputRef.current.value = "";
-            }} />
+                // Allow re-uploading the same file name without needing a refresh
+                if (fileInputRef.current) fileInputRef.current.value = "";
+              }} />
             <Button className="bg-primary hover:bg-primary/90 text-primary-foreground dark:text-black gap-1.5 sm:gap-2 rounded-full shadow-sm hover:shadow-md transition-all duration-300 btn-smooth text-xs sm:text-sm px-3 sm:px-4" onClick={() => setUploadDialogOpen(true)} disabled={uploadMutation.isPending}>
               <Upload className="w-4 h-4" />
               <span className="hidden sm:inline">Upload Files</span>
@@ -1634,17 +1641,17 @@ const Drive = () => {
           {/* View Mode Toggle */}
           <div className="flex items-center gap-2 mb-6 sm:mb-8">
             <Button variant={viewMode === "all" ? "default" : "outline"} onClick={() => {
-              setViewMode("all");
-              setCurrentFolderId(null);
-            }} className={`gap-2 rounded-full transition-all duration-300 text-xs sm:text-sm ${viewMode === "all" ? "bg-primary text-primary-foreground dark:text-black" : "hover:bg-secondary"}`}>
+                setViewMode("all");
+                setCurrentFolderId(null);
+              }} className={`gap-2 rounded-full transition-all duration-300 text-xs sm:text-sm ${viewMode === "all" ? "bg-primary text-primary-foreground dark:text-black" : "hover:bg-secondary"}`}>
               <HardDrive className="w-4 h-4" />
               <span>All Files</span>
             </Button>
             <Button variant={viewMode === "shared" ? "default" : "outline"} onClick={() => {
-              setViewMode("shared");
-              setCurrentFolderId(null);
-              setFolderFilter("all");
-            }} className={`gap-2 rounded-full transition-all duration-300 text-xs sm:text-sm ${viewMode === "shared" ? "bg-brand-teal text-white" : "hover:bg-secondary"}`}>
+                setViewMode("shared");
+                setCurrentFolderId(null);
+                setFolderFilter("all");
+              }} className={`gap-2 rounded-full transition-all duration-300 text-xs sm:text-sm ${viewMode === "shared" ? "bg-brand-teal text-white" : "hover:bg-secondary"}`}>
               <Users className="w-4 h-4" />
               <span>Shared with me</span>
               {sharedWithMeFiles.length > 0 && viewMode !== "shared" && <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">
@@ -1666,43 +1673,43 @@ const Drive = () => {
                 {/* Type Filter */}
                 <Select value={typeFilter} onValueChange={v => setTypeFilter(v as FileType)}>
                   <SelectTrigger className="w-[130px] sm:w-[160px] rounded-full bg-card shadow-sm hover:shadow-md transition-all duration-300 text-xs sm:text-sm font-normal gap-1 sm:gap-2" style={{
-                    borderColor: '#8CC646'
-                  }}>
+                      borderColor: '#8CC646'
+                    }}>
                     <File className="w-4 h-4 text-muted-foreground" />
                     <SelectValue placeholder="File type" />
                   </SelectTrigger>
                   <SelectContent className="rounded-xl border-border/60 shadow-lg">
                     {TYPE_FILTERS.map(filter => {
-                      const Icon = filter.icon;
-                      return <SelectItem key={filter.value} value={filter.value} className="rounded-lg">
+                        const Icon = filter.icon;
+                        return <SelectItem key={filter.value} value={filter.value} className="rounded-lg">
                           <span className="flex items-center gap-2">
                             
                             {filter.label}
                           </span>
                         </SelectItem>;
-                    })}
+                      })}
                   </SelectContent>
                 </Select>
 
                 {/* Status Filter */}
                 <Select value={statusFilter} onValueChange={v => setStatusFilter(v as FileStatus)}>
                   <SelectTrigger className="w-[130px] sm:w-[160px] rounded-full bg-card shadow-sm hover:shadow-md transition-all duration-300 text-xs sm:text-sm font-normal gap-1 sm:gap-2" style={{
-                    borderColor: '#8CC646'
-                  }}>
+                      borderColor: '#8CC646'
+                    }}>
                     <Clock className="w-4 h-4 text-muted-foreground" />
                     <SelectValue placeholder="Status" />
                   </SelectTrigger>
                   <SelectContent className="rounded-xl border-border/60 shadow-lg">
                     <SelectItem value="all" className="rounded-lg">All Statuses</SelectItem>
                     {STATUS_OPTIONS.map(status => {
-                      const Icon = status.icon;
-                      return <SelectItem key={status.value} value={status.value} className="rounded-lg">
+                        const Icon = status.icon;
+                        return <SelectItem key={status.value} value={status.value} className="rounded-lg">
                           <span className="flex items-center gap-2">
                             <Icon className={`w-4 h-4 ${status.color}`} />
                             {status.label}
                           </span>
                         </SelectItem>;
-                    })}
+                      })}
                   </SelectContent>
                 </Select>
 
@@ -1710,8 +1717,8 @@ const Drive = () => {
                 {!currentFolderId && <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="outline" className="h-9 sm:h-10 px-2 sm:px-3 rounded-full bg-card shadow-sm hover:shadow-md transition-all duration-300 gap-1 sm:gap-2 min-w-[130px] sm:min-w-[160px] justify-start font-normal text-xs sm:text-sm" style={{
-                      borderColor: '#8CC646'
-                    }}>
+                        borderColor: '#8CC646'
+                      }}>
                       <Folder className="w-4 h-4 text-muted-foreground" />
                       <span className="flex-1 text-left text-xs sm:text-sm font-normal truncate">
                         {folderFilter === "all" ? "All Folders" : folderFilter === "uncategorized" ? "Uncategorized" : allFolders.find(f => f.id === folderFilter)?.name || "Unknown"}
@@ -1739,18 +1746,18 @@ const Drive = () => {
                           {folderFilter === folder.id && <Check className="w-4 h-4" />}
                           <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity ml-1">
                             <Button variant="ghost" size="icon" className="h-5 w-5" onClick={e => {
-                            e.stopPropagation();
-                            setFolderToRename(folder);
-                            setRenameFolderName(folder.name);
-                            setRenameFolderOpen(true);
-                          }}>
+                              e.stopPropagation();
+                              setFolderToRename(folder);
+                              setRenameFolderName(folder.name);
+                              setRenameFolderOpen(true);
+                            }}>
                               <PenLine className="w-3 h-3" />
                             </Button>
                             <Button variant="ghost" size="icon" className="h-5 w-5 text-destructive hover:text-destructive" onClick={e => {
-                            e.stopPropagation();
-                            setFolderToDelete(folder);
-                            setDeleteFolderConfirmOpen(true);
-                          }}>
+                              e.stopPropagation();
+                              setFolderToDelete(folder);
+                              setDeleteFolderConfirmOpen(true);
+                            }}>
                               <Trash2 className="w-3 h-3" />
                             </Button>
                           </div>
@@ -1785,9 +1792,9 @@ const Drive = () => {
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="bg-popover">
                     {STATUS_OPTIONS.map(status => <DropdownMenuItem key={status.value} onClick={() => bulkStatusMutation.mutate({
-                    fileIds: Array.from(selectedFiles),
-                    status: status.value
-                  })} className="gap-2">
+                      fileIds: Array.from(selectedFiles),
+                      status: status.value
+                    })} className="gap-2">
                         <status.icon className={`w-4 h-4 ${status.color}`} />
                         {status.label}
                       </DropdownMenuItem>)}
@@ -1823,60 +1830,60 @@ const Drive = () => {
               <Card className="p-4 bg-card border border-border dark:bg-[#1D2128]">
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   {filteredFolders.map(folder => <div key={folder.id} className={`p-5 rounded-lg cursor-pointer transition-all border-2 bg-[#ffffff] dark:bg-[#2a2f38] ${dragOverFolderId === folder.id ? "border-primary bg-primary/5 scale-[1.02]" : "border-transparent hover:border-[#F5B638]/30 hover:bg-[#ffffff] dark:hover:bg-[#2a2f38]"}`} onClick={() => setCurrentFolderId(folder.id)} onDragOver={e => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  setDragOverFolderId(folder.id);
-                }} onDragEnter={e => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  setDragOverFolderId(folder.id);
-                }} onDragLeave={e => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  if (dragOverFolderId === folder.id) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setDragOverFolderId(folder.id);
+                  }} onDragEnter={e => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setDragOverFolderId(folder.id);
+                  }} onDragLeave={e => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (dragOverFolderId === folder.id) {
+                      setDragOverFolderId(null);
+                    }
+                  }} onDrop={e => {
+                    e.preventDefault();
+                    e.stopPropagation();
                     setDragOverFolderId(null);
-                  }
-                }} onDrop={e => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  setDragOverFolderId(null);
-                  setIsDragging(false);
-                  dragCounter.current = 0;
+                    setIsDragging(false);
+                    dragCounter.current = 0;
 
-                  // Check if this is a file upload from external source
-                  if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-                    // Open the upload dialog with pre-selected files and target folder
-                    setPendingUploadFiles(e.dataTransfer.files);
-                    setPendingUploadFolderId(folder.id);
-                    setUploadDialogOpen(true);
-                    e.dataTransfer.clearData();
-                    return;
-                  }
+                    // Check if this is a file upload from external source
+                    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                      // Open the upload dialog with pre-selected files and target folder
+                      setPendingUploadFiles(e.dataTransfer.files);
+                      setPendingUploadFolderId(folder.id);
+                      setUploadDialogOpen(true);
+                      e.dataTransfer.clearData();
+                      return;
+                    }
 
-                  // Otherwise, it's an internal file move
-                  const fileId = e.dataTransfer.getData("fileId");
-                  if (fileId) {
-                    singleFileMoveeMutation.mutate({
-                      fileId,
-                      folderId: folder.id
-                    });
-                  }
-                }}>
+                    // Otherwise, it's an internal file move
+                    const fileId = e.dataTransfer.getData("fileId");
+                    if (fileId) {
+                      singleFileMoveeMutation.mutate({
+                        fileId,
+                        folderId: folder.id
+                      });
+                    }
+                  }}>
                       <div className="flex flex-col items-center text-center relative group">
                         <div className="absolute top-0 right-0 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
                           <Button variant="ghost" size="icon" className="h-7 w-7" onClick={e => {
-                        e.stopPropagation();
-                        setFolderToRename(folder);
-                        setRenameFolderName(folder.name);
-                        setRenameFolderOpen(true);
-                      }}>
+                          e.stopPropagation();
+                          setFolderToRename(folder);
+                          setRenameFolderName(folder.name);
+                          setRenameFolderOpen(true);
+                        }}>
                             <PenLine className="w-3.5 h-3.5" />
                           </Button>
                           <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" onClick={e => {
-                        e.stopPropagation();
-                        setFolderToDelete(folder);
-                        setDeleteFolderConfirmOpen(true);
-                      }}>
+                          e.stopPropagation();
+                          setFolderToDelete(folder);
+                          setDeleteFolderConfirmOpen(true);
+                        }}>
                             <Trash2 className="w-3.5 h-3.5" />
                           </Button>
                         </div>
@@ -1929,15 +1936,15 @@ const Drive = () => {
                   </>}
               </Card> : <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {recentFiles.map(file => {
-                const statusDisplay = STATUS_DISPLAY[file.status] || STATUS_DISPLAY.not_opened;
-                const uploaderName = profileMap[file.uploaded_by] || "Unknown";
-                const folder = allFolders.find(f => f.id === file.folder_id);
-                return <Card key={file.id} className="bg-white dark:bg-[#1D2128] border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden hover:shadow-lg transition-shadow cursor-grab active:cursor-grabbing" draggable onDragStart={e => {
-                  e.dataTransfer.setData("fileId", file.id);
-                  e.dataTransfer.effectAllowed = "move";
-                }} onDragEnd={() => {
-                  setDragOverFolderId(null);
-                }}>
+                  const statusDisplay = STATUS_DISPLAY[file.status] || STATUS_DISPLAY.not_opened;
+                  const uploaderName = profileMap[file.uploaded_by] || "Unknown";
+                  const folder = allFolders.find(f => f.id === file.folder_id);
+                  return <Card key={file.id} className="bg-white dark:bg-[#1D2128] border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden hover:shadow-lg transition-shadow cursor-grab active:cursor-grabbing" draggable onDragStart={e => {
+                    e.dataTransfer.setData("fileId", file.id);
+                    e.dataTransfer.effectAllowed = "move";
+                  }} onDragEnd={() => {
+                    setDragOverFolderId(null);
+                  }}>
                       {/* Header with file icon and version */}
                       <div className="p-4 pb-2">
                         <div className="flex items-start justify-between mb-2">
@@ -1948,15 +1955,15 @@ const Drive = () => {
                             <div>
                               <div className="flex items-center gap-2">
                                 <h3 className="font-semibold text-foreground dark:text-white truncate max-w-[140px]" style={{
-                              fontSize: `${0.875 * driveTextSize}rem`
-                            }}>{file.name.replace(/\.[^/.]+$/, "")}</h3>
+                                fontSize: `${0.875 * driveTextSize}rem`
+                              }}>{file.name.replace(/\.[^/.]+$/, "")}</h3>
                                 <span className="font-medium text-muted-foreground dark:text-white/70 bg-muted dark:bg-[#2a2f38] px-1.5 py-0.5 rounded" style={{
-                              fontSize: `${0.75 * driveTextSize}rem`
-                            }}>V{file.version}</span>
+                                fontSize: `${0.75 * driveTextSize}rem`
+                              }}>V{file.version}</span>
                               </div>
                               <p className="text-muted-foreground dark:text-white/60" style={{
-                            fontSize: `${0.75 * driveTextSize}rem`
-                          }}>Uploaded by {uploaderName.split(" ")[0]}. {uploaderName.split(" ")[1]?.[0] || ""}</p>
+                              fontSize: `${0.75 * driveTextSize}rem`
+                            }}>Uploaded by {uploaderName.split(" ")[0]}. {uploaderName.split(" ")[1]?.[0] || ""}</p>
                             </div>
                           </div>
                           <DropdownMenu>
@@ -1975,9 +1982,9 @@ const Drive = () => {
                                 Download
                               </DropdownMenuItem>
                               <DropdownMenuItem onClick={() => {
-                            setFileToMove(file);
-                            setSingleFileMoveDialogOpen(true);
-                          }} className="gap-2">
+                              setFileToMove(file);
+                              setSingleFileMoveDialogOpen(true);
+                            }} className="gap-2">
                                 <FolderInput className="w-4 h-4" />
                                 Move to folder
                               </DropdownMenuItem>
@@ -1990,9 +1997,9 @@ const Drive = () => {
                                 Edit Details
                               </DropdownMenuItem>
                               <DropdownMenuItem onClick={() => {
-                            setDocumentEditorFile(file);
-                            setDocumentEditorOpen(true);
-                          }} className="gap-2">
+                              setDocumentEditorFile(file);
+                              setDocumentEditorOpen(true);
+                            }} className="gap-2">
                                 <Edit3 className="w-4 h-4" />
                                 Edit Document
                               </DropdownMenuItem>
@@ -2017,13 +2024,13 @@ const Drive = () => {
                               Restricted
                             </Badge>}
                           {file.file_category && CATEGORY_DISPLAY[file.file_category] && (() => {
-                        const category = CATEGORY_DISPLAY[file.file_category!];
-                        const CategoryIcon = category.icon;
-                        return <Badge variant="outline" className={`text-xs gap-1 ${category.bgColor} ${category.textColor} ${category.borderColor}`}>
+                          const category = CATEGORY_DISPLAY[file.file_category!];
+                          const CategoryIcon = category.icon;
+                          return <Badge variant="outline" className={`text-xs gap-1 ${category.bgColor} ${category.textColor} ${category.borderColor}`}>
                                   <CategoryIcon className="w-3 h-3" />
                                   {category.label}
                                 </Badge>;
-                      })()}
+                        })()}
                           {file.requires_signature && <Badge variant="outline" className={`text-xs gap-1 ${file.signature_status === 'signed' ? 'bg-green-500/10 text-green-600 border-green-500/20' : 'bg-blue-500/10 text-blue-600 border-blue-500/20'}`}>
                               <PenLine className="w-3 h-3" />
                               {file.signature_status === 'signed' ? 'Signed' : 'Awaiting Signature'}
@@ -2067,16 +2074,16 @@ const Drive = () => {
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="start" className="bg-popover">
                               {STATUS_OPTIONS.filter(opt => opt.value !== "binned").map(option => {
-                            const Icon = option.icon;
-                            return <DropdownMenuItem key={option.value} onClick={() => updateStatusMutation.mutate({
-                              fileId: file.id,
-                              status: option.value
-                            })} className={`gap-2 ${file.status === option.value ? "bg-accent" : ""}`}>
+                              const Icon = option.icon;
+                              return <DropdownMenuItem key={option.value} onClick={() => updateStatusMutation.mutate({
+                                fileId: file.id,
+                                status: option.value
+                              })} className={`gap-2 ${file.status === option.value ? "bg-accent" : ""}`}>
                                     <Icon className={`w-4 h-4 ${option.color}`} />
                                     {option.label}
                                     {file.status === option.value && <Check className="w-4 h-4 ml-auto" />}
                                   </DropdownMenuItem>;
-                          })}
+                            })}
                             </DropdownMenuContent>
                           </DropdownMenu>
                         </div>
@@ -2085,7 +2092,7 @@ const Drive = () => {
                           </p>}
                       </div>
                     </Card>;
-              })}
+                })}
               </div>}
           </div>
 
@@ -2177,14 +2184,14 @@ const Drive = () => {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => {
-            setRenameFolderOpen(false);
-            setFolderToRename(null);
-            setRenameFolderName("");
-          }}>Cancel</Button>
+              setRenameFolderOpen(false);
+              setFolderToRename(null);
+              setRenameFolderName("");
+            }}>Cancel</Button>
             <Button className="bg-primary hover:bg-primary/90" onClick={() => folderToRename && renameFolderMutation.mutate({
-            folderId: folderToRename.id,
-            name: renameFolderName
-          })} disabled={!renameFolderName.trim() || renameFolderMutation.isPending}>
+              folderId: folderToRename.id,
+              name: renameFolderName
+            })} disabled={!renameFolderName.trim() || renameFolderMutation.isPending}>
               Rename
             </Button>
           </DialogFooter>
@@ -2204,9 +2211,9 @@ const Drive = () => {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => {
-            setDeleteFolderConfirmOpen(false);
-            setFolderToDelete(null);
-          }}>Cancel</Button>
+              setDeleteFolderConfirmOpen(false);
+              setFolderToDelete(null);
+            }}>Cancel</Button>
             <Button variant="destructive" onClick={() => folderToDelete && deleteFolderMutation.mutate(folderToDelete.id)} disabled={deleteFolderMutation.isPending}>
               Delete
             </Button>
@@ -2223,16 +2230,16 @@ const Drive = () => {
           </DialogHeader>
           <div className="py-4 space-y-2 max-h-64 overflow-y-auto">
             <Button variant={currentFolderId === null ? "secondary" : "ghost"} className="w-full justify-start gap-2" onClick={() => bulkMoveMutation.mutate({
-            fileIds: Array.from(selectedFiles),
-            folderId: null
-          })} disabled={currentFolderId === null || bulkMoveMutation.isPending}>
+              fileIds: Array.from(selectedFiles),
+              folderId: null
+            })} disabled={currentFolderId === null || bulkMoveMutation.isPending}>
               <Folder className="w-4 h-4" />
               My Files
             </Button>
             {allFolders.map(folder => <Button key={folder.id} variant={folder.id === currentFolderId ? "secondary" : "ghost"} className="w-full justify-start gap-2" onClick={() => bulkMoveMutation.mutate({
-            fileIds: Array.from(selectedFiles),
-            folderId: folder.id
-          })} disabled={folder.id === currentFolderId || bulkMoveMutation.isPending}>
+              fileIds: Array.from(selectedFiles),
+              folderId: folder.id
+            })} disabled={folder.id === currentFolderId || bulkMoveMutation.isPending}>
                 <Folder className="w-4 h-4 text-orange-400" />
                 {folder.name}
               </Button>)}
@@ -2251,25 +2258,25 @@ const Drive = () => {
           </DialogHeader>
           <div className="py-4 space-y-2 max-h-64 overflow-y-auto">
             <Button variant={fileToMove?.folder_id === null ? "secondary" : "ghost"} className="w-full justify-start gap-2" onClick={() => fileToMove && singleFileMoveeMutation.mutate({
-            fileId: fileToMove.id,
-            folderId: null
-          })} disabled={fileToMove?.folder_id === null || singleFileMoveeMutation.isPending}>
+              fileId: fileToMove.id,
+              folderId: null
+            })} disabled={fileToMove?.folder_id === null || singleFileMoveeMutation.isPending}>
               <File className="w-4 h-4" />
               Uncategorized (No folder)
             </Button>
             {allFolders.map(folder => <Button key={folder.id} variant={folder.id === fileToMove?.folder_id ? "secondary" : "ghost"} className="w-full justify-start gap-2" onClick={() => fileToMove && singleFileMoveeMutation.mutate({
-            fileId: fileToMove.id,
-            folderId: folder.id
-          })} disabled={folder.id === fileToMove?.folder_id || singleFileMoveeMutation.isPending}>
+              fileId: fileToMove.id,
+              folderId: folder.id
+            })} disabled={folder.id === fileToMove?.folder_id || singleFileMoveeMutation.isPending}>
                 <Folder className="w-4 h-4 text-orange-400" />
                 {folder.name}
               </Button>)}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => {
-            setSingleFileMoveDialogOpen(false);
-            setFileToMove(null);
-          }}>Cancel</Button>
+              setSingleFileMoveDialogOpen(false);
+              setFileToMove(null);
+            }}>Cancel</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -2282,14 +2289,14 @@ const Drive = () => {
           </DialogHeader>
           <div className="py-4 space-y-3 max-h-96 overflow-y-auto">
             {fileVersions.map(version => {
-            const uploaderName = profileMap[version.uploaded_by] || "Unknown";
-            const isLatestVersion = version.version === Math.max(...fileVersions.map(v => v.version));
-            const statusDisplay = STATUS_DISPLAY[version.status] || {
-              label: version.status,
-              color: "text-muted-foreground",
-              bgColor: "bg-muted"
-            };
-            return <div key={version.id} className={`flex items-center justify-between p-4 rounded-lg border ${isLatestVersion ? "border-primary bg-primary/5" : "border-border"}`}>
+              const uploaderName = profileMap[version.uploaded_by] || "Unknown";
+              const isLatestVersion = version.version === Math.max(...fileVersions.map(v => v.version));
+              const statusDisplay = STATUS_DISPLAY[version.status] || {
+                label: version.status,
+                color: "text-muted-foreground",
+                bgColor: "bg-muted"
+              };
+              return <div key={version.id} className={`flex items-center justify-between p-4 rounded-lg border ${isLatestVersion ? "border-primary bg-primary/5" : "border-border"}`}>
                   <div className="flex items-center gap-3 flex-1 min-w-0">
                     <div className="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center flex-shrink-0">
                       <FileText className="w-5 h-5 text-orange-500" />
@@ -2318,16 +2325,16 @@ const Drive = () => {
                       <Download className="w-4 h-4" />
                     </Button>
                     {!isLatestVersion && fileVersions.length > 1 && <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => {
-                  deleteFileMutation.mutate(version.id);
-                  queryClient.invalidateQueries({
-                    queryKey: ["file-versions"]
-                  });
-                }} title="Delete this version">
+                    deleteFileMutation.mutate(version.id);
+                    queryClient.invalidateQueries({
+                      queryKey: ["file-versions"]
+                    });
+                  }} title="Delete this version">
                         <Trash2 className="w-4 h-4" />
                       </Button>}
                   </div>
                 </div>;
-          })}
+            })}
             {fileVersions.length === 0 && <p className="text-center text-muted-foreground py-4">No version history available</p>}
           </div>
           <DialogFooter>
@@ -2338,11 +2345,11 @@ const Drive = () => {
 
       {/* Edit File Details Dialog */}
       <Dialog open={editFileDialogOpen} onOpenChange={open => {
-      if (!open) {
-        setEditFileDialogOpen(false);
-        setFileToEdit(null);
-      }
-    }}>
+        if (!open) {
+          setEditFileDialogOpen(false);
+          setFileToEdit(null);
+        }
+      }}>
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Edit File Details</DialogTitle>
@@ -2378,33 +2385,20 @@ const Drive = () => {
                 </SelectContent>
               </Select>
             </div>
-            <div>
-              <Label>Assigned Reviewer</Label>
-              <Select value={editFileAssignedTo || "unassigned"} onValueChange={val => setEditFileAssignedTo(val === "unassigned" ? null : val)}>
-                <SelectTrigger className="mt-2">
-                  <SelectValue placeholder="Select reviewer" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="unassigned">Unassigned</SelectItem>
-                  {teamMembers.map(member => <SelectItem key={member.id} value={member.id}>
-                      {member.full_name}
-                    </SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
+            
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => {
-            setEditFileDialogOpen(false);
-            setFileToEdit(null);
-          }}>Cancel</Button>
+              setEditFileDialogOpen(false);
+              setFileToEdit(null);
+            }}>Cancel</Button>
             <Button className="bg-primary hover:bg-primary/90" onClick={() => fileToEdit && updateFileMetadataMutation.mutate({
-            fileId: fileToEdit.id,
-            name: editFileName,
-            description: editFileDescription || null,
-            folder_id: editFileFolderId,
-            assigned_to: editFileAssignedTo
-          })} disabled={!editFileName.trim() || updateFileMetadataMutation.isPending}>
+              fileId: fileToEdit.id,
+              name: editFileName,
+              description: editFileDescription || null,
+              folder_id: editFileFolderId,
+              assigned_to: editFileAssignedTo
+            })} disabled={!editFileName.trim() || updateFileMetadataMutation.isPending}>
               Save Changes
             </Button>
           </DialogFooter>
@@ -2471,30 +2465,30 @@ const Drive = () => {
 
       {/* File Upload Dialog with permissions */}
       <FileUploadDialog open={uploadDialogOpen} onOpenChange={open => {
-      setUploadDialogOpen(open);
-      if (!open) {
+        setUploadDialogOpen(open);
+        if (!open) {
+          setPendingUploadFiles(null);
+          setPendingUploadFolderId(null);
+        }
+      }} teamMembers={teamMembers} folders={allFolders} currentFolderId={pendingUploadFolderId ?? currentFolderId} initialFiles={pendingUploadFiles} onClearInitialFiles={() => {
         setPendingUploadFiles(null);
         setPendingUploadFolderId(null);
-      }
-    }} teamMembers={teamMembers} folders={allFolders} currentFolderId={pendingUploadFolderId ?? currentFolderId} initialFiles={pendingUploadFiles} onClearInitialFiles={() => {
-      setPendingUploadFiles(null);
-      setPendingUploadFolderId(null);
-    }} onUpload={async (files, options) => {
-      await uploadMutation.mutateAsync({
-        files,
-        targetFolderId: options.folderId,
-        fileCategory: options.fileCategory,
-        isRestricted: options.isRestricted,
-        requiresSignature: options.requiresSignature,
-        assignedUsers: options.assignedUsers
-      });
-    }} onCreateFolder={async name => {
-      const result = await createFolderMutation.mutateAsync(name);
-      return result ? {
-        id: result.id,
-        name: result.name
-      } : null;
-    }} />
+      }} onUpload={async (files, options) => {
+        await uploadMutation.mutateAsync({
+          files,
+          targetFolderId: options.folderId,
+          fileCategory: options.fileCategory,
+          isRestricted: options.isRestricted,
+          requiresSignature: options.requiresSignature,
+          assignedUsers: options.assignedUsers
+        });
+      }} onCreateFolder={async name => {
+        const result = await createFolderMutation.mutateAsync(name);
+        return result ? {
+          id: result.id,
+          name: result.name
+        } : null;
+      }} />
 
       {/* Document Editor Dialog */}
       <DocumentEditorDialog open={documentEditorOpen} onOpenChange={setDocumentEditorOpen} file={documentEditorFile} />
