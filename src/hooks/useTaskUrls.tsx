@@ -43,6 +43,32 @@ export const useTaskUrls = (taskId: string | null) => {
     fetchUrls();
   }, [fetchUrls]);
 
+  // Realtime updates so newly added URLs (e.g. right after task creation)
+  // show up on the card without requiring a full tasks refetch.
+  useEffect(() => {
+    if (!taskId) return;
+
+    const channel = supabase
+      .channel(`task-urls-${taskId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "task_urls",
+          filter: `task_id=eq.${taskId}`,
+        },
+        () => {
+          fetchUrls();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [taskId, fetchUrls]);
+
   const addUrl = async (
     url: string,
     title: string | null,
