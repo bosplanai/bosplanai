@@ -59,6 +59,7 @@ interface SortableTaskCardProps {
   onPriorityChange?: (priority: TaskPriority) => void;
   onStatusChange?: (status: "todo" | "complete") => void;
   onAssignmentsRefetch?: () => void;
+  onTaskBecamePending?: (taskId: string) => void;
   className?: string;
   style?: CSSProperties;
 }
@@ -103,6 +104,7 @@ const SortableTaskCard = memo(({
   onPriorityChange,
   onStatusChange,
   onAssignmentsRefetch,
+  onTaskBecamePending,
   className, 
   style 
 }: SortableTaskCardProps) => {
@@ -130,7 +132,7 @@ const SortableTaskCard = memo(({
     assignments: hookAssignments, 
     toggleAssignment, 
     isUserAssigned: hookIsUserAssigned 
-  } = useTaskAssignments(id);
+  } = useTaskAssignments(id, onTaskBecamePending);
 
 
   // Use prop assignments if available (from parent's prefetch), otherwise fall back to hook data
