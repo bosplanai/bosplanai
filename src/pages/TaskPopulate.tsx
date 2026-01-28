@@ -2,6 +2,7 @@ import { useState, useCallback } from "react";
 import { useOrgNavigation } from "@/hooks/useOrgNavigation";
 import { Send, Sparkles, Loader2, AlertCircle, RotateCcw, ArrowLeft } from "lucide-react";
 import SideNavigation from "@/components/SideNavigation";
+import BetaFooter from "@/components/BetaFooter";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -641,6 +642,7 @@ const TaskPopulate = () => {
       </div>
       
       <SideNavigation />
+      <BetaFooter />
     </div>
   );
 };

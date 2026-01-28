@@ -27,6 +27,7 @@ import { FileUploadDialog } from "@/components/drive/FileUploadDialog";
 import { Badge } from "@/components/ui/badge";
 import { DocumentEditorDialog } from "@/components/drive/DocumentEditorDialog";
 import { NotificationBell } from "@/components/NotificationBell";
+import BetaFooter from "@/components/BetaFooter";
 import { useDriveStorage, DRIVE_STORAGE_QUERY_KEY } from "@/hooks/useDriveStorage";
 
 // Upload progress state type
@@ -2562,6 +2563,7 @@ const Drive = () => {
         </DialogContent>
       </Dialog>
 
+      <BetaFooter />
     </div>;
 };
 export default Drive;

@@ -58,6 +58,7 @@ import CalendarExplainer from "./pages/CalendarExplainer";
 import Pricing from "./pages/Pricing";
 import VirtualAssistants from "./pages/VirtualAssistants";
 import AcceptInvite from "./pages/AcceptInvite";
+import FeedbackForm from "./pages/FeedbackForm";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 const queryClient = new QueryClient();
@@ -327,6 +328,7 @@ const AppRoutes = () => (
                 <Route path="/calendar2" element={<CalendarExplainer />} />
                 <Route path="/pricing" element={<Pricing />} />
                 <Route path="/accept-invite" element={<AcceptInvite />} />
+                <Route path="/feedback-form" element={<FeedbackForm />} />
                 
                 {/* Super Admin Routes - no org prefix */}
                 <Route path="/superadmin/login" element={<SuperAdminAuth />} />

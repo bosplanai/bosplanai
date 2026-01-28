@@ -33,6 +33,7 @@ import { FilePermissionsDialog } from "@/components/dataroom/FilePermissionsDial
 import { FolderPermissionsDialog } from "@/components/dataroom/FolderPermissionsDialog";
 import { AddToFolderDropdown } from "@/components/dataroom/AddToFolderDropdown";
 import { useNdaResignCheck } from "@/hooks/useNdaResignCheck";
+import BetaFooter from "@/components/BetaFooter";
 import { DataRoomRecyclingBin } from "@/components/dataroom/DataRoomRecyclingBin";
 import { DataRoomBins } from "@/components/dataroom/DataRoomBins";
 import { useDataroomStorage, DATAROOM_STORAGE_QUERY_KEY } from "@/hooks/useDataroomStorage";
@@ -2486,6 +2487,7 @@ By signing below, you acknowledge that you have read, understood, and agree to b
         dataRoomId={activeRoomId || ""}
         organizationId={selectedRoom?.organization_id || organization?.id || ""}
       />
+      <BetaFooter />
     </div>;
 };
 export default Dataroom;

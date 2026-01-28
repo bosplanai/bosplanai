@@ -3,6 +3,7 @@ import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PolicyDatabase } from "@/components/policies/PolicyDatabase";
 import SideNavigation from "@/components/SideNavigation";
+import BetaFooter from "@/components/BetaFooter";
 import OrganizationSwitcher from "@/components/OrganizationSwitcher";
 import { NotificationBell } from "@/components/NotificationBell";
 
@@ -31,6 +32,7 @@ const Policies = () => {
         </main>
       </div>
       <SideNavigation />
+      <BetaFooter />
     </div>
   );
 };

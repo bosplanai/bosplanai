@@ -1,4 +1,5 @@
 import ProductManagementBoard from "@/components/ProductManagementBoard";
+import BetaFooter from "@/components/BetaFooter";
 import SideNavigation from "@/components/SideNavigation";
 import OrganizationSwitcher from "@/components/OrganizationSwitcher";
 import { useAuth } from "@/hooks/useAuth";
@@ -51,6 +52,7 @@ const ProductManagement = () => {
         <ProductManagementBoard />
       </div>
       <SideNavigation activeItem={activeSideItem} onItemClick={setActiveSideItem} />
+      <BetaFooter />
     </div>;
 };
 export default ProductManagement;

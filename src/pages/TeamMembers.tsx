@@ -16,6 +16,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, UserPlus, MoreHorizontal, Mail, Shield, User, Eye, Trash2, Clock, Loader2, X, RefreshCw, Upload, Download, FileSpreadsheet, CheckCircle2, XCircle, KeyRound, Building2, Pencil } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
+import BetaFooter from "@/components/BetaFooter";
 import { z } from "zod";
 type AppRole = "admin" | "member" | "viewer";
 const emailSchema = z.string().email("Please enter a valid email address");
@@ -1440,6 +1441,7 @@ const TeamMembers = () => {
           </DialogContent>
         </Dialog>
       </div>
+      <BetaFooter />
     </div>;
 };
 export default TeamMembers;

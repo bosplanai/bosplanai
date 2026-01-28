@@ -15,6 +15,7 @@ import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import SideNavigation from "@/components/SideNavigation";
+import BetaFooter from "@/components/BetaFooter";
 import ActionBar from "@/components/ActionBar";
 import { useTeamMembers } from "@/hooks/useTeamMembers";
 import { useOrganization } from "@/hooks/useOrganization";
@@ -672,6 +673,7 @@ End of Audit Log
 
       {/* Right Side Navigation */}
       <SideNavigation />
+      <BetaFooter />
     </div>;
 };
 export default MagicMergeTool;

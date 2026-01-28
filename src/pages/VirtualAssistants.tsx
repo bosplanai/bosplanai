@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Code, Headphones, TrendingUp, Share2, Palette, BookOpen, Users, Loader2 } from "lucide-react";
 import SideNavigation from "@/components/SideNavigation";
+import BetaFooter from "@/components/BetaFooter";
 import { useAuth } from "@/hooks/useAuth";
 import { useOrganization } from "@/hooks/useOrganization";
 import OrganizationSwitcher from "@/components/OrganizationSwitcher";
@@ -213,6 +214,7 @@ const VirtualAssistants = () => {
         </div>
       </div>
       <SideNavigation activeItem={activeSideItem} onItemClick={setActiveSideItem} />
+      <BetaFooter />
     </div>;
 };
 export default VirtualAssistants;

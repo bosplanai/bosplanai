@@ -4,6 +4,7 @@ import { ArrowLeft, User, Building2, CreditCard, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import SideNavigation from "@/components/SideNavigation";
+import BetaFooter from "@/components/BetaFooter";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useOrgNavigation } from "@/hooks/useOrgNavigation";
 
@@ -116,6 +117,7 @@ const Settings = () => {
         </div>
       </div>
       <SideNavigation activeItem="settings" />
+      <BetaFooter />
     </div>
   );
 };
