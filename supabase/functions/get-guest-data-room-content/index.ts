@@ -1,5 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { encode as hexEncode } from "https://deno.land/std@0.208.0/encoding/hex.ts";
+import * as bcrypt from "https://deno.land/x/bcrypt@v0.4.1/mod.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -13,13 +13,9 @@ interface GetContentRequest {
   folderId?: string | null;
 }
 
-// Hash password using SHA-256
-async function hashPassword(password: string): Promise<string> {
-  const encoder = new TextEncoder();
-  const data = encoder.encode(password);
-  const hashBuffer = await crypto.subtle.digest("SHA-256", data);
-  return new TextDecoder().decode(hexEncode(new Uint8Array(hashBuffer)));
-}
+// Rate limiting configuration
+const MAX_ATTEMPTS = 5;
+const LOCKOUT_MINUTES = 15;
 
 Deno.serve(async (req) => {
   // Handle CORS preflight requests
@@ -50,11 +46,28 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Hash the provided password
-    const hashedPassword = await hashPassword(actualPassword.toUpperCase());
+    const normalizedEmail = email.toLowerCase().trim();
+
+    // Rate limiting check - look for recent failed attempts
+    const { data: recentAttempts, error: attemptsError } = await supabaseAdmin
+      .from("guest_auth_attempts")
+      .select("id, created_at")
+      .eq("email", normalizedEmail)
+      .eq("success", false)
+      .gte("created_at", new Date(Date.now() - LOCKOUT_MINUTES * 60 * 1000).toISOString());
+
+    if (!attemptsError && recentAttempts && recentAttempts.length >= MAX_ATTEMPTS) {
+      console.log("Rate limit exceeded for email:", normalizedEmail);
+      return new Response(
+        JSON.stringify({ 
+          error: "Too many failed attempts. Please try again later.",
+          retryAfter: LOCKOUT_MINUTES 
+        }),
+        { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
     // Look up the invite by email (accepted only)
-    // NOTE: use limit(1)+maybeSingle() to avoid PGRST116 when there are 0 (or multiple) matches.
     const { data: invite, error: inviteError } = await supabaseAdmin
       .from("data_room_invites")
       .select(
@@ -70,13 +83,15 @@ Deno.serve(async (req) => {
         nda_signed_at
       `
       )
-      .ilike("email", email)
+      .ilike("email", normalizedEmail)
       .eq("status", "accepted")
       .order("expires_at", { ascending: false })
       .limit(1)
       .maybeSingle();
 
     if (inviteError || !invite) {
+      // Log failed attempt
+      await logAuthAttempt(supabaseAdmin, normalizedEmail, false);
       console.error("Invite lookup error:", { inviteError, found: !!invite });
       return new Response(
         JSON.stringify({ error: "Invalid credentials or no access to any data room" }),
@@ -84,14 +99,44 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Verify password matches
-    if (invite.access_password !== hashedPassword) {
+    // Verify password using bcrypt (or fall back to legacy SHA-256 check for migration)
+    let passwordValid = false;
+    const storedHash = invite.access_password;
+    
+    if (storedHash) {
+      // Check if it's a bcrypt hash (starts with $2a$, $2b$, or $2y$)
+      if (storedHash.startsWith("$2")) {
+        // New bcrypt format - compare with uppercase password
+        passwordValid = await bcrypt.compare(actualPassword.toUpperCase(), storedHash);
+      } else {
+        // Legacy SHA-256 format - use old comparison method for migration
+        const legacyHash = await legacyHashPassword(actualPassword.toUpperCase());
+        passwordValid = (storedHash === legacyHash);
+        
+        // If valid, upgrade to bcrypt
+        if (passwordValid) {
+          const newBcryptHash = await bcrypt.hash(actualPassword.toUpperCase());
+          await supabaseAdmin
+            .from("data_room_invites")
+            .update({ access_password: newBcryptHash })
+            .eq("id", invite.id);
+          console.log("Upgraded password hash to bcrypt for invite:", invite.id);
+        }
+      }
+    }
+
+    if (!passwordValid) {
+      // Log failed attempt
+      await logAuthAttempt(supabaseAdmin, normalizedEmail, false);
       console.error("Password mismatch");
       return new Response(
         JSON.stringify({ error: "Invalid password" }),
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
+
+    // Log successful attempt and clear failed attempts
+    await logAuthAttempt(supabaseAdmin, normalizedEmail, true);
 
     // Check if invite has expired
     if (new Date(invite.expires_at) < new Date()) {
@@ -130,7 +175,7 @@ Deno.serve(async (req) => {
         .from("data_room_nda_signatures")
         .select("nda_content_hash")
         .eq("data_room_id", dataRoom.id)
-        .ilike("signer_email", email)
+        .ilike("signer_email", normalizedEmail)
         .order("signed_at", { ascending: false })
         .limit(1)
         .single();
@@ -233,8 +278,8 @@ Deno.serve(async (req) => {
     await supabaseAdmin.from("data_room_activity").insert({
       data_room_id: dataRoom.id,
       organization_id: dataRoom.organization_id,
-      user_name: invite.guest_name || email.split("@")[0],
-      user_email: email.toLowerCase(),
+      user_name: invite.guest_name || normalizedEmail.split("@")[0],
+      user_email: normalizedEmail,
       action: folderId ? "folder_viewed" : "data_room_accessed",
       is_guest: true,
       details: folderId ? { folder_id: folderId } : null
@@ -266,3 +311,34 @@ Deno.serve(async (req) => {
     );
   }
 });
+
+// Helper function for legacy SHA-256 password hash (for migration only)
+async function legacyHashPassword(password: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(password);
+  const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+  // Convert to hex string
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+// Helper function to log authentication attempts
+async function logAuthAttempt(supabaseAdmin: any, email: string, success: boolean) {
+  try {
+    await supabaseAdmin
+      .from("guest_auth_attempts")
+      .insert({ email, success });
+    
+    // On successful auth, clean up old failed attempts for this email
+    if (success) {
+      await supabaseAdmin
+        .from("guest_auth_attempts")
+        .delete()
+        .eq("email", email)
+        .eq("success", false);
+    }
+  } catch (error) {
+    console.error("Failed to log auth attempt:", error);
+    // Don't fail the request if logging fails
+  }
+}

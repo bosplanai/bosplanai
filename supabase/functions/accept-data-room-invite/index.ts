@@ -1,5 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { encode as hexEncode } from "https://deno.land/std@0.208.0/encoding/hex.ts";
+import * as bcrypt from "https://deno.land/x/bcrypt@v0.4.1/mod.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -13,20 +13,12 @@ interface AcceptInviteRequest {
   origin?: string;
 }
 
-// Generate a random alphanumeric password
-function generatePassword(length: number = 8): string {
+// Generate a secure random alphanumeric password (16 characters)
+function generatePassword(length: number = 16): string {
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // Exclude confusing chars like O, 0, I, 1
   const array = new Uint8Array(length);
   crypto.getRandomValues(array);
   return Array.from(array, (byte) => chars[byte % chars.length]).join("");
-}
-
-// Hash password using SHA-256
-async function hashPassword(password: string): Promise<string> {
-  const encoder = new TextEncoder();
-  const data = encoder.encode(password);
-  const hashBuffer = await crypto.subtle.digest("SHA-256", data);
-  return new TextDecoder().decode(hexEncode(new Uint8Array(hashBuffer)));
 }
 
 Deno.serve(async (req) => {
@@ -113,11 +105,12 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Generate a new password for the guest
-    const plainPassword = generatePassword(8);
-    const hashedPassword = await hashPassword(plainPassword);
+    // Generate a new secure password for the guest (16 characters instead of 8)
+    const plainPassword = generatePassword(16);
+    // Hash with bcrypt for secure storage
+    const hashedPassword = await bcrypt.hash(plainPassword);
 
-    // Mark the invite as accepted and store the hashed password
+    // Mark the invite as accepted and store the bcrypt hashed password
     const { error: updateError } = await supabaseAdmin
       .from("data_room_invites")
       .update({ 
@@ -165,7 +158,7 @@ Deno.serve(async (req) => {
                 .header h1 { color: #0d7377; margin-bottom: 10px; font-size: 28px; }
                 .credentials { background: linear-gradient(135deg, #0d7377 0%, #14919b 100%); color: white; padding: 24px; border-radius: 8px; margin: 24px 0; }
                 .credentials-label { font-size: 12px; opacity: 0.9; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px; }
-                .credentials-value { font-size: 20px; font-weight: bold; font-family: monospace; letter-spacing: 2px; }
+                .credentials-value { font-size: 18px; font-weight: bold; font-family: monospace; letter-spacing: 1px; word-break: break-all; }
                 .cta-button { display: block; background-color: #0d7377; color: white !important; padding: 16px 32px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px; text-align: center; margin: 32px auto; max-width: 280px; }
                 .footer { text-align: center; color: #666; font-size: 14px; margin-top: 40px; padding-top: 20px; border-top: 1px solid #eee; }
                 .warning { background: #fff3cd; color: #856404; padding: 12px; border-radius: 6px; font-size: 13px; margin-top: 16px; }
