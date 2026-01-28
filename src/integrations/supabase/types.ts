@@ -1035,6 +1035,27 @@ export type Database = {
           },
         ]
       }
+      guest_auth_attempts: {
+        Row: {
+          created_at: string
+          email: string
+          id: string
+          success: boolean
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          id?: string
+          success?: boolean
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          id?: string
+          success?: boolean
+        }
+        Relationships: []
+      }
       notifications: {
         Row: {
           created_at: string
@@ -2179,6 +2200,7 @@ export type Database = {
       }
       check_ai_usage_allowed: { Args: { org_id: string }; Returns: boolean }
       cleanup_expired_notifications: { Args: never; Returns: undefined }
+      cleanup_guest_auth_attempts: { Args: never; Returns: undefined }
       complete_specialist_signup: {
         Args: {
           _employee_size: string
