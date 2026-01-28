@@ -22,12 +22,17 @@ interface TabNavigationProps {
 }
 
 const TabNavigation = ({ activeTab, onTabChange }: TabNavigationProps) => {
-  const { isAdmin } = useUserRole();
+  const { isAdmin, canAccessOperational, canAccessStrategic } = useUserRole();
 
-  // Filter out admin-only tabs for non-admin users (they should be completely hidden)
-  const visibleTabs = tabs.filter((tab) => !tab.requiresAdmin || isAdmin);
+  // Filter tabs based on actual board access permissions
+  // Viewer and Manager only see Product Management (operational and strategic are hidden)
+  const visibleTabs = tabs.filter((tab) => {
+    if (tab.id === "operational") return canAccessOperational;
+    if (tab.id === "strategic") return canAccessStrategic;
+    return true; // Product Management is always visible
+  });
 
-  // If there's only one visible tab (Product Management for Team users), don't show the navigation
+  // If there's only one visible tab (Product Management for Team/Manager users), don't show the navigation
   if (visibleTabs.length <= 1) {
     return null;
   }

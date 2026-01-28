@@ -163,16 +163,24 @@ const ProjectBoard = () => {
   const {
     canCreateTasks,
     canDeleteTasks,
+    canEditOwnTasks,
+    canAssignTasks,
     isAdmin,
-    isMember
+    isMember,
+    isViewer,
+    canAccessOperational,
+    canAccessStrategic,
   } = useUserRole();
 
   // Non-admin users only have access to Product Management; ensure the board isn't stuck on a hidden tab.
   useEffect(() => {
-    if (!isAdmin && activeTab !== "product") {
+    if (!canAccessOperational && activeTab === "operational") {
       setActiveTab("product");
     }
-  }, [isAdmin, activeTab]);
+    if (!canAccessStrategic && activeTab === "strategic") {
+      setActiveTab("product");
+    }
+  }, [canAccessOperational, canAccessStrategic, activeTab]);
 
   // Client-side task request reminder check - runs when managers/admins load the board
   // This replaces the need for a cron job by checking on user activity
@@ -594,9 +602,17 @@ const ProjectBoard = () => {
               {todoTasks.map(task => {
                   const IconComponent = iconMap[task.icon] || ListTodo;
                   // Team (viewer) users cannot change assignment, and assignment is only available in Product Management
-                  const canAssign = (isAdmin || isMember) && activeTab === "product";
+                  const canAssign = canAssignTasks && activeTab === "product";
+                  
+                  // Determine if current user can edit this task
+                  // Viewer: Cannot edit tasks at all (can only move their assigned tasks)
+                  // Manager: Can edit own tasks only
+                  // Admin: Can edit all tasks
+                  const isOwnTask = task.created_by_user_id === user?.id || task.assigned_user_id === user?.id;
+                  const canEditThisTask = isAdmin || (canEditOwnTasks && isOwnTask);
+                  
                   return <div key={task.id} className="relative group animate-fade-in">
-                      <SortableTaskCard id={task.id} title={task.title} description={task.description} icon={IconComponent} priority={task.priority} organizationId={task.organization_id || undefined} assignedUser={task.assigned_user} assignedUsers={task.task_assignments} createdByUser={task.created_by_user} project={task.project} teamMembers={teamMembers} projects={projectOptions} createdAt={task.created_at} dueDate={task.due_date} completedAt={task.completed_at} status="todo" canEditAttachments={canCreateTasks} onTitleChange={newTitle => handleTitleChange(task.id, newTitle)} onDescriptionChange={newDesc => handleDescriptionChange(task.id, newDesc)} onAssignmentChange={canAssign ? userId => handleAssignmentChange(task.id, userId) : undefined} onDueDateChange={date => handleDueDateChange(task.id, date)} onProjectChange={projectId => handleProjectChange(task.id, projectId)} onPriorityChange={priority => handlePriorityChange(task.id, priority)} onStatusChange={status => handleStatusChange(task.id, status)} />
+                      <SortableTaskCard id={task.id} title={task.title} description={task.description} icon={IconComponent} priority={task.priority} organizationId={task.organization_id || undefined} assignedUser={task.assigned_user} assignedUsers={task.task_assignments} createdByUser={task.created_by_user} project={task.project} teamMembers={teamMembers} projects={projectOptions} createdAt={task.created_at} dueDate={task.due_date} completedAt={task.completed_at} status="todo" canEditAttachments={canEditThisTask} onTitleChange={canEditThisTask ? newTitle => handleTitleChange(task.id, newTitle) : undefined} onDescriptionChange={canEditThisTask ? newDesc => handleDescriptionChange(task.id, newDesc) : undefined} onAssignmentChange={canAssign && canEditThisTask ? userId => handleAssignmentChange(task.id, userId) : undefined} onDueDateChange={canEditThisTask ? date => handleDueDateChange(task.id, date) : undefined} onProjectChange={canEditThisTask ? projectId => handleProjectChange(task.id, projectId) : undefined} onPriorityChange={canEditThisTask ? priority => handlePriorityChange(task.id, priority) : undefined} onStatusChange={status => handleStatusChange(task.id, status)} />
                       {canDeleteTasks && <button onClick={() => handleDeleteTask({
                       id: task.id,
                       title: task.title,
@@ -619,9 +635,14 @@ const ProjectBoard = () => {
                 {completeTasks.map(task => {
                   const IconComponent = iconMap[task.icon] || ListTodo;
                   // Team (viewer) users cannot change assignment, and assignment is only available in Product Management
-                  const canAssign = (isAdmin || isMember) && activeTab === "product";
+                  const canAssign = canAssignTasks && activeTab === "product";
+                  
+                  // Determine if current user can edit this task
+                  const isOwnTask = task.created_by_user_id === user?.id || task.assigned_user_id === user?.id;
+                  const canEditThisTask = isAdmin || (canEditOwnTasks && isOwnTask);
+                  
                   return <div key={task.id} className="relative group animate-fade-in">
-                      <SortableTaskCard id={task.id} title={task.title} description={task.description} icon={IconComponent} priority={task.priority} organizationId={task.organization_id || undefined} assignedUser={task.assigned_user} assignedUsers={task.task_assignments} createdByUser={task.created_by_user} project={task.project} teamMembers={teamMembers} projects={projectOptions} createdAt={task.created_at} dueDate={task.due_date} completedAt={task.completed_at} status="complete" canEditAttachments={canCreateTasks} onTitleChange={newTitle => handleTitleChange(task.id, newTitle)} onDescriptionChange={newDesc => handleDescriptionChange(task.id, newDesc)} onAssignmentChange={canAssign ? userId => handleAssignmentChange(task.id, userId) : undefined} onDueDateChange={date => handleDueDateChange(task.id, date)} onProjectChange={projectId => handleProjectChange(task.id, projectId)} onPriorityChange={priority => handlePriorityChange(task.id, priority)} onStatusChange={status => handleStatusChange(task.id, status)} />
+                      <SortableTaskCard id={task.id} title={task.title} description={task.description} icon={IconComponent} priority={task.priority} organizationId={task.organization_id || undefined} assignedUser={task.assigned_user} assignedUsers={task.task_assignments} createdByUser={task.created_by_user} project={task.project} teamMembers={teamMembers} projects={projectOptions} createdAt={task.created_at} dueDate={task.due_date} completedAt={task.completed_at} status="complete" canEditAttachments={canEditThisTask} onTitleChange={canEditThisTask ? newTitle => handleTitleChange(task.id, newTitle) : undefined} onDescriptionChange={canEditThisTask ? newDesc => handleDescriptionChange(task.id, newDesc) : undefined} onAssignmentChange={canAssign && canEditThisTask ? userId => handleAssignmentChange(task.id, userId) : undefined} onDueDateChange={canEditThisTask ? date => handleDueDateChange(task.id, date) : undefined} onProjectChange={canEditThisTask ? projectId => handleProjectChange(task.id, projectId) : undefined} onPriorityChange={canEditThisTask ? priority => handlePriorityChange(task.id, priority) : undefined} onStatusChange={status => handleStatusChange(task.id, status)} />
                       {canDeleteTasks && <button onClick={() => handleDeleteTask({
                       id: task.id,
                       title: task.title,
