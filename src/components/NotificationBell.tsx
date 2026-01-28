@@ -33,6 +33,8 @@ const NotificationIcon = ({ type }: { type: string }) => {
       return <FolderLock className="h-4 w-4 text-emerald-500" />;
     case "nda_signed":
       return <FileSignature className="h-4 w-4 text-brand-teal" />;
+    case "policy_expired":
+      return <AlertCircle className="h-4 w-4 text-destructive" />;
     default:
       return <Bell className="h-4 w-4 text-muted-foreground" />;
   }

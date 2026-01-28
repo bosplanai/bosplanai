@@ -1000,6 +1000,53 @@ export type Database = {
           },
         ]
       }
+      notifications: {
+        Row: {
+          created_at: string
+          id: string
+          is_read: boolean
+          message: string
+          organization_id: string
+          reference_id: string | null
+          reference_type: string | null
+          title: string
+          type: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          message: string
+          organization_id: string
+          reference_id?: string | null
+          reference_type?: string | null
+          title: string
+          type: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          message?: string
+          organization_id?: string
+          reference_id?: string | null
+          reference_type?: string | null
+          title?: string
+          type?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notifications_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       organization_invites: {
         Row: {
           accepted_at: string | null
@@ -2037,6 +2084,7 @@ export type Database = {
         Returns: Json
       }
       check_ai_usage_allowed: { Args: { org_id: string }; Returns: boolean }
+      cleanup_expired_notifications: { Args: never; Returns: undefined }
       complete_specialist_signup: {
         Args: {
           _employee_size: string

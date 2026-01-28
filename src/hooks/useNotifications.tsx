@@ -45,7 +45,7 @@ export const useNotifications = () => {
         .eq("organization_id", organization.id)
         .gte("created_at", sevenDaysAgoIso)
         .order("created_at", { ascending: false })
-        .limit(50);
+        .limit(20);
 
       if (error) {
         console.error("Error fetching notifications:", error);

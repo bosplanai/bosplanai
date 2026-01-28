@@ -92,3 +92,6 @@ verify_jwt = false
 
 [functions.get-guest-data-room-content]
 verify_jwt = false
+
+[functions.check-pending-task-reminders]
+verify_jwt = false
