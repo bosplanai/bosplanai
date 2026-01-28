@@ -822,6 +822,83 @@ export type Database = {
           },
         ]
       }
+      task_merge_logs: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          id: string
+          merge_type: string
+          organization_id: string
+          performed_by: string
+          reverted_at: string | null
+          source_user_id: string
+          status: string
+          target_user_id: string
+          task_count: number
+          tasks_transferred: Json
+          temporary_end_date: string | null
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          merge_type: string
+          organization_id: string
+          performed_by: string
+          reverted_at?: string | null
+          source_user_id: string
+          status?: string
+          target_user_id: string
+          task_count?: number
+          tasks_transferred?: Json
+          temporary_end_date?: string | null
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          merge_type?: string
+          organization_id?: string
+          performed_by?: string
+          reverted_at?: string | null
+          source_user_id?: string
+          status?: string
+          target_user_id?: string
+          task_count?: number
+          tasks_transferred?: Json
+          temporary_end_date?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_merge_logs_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_merge_logs_performed_by_fkey"
+            columns: ["performed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_merge_logs_source_user_id_fkey"
+            columns: ["source_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_merge_logs_target_user_id_fkey"
+            columns: ["target_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       task_notes: {
         Row: {
           content: string
