@@ -8,6 +8,10 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Loader2, CheckCircle2, XCircle, FileText, Building2, Mail, Shield, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
+
+// Supabase URL for edge function calls
+const SUPABASE_URL = "https://qiikjhvzlwzysbtzhdcd.supabase.co";
 
 interface InviteDetails {
   invite: {
@@ -68,7 +72,7 @@ const DataRoomInvite = () => {
 
     try {
       const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-nda-details?token=${token}&email=${encodeURIComponent(email.trim().toLowerCase())}`,
+        `${SUPABASE_URL}/functions/v1/get-nda-details?token=${token}&email=${encodeURIComponent(email.trim().toLowerCase())}`,
         {
           method: "GET",
           headers: {
@@ -125,7 +129,7 @@ const DataRoomInvite = () => {
     setSigning(true);
     try {
       const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/sign-nda`,
+        `${SUPABASE_URL}/functions/v1/sign-nda`,
         {
           method: "POST",
           headers: {
@@ -159,7 +163,7 @@ const DataRoomInvite = () => {
     setAccepting(true);
     try {
       const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/accept-data-room-invite`,
+        `${SUPABASE_URL}/functions/v1/accept-data-room-invite`,
         {
           method: "POST",
           headers: {
@@ -168,7 +172,7 @@ const DataRoomInvite = () => {
           body: JSON.stringify({ 
             token,
             email: email.trim().toLowerCase(),
-            origin: window.location.origin, // Pass origin for building access link in email
+            origin: window.location.origin,
           }),
         }
       );

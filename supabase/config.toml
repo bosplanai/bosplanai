@@ -80,3 +80,12 @@ verify_jwt = false
 
 [functions.send-data-room-invite]
 verify_jwt = false
+
+[functions.get-nda-details]
+verify_jwt = false
+
+[functions.sign-nda]
+verify_jwt = false
+
+[functions.accept-data-room-invite]
+verify_jwt = false
