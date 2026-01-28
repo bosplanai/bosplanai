@@ -11,7 +11,7 @@ const Policies = () => {
   const { navigate } = useOrgNavigation();
 
   return (
-    <div className="flex min-h-screen bg-background pb-20 md:pb-0">
+    <div className="flex min-h-screen bg-background">
       <div className="flex-1 flex flex-col">
         <header className="flex items-center justify-between px-8 py-4 border-b border-border">
           <div className="flex items-center gap-4">

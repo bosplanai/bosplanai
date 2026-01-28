@@ -576,7 +576,7 @@ const HelpDeskSettings = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background flex flex-col md:flex-row pb-20 md:pb-0">
+    <div className="min-h-screen bg-background flex flex-col md:flex-row">
       {/* Main Content */}
       <div className="flex-1 flex flex-col">
         {/* Header */}

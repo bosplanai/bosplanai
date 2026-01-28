@@ -45,7 +45,7 @@ const Settings = () => {
   const visibleTabs = tabs.filter(tab => !tab.adminOnly || isAdmin);
 
   return (
-    <div className="flex h-screen bg-background pb-20 md:pb-0">
+    <div className="flex h-screen bg-background">
       <div className="flex-1 flex flex-col overflow-hidden">
         <div className="flex-1 overflow-auto p-4 sm:p-6 md:p-8">
           <div className="max-w-4xl mx-auto">

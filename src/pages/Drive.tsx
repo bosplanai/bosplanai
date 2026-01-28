@@ -1478,7 +1478,7 @@ const Drive = () => {
     }
   };
   const storagePercentage = storageUsage.used / storageUsage.total * 100;
-  return <div className="min-h-screen bg-background flex relative pb-20 md:pb-0" onDragEnter={handleDragEnter} onDragLeave={handleDragLeave} onDragOver={handleDragOver} onDrop={handleDrop}>
+  return <div className="min-h-screen bg-background flex relative" onDragEnter={handleDragEnter} onDragLeave={handleDragLeave} onDragOver={handleDragOver} onDrop={handleDrop}>
       {/* Drop zone overlay */}
       {isDragging && <div className="absolute inset-0 z-50 bg-primary/10 backdrop-blur-sm flex items-center justify-center pointer-events-none">
           <div className="bg-card border-4 border-dashed border-primary rounded-2xl p-8 sm:p-12 text-center shadow-xl mx-4">

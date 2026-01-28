@@ -143,7 +143,7 @@ const Invoicing = () => {
   const overdueAbovePercent = (receivablesData.overdueAbove45 / totalReceivables) * 100;
 
   return (
-    <div className="min-h-screen bg-background flex flex-col md:flex-row pb-20 md:pb-0">
+    <div className="min-h-screen bg-background flex flex-col md:flex-row">
       {/* Left Sidebar Menu - hidden on mobile, shown as bottom sheet or drawer alternative */}
       <div className="hidden md:flex w-52 bg-brand-teal flex-col p-4 gap-3">
         <div className="flex items-center gap-2 mb-6">

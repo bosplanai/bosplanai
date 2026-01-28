@@ -113,7 +113,7 @@ const VirtualAssistants = () => {
       setLoadingCheckout(null);
     }
   };
-  return <div className="flex min-h-screen bg-background pb-20 md:pb-0">
+  return <div className="flex min-h-screen bg-background">
       <div className="flex-1 flex flex-col">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-5 p-4 sm:p-6 md:p-8 bg-card/50">

@@ -489,7 +489,7 @@ const CRM = () => {
   };
 
   return (
-    <div className="min-h-screen flex flex-col md:flex-row bg-background pb-20 md:pb-0">
+    <div className="min-h-screen flex flex-col md:flex-row bg-background">
       {/* CRM Left Sidebar - hidden on mobile */}
       <div className="hidden md:flex w-52 bg-brand-teal flex-col">
         {/* Header */}

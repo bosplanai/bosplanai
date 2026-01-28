@@ -1395,7 +1395,7 @@ By signing below, you acknowledge that you have read, understood, and agree to b
     description: `Invitation sent to ${invite.email}`,
     timestamp: format(new Date(invite.created_at), "dd/MM/yyyy HH:mm")
   }))].sort((a, b) => b.timestamp.localeCompare(a.timestamp)).slice(0, 5);
-  return <div className="min-h-screen bg-background flex pb-20 md:pb-0">
+  return <div className="min-h-screen bg-background flex">
       {/* Main Content */}
       <div className="flex-1 flex flex-col">
         {/* Header */}
