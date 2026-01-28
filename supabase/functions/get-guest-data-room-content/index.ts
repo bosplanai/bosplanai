@@ -53,10 +53,12 @@ Deno.serve(async (req) => {
     // Hash the provided password
     const hashedPassword = await hashPassword(actualPassword.toUpperCase());
 
-    // Look up the invite by email and hashed password
+    // Look up the invite by email (accepted only)
+    // NOTE: use limit(1)+maybeSingle() to avoid PGRST116 when there are 0 (or multiple) matches.
     const { data: invite, error: inviteError } = await supabaseAdmin
       .from("data_room_invites")
-      .select(`
+      .select(
+        `
         id,
         email,
         status,
@@ -66,13 +68,16 @@ Deno.serve(async (req) => {
         guest_name,
         access_password,
         nda_signed_at
-      `)
+      `
+      )
       .ilike("email", email)
       .eq("status", "accepted")
-      .single();
+      .order("expires_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
 
     if (inviteError || !invite) {
-      console.error("Invite lookup error:", inviteError);
+      console.error("Invite lookup error:", { inviteError, found: !!invite });
       return new Response(
         JSON.stringify({ error: "Invalid credentials or no access to any data room" }),
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
