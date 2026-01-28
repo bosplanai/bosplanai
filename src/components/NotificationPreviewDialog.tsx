@@ -34,6 +34,8 @@ const getNotificationIcon = (type: string) => {
       return <FolderLock className="h-5 w-5 text-emerald-500" />;
     case "nda_signed":
       return <FileSignature className="h-5 w-5 text-brand-teal" />;
+    case "policy_expired":
+      return <Clock className="h-5 w-5 text-destructive" />;
     default:
       return <Bell className="h-5 w-5 text-muted-foreground" />;
   }
@@ -41,18 +43,19 @@ const getNotificationIcon = (type: string) => {
 
 const getNotificationTypeLabel = (type: string) => {
   switch (type) {
-    case "task_assigned": return "Task Assigned";
+    case "task_assigned": return "Task Request";
     case "task_completed": return "Task Completed";
     case "task_request": return "Task Request";
     case "task_request_accepted": return "Request Accepted";
     case "task_request_declined": return "Request Declined";
     case "task_declined": return "Task Declined";
     case "task_request_reassigned": return "Task Reassigned";
-    case "task_request_reminder": return "Reminder";
+    case "task_request_reminder": return "Pending Reminder";
     case "file_shared": return "File Shared";
     case "file_review": return "File Review";
     case "data_room_invite": return "Data Room Invite";
     case "nda_signed": return "NDA Signed";
+    case "policy_expired": return "Policy Expired";
     default: return "Notification";
   }
 };
