@@ -96,7 +96,7 @@ Deno.serve(async (req) => {
             },
             body: new URLSearchParams({
               "unit_amount": priceCents.toString(),
-              "currency": "gbp",
+              "currency": "usd",
               "recurring[interval]": "month",
               "product_data[name]": `Virtual Assistant - ${hoursPackage} Hours/Month`,
               "product_data[metadata][hours_package]": hoursPackage.toString(),
