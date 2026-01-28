@@ -240,16 +240,11 @@ export const useTaskRequests = () => {
     }
 
     try {
-      // Update the task with new assignee, keeping status as pending
-      const { error } = await supabase
-        .from("tasks")
-        .update({
-          assigned_user_id: newAssigneeId,
-          assignment_status: "pending",
-          decline_reason: null,
-          last_reminder_sent_at: null,
-        })
-        .eq("id", taskId);
+      // Use a SECURITY DEFINER RPC to avoid RLS blocking reassignment
+      const { error } = await supabase.rpc("reassign_task", {
+        p_task_id: taskId,
+        p_new_assignee_id: newAssigneeId,
+      });
 
       if (error) throw error;
 
