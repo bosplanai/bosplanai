@@ -149,7 +149,9 @@ const ProtectedRoute = ({ children, skipOnboardingCheck = false }: ProtectedRout
         ]);
         
         setOnboardingCompleted(profileResult.data?.onboarding_completed ?? false);
-        setIsViewerRole(roleResult.data?.role === "viewer");
+        // DB roles are: admin | moderator | user | super_admin
+        // UI "viewer" maps to DB "user"
+        setIsViewerRole(roleResult.data?.role === "user");
       } catch (error) {
         console.error("Failed to check onboarding status:", error);
         setOnboardingCompleted(true); // Default to completed on error

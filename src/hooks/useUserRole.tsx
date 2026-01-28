@@ -2,8 +2,9 @@ import { useState, useEffect, createContext, useContext, ReactNode } from "react
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "./useAuth";
 import { useOrganization } from "./useOrganization";
+import { mapDbRoleToUiRole, type UiAccessRole } from "@/lib/roles";
 
-export type AppRole = "admin" | "member" | "viewer";
+export type AppRole = UiAccessRole;
 
 interface UserRoleContextType {
   role: AppRole | null;
@@ -49,11 +50,11 @@ export const UserRoleProvider = ({ children }: { children: ReactNode }) => {
         .eq("organization_id", organization.id)
         .single();
 
-      if (error) {
+        if (error) {
         console.error("Error fetching user role:", error);
         setRole(null);
       } else {
-        setRole(data?.role as AppRole || null);
+        setRole(mapDbRoleToUiRole(data?.role) as AppRole | null);
       }
     } catch (error) {
       console.error("Error fetching user role:", error);
