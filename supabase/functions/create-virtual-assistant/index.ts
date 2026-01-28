@@ -75,33 +75,77 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    // Generate temporary password
-    const tempPassword = generateTempPassword();
+    // Check if a VA record already exists with this email
+    const { data: existingVA } = await serviceClient
+      .from("virtual_assistants")
+      .select("id")
+      .eq("email", email)
+      .maybeSingle();
 
-    // Create the user in auth
-    const { data: newUser, error: createUserError } = await serviceClient.auth.admin.createUser({
-      email,
-      password: tempPassword,
-      email_confirm: true,
-      user_metadata: {
-        full_name: `${firstName} ${lastName}`,
-        is_virtual_assistant: true,
-      },
-    });
-
-    if (createUserError) {
-      console.error("Error creating user:", createUserError);
+    if (existingVA) {
       return new Response(
-        JSON.stringify({ error: createUserError.message }),
+        JSON.stringify({ error: "A virtual assistant with this email already exists" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
+    }
+
+    // Search for existing user by email using listUsers with filter
+    let userId: string | null = null;
+    let tempPassword: string | null = null;
+    let isNewUser = false;
+
+    // List users and find by email (since getUserByEmail may not be available in all versions)
+    const { data: listUsersData } = await serviceClient.auth.admin.listUsers({
+      page: 1,
+      perPage: 1000,
+    });
+    
+    const existingAuthUser = listUsersData?.users?.find(u => u.email === email);
+    
+    if (existingAuthUser) {
+      // User exists - use their existing account
+      userId = existingAuthUser.id;
+      console.log(`Found existing auth user for email ${email}: ${userId}`);
+      
+      // Update their metadata to mark as VA
+      await serviceClient.auth.admin.updateUserById(userId, {
+        user_metadata: {
+          ...existingAuthUser.user_metadata,
+          is_virtual_assistant: true,
+        },
+      });
+    } else {
+      // Create new user
+      isNewUser = true;
+      tempPassword = generateTempPassword();
+      
+      const { data: newUser, error: createUserError } = await serviceClient.auth.admin.createUser({
+        email,
+        password: tempPassword,
+        email_confirm: true,
+        user_metadata: {
+          full_name: `${firstName} ${lastName}`,
+          is_virtual_assistant: true,
+        },
+      });
+
+      if (createUserError) {
+        console.error("Error creating user:", createUserError);
+        return new Response(
+          JSON.stringify({ error: createUserError.message }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      
+      userId = newUser.user.id;
+      console.log(`Created new auth user for email ${email}: ${userId}`);
     }
 
     // Create the virtual assistant record
     const { data: vaRecord, error: vaError } = await serviceClient
       .from("virtual_assistants")
       .insert({
-        user_id: newUser.user.id,
+        user_id: userId,
         first_name: firstName,
         last_name: lastName,
         email,
@@ -116,43 +160,63 @@ Deno.serve(async (req) => {
 
     if (vaError) {
       console.error("Error creating VA record:", vaError);
-      // Try to clean up the created user
-      await serviceClient.auth.admin.deleteUser(newUser.user.id);
+      // Only clean up if we created a new user
+      if (isNewUser && userId) {
+        await serviceClient.auth.admin.deleteUser(userId);
+      }
       return new Response(
         JSON.stringify({ error: vaError.message }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // If assigned to an organization, create a profile
-    if (organizationId) {
-      const { error: profileError } = await serviceClient
+    // If assigned to an organization, create a profile (if one doesn't already exist)
+    if (organizationId && userId) {
+      // Check if profile already exists
+      const { data: existingProfile } = await serviceClient
         .from("profiles")
-        .insert({
-          id: newUser.user.id,
-          organization_id: organizationId,
-          full_name: `${firstName} ${lastName}`,
-          job_role: jobRole,
-          phone_number: phoneNumber || "",
-          is_virtual_assistant: true,
-        });
+        .select("id")
+        .eq("id", userId)
+        .maybeSingle();
 
-      if (profileError) {
-        console.error("Error creating profile:", profileError);
-        // Non-fatal - VA is created but not linked to profile
+      if (!existingProfile) {
+        const { error: profileError } = await serviceClient
+          .from("profiles")
+          .insert({
+            id: userId,
+            organization_id: organizationId,
+            full_name: `${firstName} ${lastName}`,
+            job_role: jobRole,
+            phone_number: phoneNumber || "",
+            is_virtual_assistant: true,
+          });
+
+        if (profileError) {
+          console.error("Error creating profile:", profileError);
+          // Non-fatal - VA is created but not linked to profile
+        }
       }
 
-      // Add user role
-      const { error: roleError } = await serviceClient
+      // Check if user role already exists
+      const { data: existingRole } = await serviceClient
         .from("user_roles")
-        .insert({
-          user_id: newUser.user.id,
-          organization_id: organizationId,
-          role: "user",
-        });
+        .select("id")
+        .eq("user_id", userId)
+        .eq("organization_id", organizationId)
+        .maybeSingle();
 
-      if (roleError) {
-        console.error("Error creating user role:", roleError);
+      if (!existingRole) {
+        const { error: roleError } = await serviceClient
+          .from("user_roles")
+          .insert({
+            user_id: userId,
+            organization_id: organizationId,
+            role: "user",
+          });
+
+        if (roleError) {
+          console.error("Error creating user role:", roleError);
+        }
       }
     }
 
@@ -162,7 +226,8 @@ Deno.serve(async (req) => {
       JSON.stringify({
         success: true,
         va: vaRecord,
-        tempPassword,
+        tempPassword: isNewUser ? tempPassword : null,
+        existingUser: !isNewUser,
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
