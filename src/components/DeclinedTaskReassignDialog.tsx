@@ -219,14 +219,10 @@ export const DeclinedTaskReassignDialog = ({
       }
 
       // Update the task with new assignment
-      const { error: updateError } = await supabase
-        .from("tasks")
-        .update({
-          assigned_user_id: selectedAssignee,
-          assignment_status: selectedAssignee === user?.id ? "accepted" : "pending",
-          decline_reason: null,
-        })
-        .eq("id", task.id);
+      const { error: updateError } = await supabase.rpc("reassign_task", {
+        p_task_id: task.id,
+        p_new_assignee_id: selectedAssignee,
+      });
 
       if (updateError) throw updateError;
 
