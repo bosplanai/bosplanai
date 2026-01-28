@@ -82,6 +82,62 @@ export type Database = {
           },
         ]
       }
+      bosplan_templates: {
+        Row: {
+          category: string
+          created_at: string
+          created_by: string | null
+          description: string | null
+          file_name: string | null
+          file_path: string | null
+          file_size: number
+          id: string
+          is_active: boolean
+          mime_type: string | null
+          name: string
+          template_type: string
+          updated_at: string
+        }
+        Insert: {
+          category: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          file_name?: string | null
+          file_path?: string | null
+          file_size?: number
+          id?: string
+          is_active?: boolean
+          mime_type?: string | null
+          name: string
+          template_type?: string
+          updated_at?: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          file_name?: string | null
+          file_path?: string | null
+          file_size?: number
+          id?: string
+          is_active?: boolean
+          mime_type?: string | null
+          name?: string
+          template_type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bosplan_templates_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       data_room_file_permissions: {
         Row: {
           created_at: string
