@@ -28,7 +28,7 @@ const allNavItems: NavItem[] = [
   { id: "calendar", icon: Calendar, label: "Calendar", path: "/calendar" },
   { id: "drive", icon: HardDrive, label: "Bosdrive", path: "/drive" },
   { id: "dataroom", icon: FolderLock, label: "Data Room", path: "/dataroom" },
-  { id: "magic-merge", icon: Wand2, label: "Magic Merge", path: "/magic-merge" },
+  { id: "magic-merge", icon: Wand2, label: "Magic Merge", path: "/magic-merge", requiredRole: "member" },
   { id: "taskflow", icon: Activity, label: "TaskFlow", path: "/taskflow", requiredRole: "admin" },
   { id: "taskpopulate", icon: Sparkles, label: "TaskPopulate", path: "/taskpopulate", requiredRole: "member" },
   { id: "virtual-assistants", icon: UserCheck, label: "Virtual Assistants", path: "/virtual-assistants", requiredRole: "member" },
