@@ -135,18 +135,6 @@ serve(async (req) => {
     });
     console.log("Created new USD price:", stripePrice.id, "amount:", priceCents);
 
-    // Check if customer already exists in Stripe
-    const existingCustomers = await stripe.customers.list({
-      email: userEmail,
-      limit: 1,
-    });
-
-    let customerId: string | undefined;
-    if (existingCustomers.data.length > 0) {
-      customerId = existingCustomers.data[0].id;
-      console.log("Found existing Stripe customer:", customerId);
-    }
-
     // Get origin for redirect URLs
     const origin = req.headers.get("origin") || "https://bosplansupabase.lovable.app";
 
@@ -160,6 +148,42 @@ serve(async (req) => {
     const orgSlug = org?.slug || "";
     const successUrl = `${origin}/${orgSlug}/virtual-assistants?success=true`;
     const cancelUrl = `${origin}/${orgSlug}/virtual-assistants?canceled=true`;
+
+    // Check if customer already exists with USD currency, otherwise we'll create a new one
+    // Stripe doesn't allow mixing currencies on a single customer
+    let customerId: string | undefined;
+    const existingCustomers = await stripe.customers.list({
+      email: userEmail,
+      limit: 10,
+    });
+
+    for (const customer of existingCustomers.data) {
+      // Check if this customer has USD as their currency
+      // A customer's currency is set by their first subscription/invoice
+      const subscriptions = await stripe.subscriptions.list({
+        customer: customer.id,
+        limit: 1,
+      });
+      
+      if (subscriptions.data.length === 0) {
+        // Customer has no subscriptions, we can use them for USD
+        customerId = customer.id;
+        console.log("Found existing Stripe customer with no subscriptions:", customerId);
+        break;
+      } else if (subscriptions.data[0].currency === "usd") {
+        // Customer already has USD subscriptions, reuse them
+        customerId = customer.id;
+        console.log("Found existing Stripe customer with USD subscriptions:", customerId);
+        break;
+      }
+      // Skip customers with non-USD subscriptions
+      console.log("Skipping customer with non-USD subscriptions:", customer.id);
+    }
+
+    // If no suitable customer found, we'll let Stripe create a new one
+    if (!customerId) {
+      console.log("No suitable USD customer found, will create new customer during checkout");
+    }
 
     // Create Stripe checkout session using the newly created USD price
     const session = await stripe.checkout.sessions.create({
