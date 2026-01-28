@@ -82,14 +82,65 @@ export type Database = {
           },
         ]
       }
+      data_room_file_permissions: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          file_id: string
+          id: string
+          permission_level: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          file_id: string
+          id?: string
+          permission_level?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          file_id?: string
+          id?: string
+          permission_level?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "data_room_file_permissions_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "data_room_file_permissions_file_id_fkey"
+            columns: ["file_id"]
+            isOneToOne: false
+            referencedRelation: "data_room_files"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "data_room_file_permissions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       data_room_files: {
         Row: {
           created_at: string
           data_room_id: string
+          deleted_at: string | null
           file_path: string
           file_size: number
           folder_id: string | null
           id: string
+          is_restricted: boolean
           mime_type: string | null
           name: string
           organization_id: string
@@ -99,10 +150,12 @@ export type Database = {
         Insert: {
           created_at?: string
           data_room_id: string
+          deleted_at?: string | null
           file_path: string
           file_size?: number
           folder_id?: string | null
           id?: string
+          is_restricted?: boolean
           mime_type?: string | null
           name: string
           organization_id: string
@@ -112,10 +165,12 @@ export type Database = {
         Update: {
           created_at?: string
           data_room_id?: string
+          deleted_at?: string | null
           file_path?: string
           file_size?: number
           folder_id?: string | null
           id?: string
+          is_restricted?: boolean
           mime_type?: string | null
           name?: string
           organization_id?: string
@@ -153,12 +208,63 @@ export type Database = {
           },
         ]
       }
+      data_room_folder_permissions: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          folder_id: string
+          id: string
+          permission_level: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          folder_id: string
+          id?: string
+          permission_level?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          folder_id?: string
+          id?: string
+          permission_level?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "data_room_folder_permissions_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "data_room_folder_permissions_folder_id_fkey"
+            columns: ["folder_id"]
+            isOneToOne: false
+            referencedRelation: "data_room_folders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "data_room_folder_permissions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       data_room_folders: {
         Row: {
           created_at: string
           created_by: string
           data_room_id: string
+          deleted_at: string | null
           id: string
+          is_restricted: boolean
           name: string
           organization_id: string
           parent_id: string | null
@@ -167,7 +273,9 @@ export type Database = {
           created_at?: string
           created_by: string
           data_room_id: string
+          deleted_at?: string | null
           id?: string
+          is_restricted?: boolean
           name: string
           organization_id: string
           parent_id?: string | null
@@ -176,7 +284,9 @@ export type Database = {
           created_at?: string
           created_by?: string
           data_room_id?: string
+          deleted_at?: string | null
           id?: string
+          is_restricted?: boolean
           name?: string
           organization_id?: string
           parent_id?: string | null
@@ -222,6 +332,7 @@ export type Database = {
           guest_name: string | null
           id: string
           invited_by: string | null
+          nda_signed_at: string | null
           organization_id: string
           status: string
         }
@@ -234,6 +345,7 @@ export type Database = {
           guest_name?: string | null
           id?: string
           invited_by?: string | null
+          nda_signed_at?: string | null
           organization_id: string
           status?: string
         }
@@ -246,6 +358,7 @@ export type Database = {
           guest_name?: string | null
           id?: string
           invited_by?: string | null
+          nda_signed_at?: string | null
           organization_id?: string
           status?: string
         }
@@ -269,6 +382,55 @@ export type Database = {
             columns: ["organization_id"]
             isOneToOne: false
             referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      data_room_members: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          data_room_id: string
+          id: string
+          role: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          data_room_id: string
+          id?: string
+          role?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          data_room_id?: string
+          id?: string
+          role?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "data_room_members_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "data_room_members_data_room_id_fkey"
+            columns: ["data_room_id"]
+            isOneToOne: false
+            referencedRelation: "data_rooms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "data_room_members_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
