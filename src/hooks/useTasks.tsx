@@ -733,18 +733,51 @@ export const useTasks = () => {
   // Publish a draft task
   const publishDraft = async (taskId: string): Promise<boolean> => {
     try {
+      // First, fetch the draft to check its assignee
+      const { data: draft, error: fetchError } = await supabase
+        .from("tasks")
+        .select(`
+          assigned_user_id,
+          assigned_user:profiles!tasks_assigned_user_id_fkey(id, full_name)
+        `)
+        .eq("id", taskId)
+        .single();
+
+      if (fetchError) throw fetchError;
+
+      // Determine assignment status based on assignee
+      // - If no assignee or self-assigned: 'accepted' (appears on board immediately)
+      // - If assigned to someone else: 'pending' (enters task request flow)
+      const assignmentStatus = draft.assigned_user_id && draft.assigned_user_id !== user?.id 
+        ? 'pending' 
+        : 'accepted';
+
       const { error } = await supabase
         .from("tasks")
-        .update({ is_draft: false } as any)
+        .update({ 
+          is_draft: false,
+          assignment_status: assignmentStatus,
+          // Ensure task has a user_id (owner) - use current user if not set
+          user_id: user?.id,
+        } as any)
         .eq("id", taskId);
 
       if (error) throw error;
 
-      fetchTasks();
-      toast({
-        title: "Task Published",
-        description: "Your draft has been published to the dashboard",
-      });
+      // Refetch tasks to update the board
+      await fetchTasks();
+
+      if (assignmentStatus === 'pending') {
+        toast({
+          title: "Task Request Sent",
+          description: `${draft.assigned_user?.full_name || 'The assignee'} will need to accept this task`,
+        });
+      } else {
+        toast({
+          title: "Task Published",
+          description: "Your task has been added to the dashboard",
+        });
+      }
       return true;
     } catch (error) {
       console.error("Error publishing draft:", error);
