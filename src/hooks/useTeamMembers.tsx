@@ -3,8 +3,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { useOrganization } from "./useOrganization";
 import { useAuth } from "./useAuth";
 import { useUserOrganizations } from "@/contexts/UserOrganizationsContext";
+import { mapDbRoleToUiRole, mapUiRoleToDbRole, type UiAccessRole } from "@/lib/roles";
 
-type AppRole = "admin" | "member" | "viewer";
+type AppRole = UiAccessRole;
 
 interface TeamMember {
   id: string;
@@ -54,7 +55,7 @@ export const useTeamMembers = () => {
       // Get current user's role
       if (user) {
         const myRole = roles?.find((r) => r.user_id === user.id);
-        setCurrentUserRole((myRole?.role as AppRole) || null);
+        setCurrentUserRole(mapDbRoleToUiRole(myRole?.role) as AppRole | null);
       }
 
       if (!roles || roles.length === 0) {
@@ -112,7 +113,7 @@ export const useTeamMembers = () => {
             full_name: profile.full_name,
             job_role: profile.job_role,
             email: emailMap[profile.id] || "",
-            role: role.role as AppRole,
+            role: (mapDbRoleToUiRole(role.role) as AppRole) || "viewer",
             created_at: profile.created_at,
           };
         })
@@ -344,7 +345,7 @@ export const useTeamMembers = () => {
 
     const { error } = await supabase
       .from("user_roles")
-      .update({ role: newRole })
+      .update({ role: mapUiRoleToDbRole(newRole) })
       .eq("user_id", userId)
       .eq("organization_id", organization.id);
 
