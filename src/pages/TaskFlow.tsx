@@ -147,7 +147,7 @@ const TaskFlow = () => {
     : 0;
 
   return (
-    <div className="flex min-h-screen bg-background pb-20 md:pb-0">
+    <div className="flex min-h-screen bg-background">
       <div className="flex-1 flex flex-col">
         {/* Header */}
         <header className="bg-card border-b border-border px-4 sm:px-6 py-4 sm:py-5">
