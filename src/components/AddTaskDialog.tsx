@@ -350,9 +350,25 @@ const AddTaskDialog = ({
           uploadAttachmentToStorage(file, taskId)
         );
         await Promise.all(uploadPromises);
-        // Trigger refetch after uploads complete for drafts too
-        onComplete?.();
       }
+
+      // Save URLs for drafts too
+      if (taskId && taskUrls.length > 0 && organizationId) {
+        const { data: userData } = await supabase.auth.getUser();
+        if (userData.user) {
+          const urlInserts = taskUrls.map(u => ({
+            task_id: taskId,
+            organization_id: organizationId,
+            url: u.url,
+            title: u.title || null,
+            created_by: userData.user.id,
+          }));
+          await supabase.from("task_urls").insert(urlInserts);
+        }
+      }
+
+      // Trigger refetch after uploads/urls complete for drafts too
+      onComplete?.();
 
       resetForm();
       onOpenChange(false);
