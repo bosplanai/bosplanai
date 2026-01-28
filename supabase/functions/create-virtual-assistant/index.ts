@@ -222,6 +222,107 @@ Deno.serve(async (req) => {
 
     console.log(`Virtual Assistant created: ${email}`);
 
+    // Send login email to the VA
+    const resendApiKey = Deno.env.get("RESEND_API_KEY");
+    const fromEmail = Deno.env.get("RESEND_FROM_EMAIL") || "noreply@bosplan.com";
+    
+    if (resendApiKey) {
+      try {
+        const orgName = organizationId ? (await serviceClient
+          .from("organizations")
+          .select("name")
+          .eq("id", organizationId)
+          .single()).data?.name : null;
+
+        const emailHtml = isNewUser ? `
+          <!DOCTYPE html>
+          <html>
+            <head>
+              <meta charset="utf-8">
+              <title>Welcome to BosPlan - Virtual Assistant Account</title>
+            </head>
+            <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+              <div style="text-align: center; margin-bottom: 30px;">
+                <h1 style="color: #0d7377; margin-bottom: 10px;">Welcome to BosPlan!</h1>
+              </div>
+              
+              <p>Hi ${firstName},</p>
+              
+              <p>You have been registered as a Virtual Assistant on BosPlan${orgName ? ` and allocated to <strong>${orgName}</strong>` : ""}.</p>
+              
+              <p>Here are your login credentials:</p>
+              
+              <div style="background-color: #f4f4f4; padding: 15px; border-radius: 5px; margin: 20px 0;">
+                <p style="margin: 5px 0;"><strong>Email:</strong> ${email}</p>
+                <p style="margin: 5px 0;"><strong>Temporary Password:</strong> ${tempPassword}</p>
+              </div>
+              
+              <p style="color: #d9534f;"><strong>Important:</strong> Please change your password after your first login for security purposes.</p>
+              
+              <p>You can log in at: <a href="https://bosplansupabase.lovable.app/auth" style="color: #0d7377;">https://bosplansupabase.lovable.app/auth</a></p>
+              
+              <p style="margin-top: 30px;">
+                Best regards,<br>
+                The BosPlan Team
+              </p>
+            </body>
+          </html>
+        ` : `
+          <!DOCTYPE html>
+          <html>
+            <head>
+              <meta charset="utf-8">
+              <title>BosPlan - Virtual Assistant Allocation</title>
+            </head>
+            <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+              <div style="text-align: center; margin-bottom: 30px;">
+                <h1 style="color: #0d7377; margin-bottom: 10px;">BosPlan Notification</h1>
+              </div>
+              
+              <p>Hi ${firstName},</p>
+              
+              <p>You have been registered as a Virtual Assistant on BosPlan${orgName ? ` and allocated to <strong>${orgName}</strong>` : ""}.</p>
+              
+              <p>Since you already have an existing BosPlan account, you can use your current login credentials to access the platform.</p>
+              
+              <p>Log in at: <a href="https://bosplansupabase.lovable.app/auth" style="color: #0d7377;">https://bosplansupabase.lovable.app/auth</a></p>
+              
+              <p style="margin-top: 30px;">
+                Best regards,<br>
+                The BosPlan Team
+              </p>
+            </body>
+          </html>
+        `;
+
+        const emailResponse = await fetch("https://api.resend.com/emails", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${resendApiKey}`,
+          },
+          body: JSON.stringify({
+            from: fromEmail,
+            to: [email],
+            subject: `Welcome to BosPlan - Virtual Assistant Account`,
+            html: emailHtml,
+          }),
+        });
+
+        if (!emailResponse.ok) {
+          const errorText = await emailResponse.text();
+          console.error("Failed to send VA login email:", errorText);
+        } else {
+          console.log("VA login email sent successfully to:", email);
+        }
+      } catch (emailError) {
+        console.error("Error sending VA login email:", emailError);
+        // Don't fail the whole request if email fails
+      }
+    } else {
+      console.log("RESEND_API_KEY not configured, skipping email");
+    }
+
     return new Response(
       JSON.stringify({
         success: true,
