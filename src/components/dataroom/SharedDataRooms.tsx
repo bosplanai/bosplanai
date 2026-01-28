@@ -49,6 +49,7 @@ const SharedDataRooms = ({
 
   // Fetch rooms shared with user (where user is member but not owner)
   // Exclude deleted and archived data rooms
+  // Note: data_room_members does not have organization_id, we filter via the data_room relationship
   const { data: sharedRooms = [], isLoading } = useQuery({
     queryKey: ["shared-data-rooms", userId, organizationId],
     queryFn: async () => {
@@ -69,23 +70,25 @@ const SharedDataRooms = ({
             created_at,
             deleted_at,
             archived_at,
+            organization_id,
             creator:created_by(full_name)
           )
         `)
-        .eq("user_id", userId)
-        .eq("organization_id", organizationId);
+        .eq("user_id", userId);
 
       if (error) throw error;
 
       // Filter to rooms where:
       // - user is member (not owner)
       // - room exists
+      // - room belongs to the current organization
       // - room is NOT deleted (deleted_at is null)
       // - room is NOT archived (archived_at is null)
       return (data as any[]).filter(
         (r) => 
           r.role !== "owner" && 
           r.data_room && 
+          r.data_room.organization_id === organizationId &&
           !r.data_room.deleted_at && 
           !r.data_room.archived_at
       ) as SharedRoom[];
