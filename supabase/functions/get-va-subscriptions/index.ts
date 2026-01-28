@@ -58,21 +58,22 @@ serve(async (req) => {
     console.log("Fetching VA data for organization:", organizationId);
 
     // 1. Get VA subscriptions from Stripe
+    // Search ALL customers with this email (user may have multiple - GBP legacy and USD new)
     const subscriptions: any[] = [];
 
     if (userEmail) {
-      // Find Stripe customer
+      // Find ALL Stripe customers with this email
       const customers = await stripe.customers.list({
         email: userEmail,
-        limit: 1,
+        limit: 100,
       });
 
-      if (customers.data.length > 0) {
-        const customerId = customers.data[0].id;
+      console.log(`Found ${customers.data.length} Stripe customers for email`);
 
-        // Get all subscriptions for this customer
+      // Check subscriptions across ALL customers
+      for (const customer of customers.data) {
         const stripeSubscriptions = await stripe.subscriptions.list({
-          customer: customerId,
+          customer: customer.id,
           status: "all",
           limit: 100,
         });
@@ -83,8 +84,8 @@ serve(async (req) => {
           
           // Check if this is a VA subscription for this organization
           if (metadata.organization_id === organizationId && metadata.type === "va_subscription") {
-            const priceId = sub.items.data[0]?.price?.id;
             const amount = sub.items.data[0]?.price?.unit_amount || 0;
+            const currency = sub.items.data[0]?.price?.currency || "usd";
 
             subscriptions.push({
               id: sub.id,
@@ -92,6 +93,7 @@ serve(async (req) => {
               assistant_type: metadata.assistant_type || "general",
               hours: parseInt(metadata.hours_package || "0"),
               monthly_price: amount / 100,
+              currency: currency.toUpperCase(),
               product_name: metadata.product_name || null,
               current_period_start: sub.current_period_start
                 ? new Date(sub.current_period_start * 1000).toISOString()
