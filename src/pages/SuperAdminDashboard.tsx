@@ -1,4 +1,4 @@
-import { useNavigate } from "react-router-dom";
+import { useOrgNavigation } from "@/hooks/useOrgNavigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -10,7 +10,7 @@ import { useSpecialistPlans } from "@/hooks/useSpecialistPlans";
 import bosplanLogo from "@/assets/bosplan-logo.png";
 import SuperAdminSettingsDialog from "@/components/superadmin/SuperAdminSettingsDialog";
 const SuperAdminDashboard = () => {
-  const navigate = useNavigate();
+  const { navigate, navigateOrg } = useOrgNavigation();
   const {
     user,
     loading: authLoading
@@ -61,7 +61,7 @@ const SuperAdminDashboard = () => {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <Button variant="outline" className="w-full border-slate-600 text-slate-300 hover:bg-slate-700" onClick={() => navigate("/")}>
+            <Button variant="outline" className="w-full border-slate-600 text-slate-300 hover:bg-slate-700" onClick={() => navigateOrg("/")}>
               Return to Dashboard
             </Button>
           </CardContent>
