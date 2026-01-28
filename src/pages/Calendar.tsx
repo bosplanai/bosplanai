@@ -17,6 +17,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Checkbox } from '@/components/ui/checkbox';
 import { CalendarDays, CheckSquare, ListTodo, ArrowLeft, User, FileText, Clock, Paperclip, MessageSquare, Filter, X } from 'lucide-react';
 import SideNavigation from '@/components/SideNavigation';
+import BetaFooter from '@/components/BetaFooter';
 import { TaskNotesDialog } from '@/components/TaskNotesDialog';
 
 interface CalendarItem {
@@ -630,6 +631,8 @@ const Calendar = () => {
           taskTitle={selectedTaskForNotes.title}
         />
       )}
+      
+      <BetaFooter />
     </div>
   );
 };

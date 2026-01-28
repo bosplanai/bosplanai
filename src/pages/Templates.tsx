@@ -14,6 +14,7 @@ import { Plus, Search, FileText, CheckSquare, History, MoreVertical, Trash2, Edi
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { format } from "date-fns";
 import SideNavigation from "@/components/SideNavigation";
+import BetaFooter from "@/components/BetaFooter";
 import ActionBar from "@/components/ActionBar";
 import CreateTemplateDialog from "@/components/templates/CreateTemplateDialog";
 import EditTemplateDialog from "@/components/templates/EditTemplateDialog";
@@ -426,7 +427,7 @@ const Templates = () => {
       
       {/* Side Navigation */}
       <SideNavigation />
-
+      <BetaFooter />
       {/* Dialogs */}
       <CreateTemplateDialog open={createDialogOpen} onOpenChange={setCreateDialogOpen} />
       

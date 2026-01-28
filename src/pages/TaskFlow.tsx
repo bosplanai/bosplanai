@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import SideNavigation from "@/components/SideNavigation";
+import BetaFooter from "@/components/BetaFooter";
 import { WorkloadHeatmap } from "@/components/taskflow/WorkloadHeatmap";
 import { PrioritizedTaskList } from "@/components/taskflow/PrioritizedTaskList";
 
@@ -288,6 +289,7 @@ const TaskFlow = () => {
       </div>
       
       <SideNavigation />
+      <BetaFooter />
       
       {/* Dialogs */}
       <WorkingHoursDialog

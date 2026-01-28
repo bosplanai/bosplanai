@@ -20,6 +20,7 @@ import AddTaskDialog from "./AddTaskDialog";
 import PersonalChecklistModal from "./PersonalChecklistModal";
 import TaskDraftsFolder from "./TaskDraftsFolder";
 import { NotificationBell } from "./NotificationBell";
+import BetaFooter from "./BetaFooter";
 import PendingTaskRequests from "./PendingTaskRequests";
 import { useArchive } from "@/hooks/useArchive";
 import { useAuth } from "@/hooks/useAuth";
@@ -666,6 +667,7 @@ const ProjectBoard = () => {
         </div>
         
         <SideNavigation activeItem={activeSideItem} onItemClick={setActiveSideItem} />
+        <BetaFooter />
       </div>
 
       <DragOverlay>
