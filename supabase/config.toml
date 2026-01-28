@@ -77,3 +77,6 @@ verify_jwt = false
 
 [functions.cancel-va-subscription]
 verify_jwt = false
+
+[functions.send-data-room-invite]
+verify_jwt = false
