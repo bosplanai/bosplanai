@@ -145,7 +145,7 @@ const GuestDataRoom = () => {
   
   // Auth state
   const [email, setEmail] = useState("");
-  const [accessId, setAccessId] = useState("");
+  const [password, setPassword] = useState("");
   
   // Data room state
   const [dataRoom, setDataRoom] = useState<DataRoomInfo | null>(null);
@@ -232,7 +232,7 @@ const GuestDataRoom = () => {
 
   useEffect(() => {
     if (accessIdParam) {
-      setAccessId(accessIdParam.toUpperCase());
+      setPassword(accessIdParam.toUpperCase());
     }
   }, [accessIdParam]);
 
@@ -267,7 +267,7 @@ const GuestDataRoom = () => {
   };
 
   const fetchContent = async (folderId: string | null = null) => {
-    if (!accessId || !email) return;
+    if (!password || !email) return;
 
     setLoading(true);
     setError(null);
@@ -277,7 +277,7 @@ const GuestDataRoom = () => {
       const { data, error: fnError } = await supabase.functions.invoke(
         "get-guest-data-room-content",
         {
-          body: { token: token || accessId, email: email.toLowerCase(), folderId },
+          body: { password: token || password, email: email.toLowerCase(), folderId },
         }
       );
 
@@ -322,9 +322,9 @@ const GuestDataRoom = () => {
 
   const fetchNdaForResign = async () => {
     try {
-      console.log("[fetchNdaForResign] Fetching NDA details for token:", token || accessId);
+      console.log("[fetchNdaForResign] Fetching NDA details for token:", token || password);
       const { data, error } = await supabase.functions.invoke("get-nda-details", {
-        body: { token: token || accessId, email: email.toLowerCase() },
+        body: { token: token || password, email: email.toLowerCase() },
       });
       
       console.log("[fetchNdaForResign] Response:", { data, error });
@@ -369,7 +369,7 @@ const GuestDataRoom = () => {
     try {
       const { error: signError } = await supabase.functions.invoke("sign-nda", {
         body: {
-          token: token || accessId,
+          token: token || password,
           signerName: resignName.trim(),
           signerEmail: email.toLowerCase(),
         },
@@ -394,8 +394,8 @@ const GuestDataRoom = () => {
     }
   };
   const handleVerify = async () => {
-    if (!email.trim() || !accessId.trim()) {
-      setError("Please enter your email and access ID");
+    if (!email.trim() || !password.trim()) {
+      setError("Please enter your email and password");
       return;
     }
     await fetchContent(null);
@@ -415,7 +415,7 @@ const GuestDataRoom = () => {
       const { data, error: fnError } = await supabase.functions.invoke(
         "get-guest-file-download",
         {
-          body: { token: token || accessId, email: email.toLowerCase(), fileId: file.id },
+          body: { token: token || password, email: email.toLowerCase(), fileId: file.id },
         }
       );
 
@@ -439,7 +439,7 @@ const GuestDataRoom = () => {
       const { data, error: fnError } = await supabase.functions.invoke(
         "get-guest-file-download",
         {
-          body: { token: token || accessId, email: email.toLowerCase(), fileId: file.id, mode: "preview" },
+          body: { token: token || password, email: email.toLowerCase(), fileId: file.id, mode: "preview" },
         }
       );
 
@@ -492,7 +492,7 @@ const GuestDataRoom = () => {
     for (const file of filesToUpload) {
       try {
         const formData = new FormData();
-        formData.append("token", token || accessId);
+        formData.append("token", token || password);
         formData.append("email", email.toLowerCase());
         formData.append("file", file);
         if (currentFolderId) {
@@ -559,7 +559,7 @@ const GuestDataRoom = () => {
     if (droppedFiles.length > 0) {
       handleFileUpload(droppedFiles);
     }
-  }, [currentFolderId, dataRoom, email, accessId, token]);
+  }, [currentFolderId, dataRoom, email, password, token]);
 
   // Chat handlers
   const fetchMessages = async () => {
@@ -567,7 +567,7 @@ const GuestDataRoom = () => {
     try {
       const { data, error: fnError } = await supabase.functions.invoke(
         "get-guest-chat-messages",
-        { body: { token: token || accessId, email: email.toLowerCase() } }
+        { body: { token: token || password, email: email.toLowerCase() } }
       );
       if (fnError) throw new Error(await extractFunctionErrorMessage(fnError));
       setMessages(data.messages || []);
@@ -583,7 +583,7 @@ const GuestDataRoom = () => {
     try {
       const { data, error: fnError } = await supabase.functions.invoke(
         "guest-send-message",
-        { body: { token: token || accessId, email: email.toLowerCase(), message: newMessage.trim() } }
+        { body: { token: token || password, email: email.toLowerCase(), message: newMessage.trim() } }
       );
       
       if (fnError) throw new Error(await extractFunctionErrorMessage(fnError));
@@ -605,7 +605,7 @@ const GuestDataRoom = () => {
     try {
       const { data, error: fnError } = await supabase.functions.invoke(
         "get-guest-activity",
-        { body: { token: token || accessId, email: email.toLowerCase() } }
+        { body: { token: token || password, email: email.toLowerCase() } }
       );
       if (fnError) throw new Error(await extractFunctionErrorMessage(fnError));
       setActivities(data.activities || []);
@@ -623,7 +623,7 @@ const GuestDataRoom = () => {
     try {
       const { data, error: fnError } = await supabase.functions.invoke(
         "get-guest-team-members",
-        { body: { token: token || accessId, email: email.toLowerCase() } }
+        { body: { token: token || password, email: email.toLowerCase() } }
       );
       if (fnError) throw new Error(await extractFunctionErrorMessage(fnError));
       setMembers(data.members || []);
@@ -651,7 +651,7 @@ const GuestDataRoom = () => {
         { 
           body: { 
             action: "get",
-            token: token || accessId, 
+            token: token || password, 
             email: email.toLowerCase(),
             fileId: file.id,
           } 
@@ -690,7 +690,7 @@ const GuestDataRoom = () => {
         { 
           body: { 
             action: "set",
-            token: token || accessId, 
+            token: token || password, 
             email: email.toLowerCase(),
             fileId: permissionsFile.id,
             isRestricted: isFileRestricted,
@@ -745,7 +745,7 @@ const GuestDataRoom = () => {
         "guest-create-folder",
         {
           body: {
-            token: token || accessId,
+            token: token || password,
             email: email.toLowerCase(),
             folderName: newFolderName.trim(),
             parentFolderId: currentFolderId,
@@ -778,7 +778,7 @@ const GuestDataRoom = () => {
     try {
       const { error: fnError } = await supabase.functions.invoke("guest-delete-file", {
         body: {
-          token: token || accessId,
+          token: token || password,
           email: email.toLowerCase(),
           fileId: file.id,
         },
@@ -800,7 +800,7 @@ const GuestDataRoom = () => {
     try {
       const { error: fnError } = await supabase.functions.invoke("guest-delete-folder", {
         body: {
-          token: token || accessId,
+          token: token || password,
           email: email.toLowerCase(),
           folderId,
         },
@@ -861,7 +861,7 @@ const GuestDataRoom = () => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [dataRoom?.id, currentFolderId, accessId, email, token]);
+  }, [dataRoom?.id, currentFolderId, password, email, token]);
 
   // Auto scroll chat to bottom
   useEffect(() => {
@@ -963,16 +963,16 @@ const GuestDataRoom = () => {
               />
             </div>
             <div>
-              <Label>Access ID</Label>
+              <Label>Password</Label>
               <Input
                 type="text"
                 placeholder="e.g. A1B2C3D4"
-                value={accessId}
-                onChange={(e) => setAccessId(e.target.value.toUpperCase())}
+                value={password}
+                onChange={(e) => setPassword(e.target.value.toUpperCase())}
                 className="mt-1 font-mono uppercase"
               />
               <p className="text-xs text-muted-foreground mt-1">
-                You can find your Access ID in the invitation email
+                You can find your password in the confirmation email
               </p>
             </div>
             <Button
@@ -1330,7 +1330,7 @@ const GuestDataRoom = () => {
                                 fileName={file.name}
                                 currentFolderId={file.folder_id || null}
                                 dataRoomId={dataRoom?.id || ""}
-                                token={token || accessId}
+                                token={token || password}
                                 email={email}
                                 onMoveComplete={() => fetchContent(currentFolderId)}
                               />
@@ -1658,7 +1658,7 @@ const GuestDataRoom = () => {
       <GuestFilePreviewDialog
         file={previewFile}
         onClose={() => setPreviewFile(null)}
-        token={token || accessId}
+        token={token || password}
         email={email}
         guestName={guestName}
       />
@@ -1668,7 +1668,7 @@ const GuestDataRoom = () => {
         open={!!editFile}
         onOpenChange={(open) => !open && setEditFile(null)}
         file={editFile ? { id: editFile.id, name: editFile.name, file_path: editFile.file_path, mime_type: editFile.mime_type } : null}
-        token={token || accessId}
+        token={token || password}
         email={email}
         guestName={guestName}
         dataRoomId={dataRoom?.id || ""}

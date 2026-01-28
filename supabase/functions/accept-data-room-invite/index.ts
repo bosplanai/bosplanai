@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { encode as hexEncode } from "https://deno.land/std@0.208.0/encoding/hex.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -10,6 +11,22 @@ interface AcceptInviteRequest {
   token: string;
   email: string;
   origin?: string;
+}
+
+// Generate a random alphanumeric password
+function generatePassword(length: number = 8): string {
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // Exclude confusing chars like O, 0, I, 1
+  const array = new Uint8Array(length);
+  crypto.getRandomValues(array);
+  return Array.from(array, (byte) => chars[byte % chars.length]).join("");
+}
+
+// Hash password using SHA-256
+async function hashPassword(password: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(password);
+  const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+  return new TextDecoder().decode(hexEncode(new Uint8Array(hashBuffer)));
 }
 
 Deno.serve(async (req) => {
@@ -96,10 +113,17 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Mark the invite as accepted
+    // Generate a new password for the guest
+    const plainPassword = generatePassword(8);
+    const hashedPassword = await hashPassword(plainPassword);
+
+    // Mark the invite as accepted and store the hashed password
     const { error: updateError } = await supabaseAdmin
       .from("data_room_invites")
-      .update({ status: "accepted" })
+      .update({ 
+        status: "accepted",
+        access_password: hashedPassword
+      })
       .eq("id", invite.id);
 
     if (updateError) {
@@ -122,9 +146,9 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Send confirmation email with access link
+    // Send confirmation email with password (not access link)
     const siteUrl = origin || "https://bosplansupabase.lovable.app";
-    const accessLink = `${siteUrl}/guest-dataroom?accessId=${invite.access_id}`;
+    const accessLink = `${siteUrl}/guest-dataroom`;
 
     if (resendApiKey && dataRoom) {
       try {
@@ -139,8 +163,12 @@ Deno.serve(async (req) => {
                 .container { background-color: white; border-radius: 12px; padding: 40px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
                 .header { text-align: center; margin-bottom: 30px; }
                 .header h1 { color: #0d7377; margin-bottom: 10px; font-size: 28px; }
+                .credentials { background: linear-gradient(135deg, #0d7377 0%, #14919b 100%); color: white; padding: 24px; border-radius: 8px; margin: 24px 0; }
+                .credentials-label { font-size: 12px; opacity: 0.9; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px; }
+                .credentials-value { font-size: 20px; font-weight: bold; font-family: monospace; letter-spacing: 2px; }
                 .cta-button { display: block; background-color: #0d7377; color: white !important; padding: 16px 32px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px; text-align: center; margin: 32px auto; max-width: 280px; }
                 .footer { text-align: center; color: #666; font-size: 14px; margin-top: 40px; padding-top: 20px; border-top: 1px solid #eee; }
+                .warning { background: #fff3cd; color: #856404; padding: 12px; border-radius: 6px; font-size: 13px; margin-top: 16px; }
               </style>
             </head>
             <body>
@@ -150,15 +178,26 @@ Deno.serve(async (req) => {
                   <p>You now have access to the <strong>${dataRoom.name}</strong> data room</p>
                 </div>
                 
-                <p style="text-align: center;">Click the button below to view the data room:</p>
+                <p style="text-align: center;">Use the following credentials to access the data room:</p>
+                
+                <div class="credentials">
+                  <div style="margin-bottom: 16px;">
+                    <div class="credentials-label">Email Address</div>
+                    <div class="credentials-value">${email}</div>
+                  </div>
+                  <div>
+                    <div class="credentials-label">Access Password</div>
+                    <div class="credentials-value">${plainPassword}</div>
+                  </div>
+                </div>
                 
                 <a href="${accessLink}" class="cta-button">
                   Access Data Room
                 </a>
                 
-                <p style="text-align: center; color: #666; font-size: 13px;">
-                  Bookmark this link to access the data room anytime.
-                </p>
+                <div class="warning">
+                  🔒 Keep your password secure. You will need it each time you access the data room.
+                </div>
                 
                 <div class="footer">
                   <p><strong>BosPlan</strong><br>Secure Document Sharing</p>
@@ -177,12 +216,12 @@ Deno.serve(async (req) => {
           body: JSON.stringify({
             from: fromEmail,
             to: [email],
-            subject: `Access confirmed: ${dataRoom.name}`,
+            subject: `Your access credentials for ${dataRoom.name}`,
             html: emailHtml,
           }),
         });
 
-        console.log("Confirmation email sent");
+        console.log("Confirmation email with password sent");
       } catch (emailError) {
         console.error("Error sending confirmation email:", emailError);
         // Don't fail the request if email fails
@@ -194,8 +233,8 @@ Deno.serve(async (req) => {
     return new Response(
       JSON.stringify({
         success: true,
-        accessId: invite.access_id,
         dataRoomId: invite.data_room_id,
+        message: "Check your email for access credentials"
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
