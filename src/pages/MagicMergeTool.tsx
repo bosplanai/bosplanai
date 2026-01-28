@@ -353,9 +353,10 @@ End of Audit Log
     };
     return variants[priority] || variants.medium;
   };
-  return <div className="min-h-screen bg-background flex">
-      {/* Main Content */}
-      <div className="flex-1 flex flex-col">
+  return <div className="flex flex-col min-h-screen bg-background">
+      <div className="flex flex-1">
+        {/* Main Content */}
+        <div className="flex-1 flex flex-col">
         {/* Header */}
         <div className="border-b border-border/60 bg-card/80 backdrop-blur-sm px-6 py-4 shadow-sm">
           <div className="flex items-center justify-between">
@@ -669,10 +670,11 @@ End of Audit Log
               </div>}
           </div>
         </div>
-      </div>
+        </div>
 
-      {/* Right Side Navigation */}
-      <SideNavigation />
+        {/* Right Side Navigation */}
+        <SideNavigation />
+      </div>
       <BetaFooter />
     </div>;
 };

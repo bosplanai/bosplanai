@@ -444,7 +444,8 @@ const ProjectBoard = () => {
   // Filter members for user search
   const filteredMembers = members.filter(m => m.full_name?.toLowerCase().includes(userSearchQuery.toLowerCase()) || m.email?.toLowerCase().includes(userSearchQuery.toLowerCase()));
   return <DndContext sensors={sensors} collisionDetection={closestCorners} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
-      <div className="flex min-h-screen bg-background overflow-x-hidden">
+      <div className="flex flex-col min-h-screen bg-background">
+        <div className="flex flex-1 overflow-x-hidden">
         <div className="flex-1 flex flex-col bg-card/50 w-full max-w-full">
           {/* Fixed Header Area */}
           <div className="bg-background border-b border-border/50 p-3 sm:p-6 md:px-8 md:pt-8 md:pb-6 w-full max-w-full overflow-x-hidden">
@@ -667,6 +668,7 @@ const ProjectBoard = () => {
         </div>
         
         <SideNavigation activeItem={activeSideItem} onItemClick={setActiveSideItem} />
+        </div>
         <BetaFooter />
       </div>
 

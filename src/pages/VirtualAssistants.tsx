@@ -113,8 +113,9 @@ const VirtualAssistants = () => {
       setLoadingCheckout(null);
     }
   };
-  return <div className="flex min-h-screen bg-background">
-      <div className="flex-1 flex flex-col">
+  return <div className="flex flex-col min-h-screen bg-background">
+      <div className="flex flex-1">
+        <div className="flex-1 flex flex-col">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-5 p-4 sm:p-6 md:p-8 bg-card/50">
           <div className="flex items-center gap-3 sm:gap-5">
@@ -212,8 +213,9 @@ const VirtualAssistants = () => {
           })}
           </div>
         </div>
+        </div>
+        <SideNavigation activeItem={activeSideItem} onItemClick={setActiveSideItem} />
       </div>
-      <SideNavigation activeItem={activeSideItem} onItemClick={setActiveSideItem} />
       <BetaFooter />
     </div>;
 };

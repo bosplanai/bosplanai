@@ -207,9 +207,10 @@ const Templates = () => {
   }
 
   return (
-    <div className="flex min-h-screen bg-background">
-      {/* Main Content */}
-      <div className="flex-1 flex flex-col">
+    <div className="flex flex-col min-h-screen bg-background">
+      <div className="flex flex-1">
+        {/* Main Content */}
+        <div className="flex-1 flex flex-col">
         {/* Header */}
         <header className="bg-card border-b border-border px-4 sm:px-6 py-4 sm:py-5">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
@@ -423,10 +424,11 @@ const Templates = () => {
             </TabsContent>
           </Tabs>
         </main>
-      </div>
+        </div>
       
-      {/* Side Navigation */}
-      <SideNavigation />
+        {/* Side Navigation */}
+        <SideNavigation />
+      </div>
       <BetaFooter />
       {/* Dialogs */}
       <CreateTemplateDialog open={createDialogOpen} onOpenChange={setCreateDialogOpen} />
