@@ -17,6 +17,7 @@ interface TeamMember {
 interface PendingTaskRequestsProps {
   teamMembers: TeamMember[];
   currentUserId: string | undefined;
+  onTaskAccepted?: () => void;
 }
 
 const priorityConfig = {
@@ -25,11 +26,17 @@ const priorityConfig = {
   low: { label: "Low", className: "bg-priority-low/10 text-priority-low" },
 };
 
-const PendingTaskRequests = ({ teamMembers, currentUserId }: PendingTaskRequestsProps) => {
+const PendingTaskRequests = ({ teamMembers, currentUserId, onTaskAccepted }: PendingTaskRequestsProps) => {
   const { pendingRequests, loading, acceptTask, declineTask, reassignTask } = useTaskRequests();
   const [isOpen, setIsOpen] = useState(true);
   const [selectedRequest, setSelectedRequest] = useState<TaskRequest | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
+
+  // Wrap acceptTask to also trigger the parent's task refetch
+  const handleAcceptTask = async (taskId: string): Promise<boolean> => {
+    const success = await acceptTask(taskId, onTaskAccepted);
+    return success;
+  };
 
   if (loading || pendingRequests.length === 0) {
     return null;
@@ -130,7 +137,7 @@ const PendingTaskRequests = ({ teamMembers, currentUserId }: PendingTaskRequests
         request={selectedRequest}
         teamMembers={teamMembers}
         currentUserId={currentUserId}
-        onAccept={acceptTask}
+        onAccept={handleAcceptTask}
         onDecline={declineTask}
         onReassign={reassignTask}
       />
