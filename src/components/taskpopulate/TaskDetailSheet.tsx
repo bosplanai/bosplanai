@@ -40,6 +40,7 @@ interface TaskDetailSheetProps {
   onSave: (details: TaskDetails) => void;
   canAccessOperational?: boolean;
   canAccessStrategic?: boolean;
+  canCreateProject?: boolean;
 }
 
 const priorityOptions = [
@@ -68,6 +69,7 @@ const TaskDetailSheet = ({
   onSave,
   canAccessOperational = true,
   canAccessStrategic = true,
+  canCreateProject = true,
 }: TaskDetailSheetProps) => {
   const [title, setTitle] = useState(initialTitle);
   const [description, setDescription] = useState(initialDescription);
@@ -262,32 +264,34 @@ const TaskDetailSheet = ({
                 ))}
               </SelectContent>
             </Select>
-            <div className="flex gap-2">
-              <Input
-                placeholder="Or create new project..."
-                value={newProjectName}
-                onChange={(e) => setNewProjectName(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    e.preventDefault();
-                    handleCreateProject();
-                  }
-                }}
-              />
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={handleCreateProject}
-                disabled={!newProjectName.trim() || isCreatingProject}
-              >
-                {isCreatingProject ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  "Create"
-                )}
-              </Button>
-            </div>
+            {canCreateProject && (
+              <div className="flex gap-2">
+                <Input
+                  placeholder="Or create new project..."
+                  value={newProjectName}
+                  onChange={(e) => setNewProjectName(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      handleCreateProject();
+                    }
+                  }}
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleCreateProject}
+                  disabled={!newProjectName.trim() || isCreatingProject}
+                >
+                  {isCreatingProject ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    "Create"
+                  )}
+                </Button>
+              </div>
+            )}
           </div>
 
           {/* Due Date */}

@@ -578,7 +578,7 @@ const ProjectBoard = () => {
                     </div>
                   </PopoverContent>
                 </Popover>
-                {canCreateTasks && <AddTaskDialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen} activeTab={activeTab} showSubcategoryFilter={showSubcategoryFilter} teamMembers={teamMembers} organizationId={organization?.id || null} onAddTask={handleAddTask} onComplete={handleTaskCreationComplete} />}
+                {canCreateTasks && <AddTaskDialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen} activeTab={activeTab} showSubcategoryFilter={showSubcategoryFilter} teamMembers={teamMembers} organizationId={organization?.id || null} canCreateProject={isAdmin} onAddTask={handleAddTask} onComplete={handleTaskCreationComplete} />}
                 <PersonalChecklistModal />
                 <ArchiveFolder onRestore={refetch} variant="tasks" />
                 {canCreateTasks && <TaskDraftsFolder />}

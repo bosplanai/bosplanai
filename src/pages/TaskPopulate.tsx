@@ -601,6 +601,7 @@ const TaskPopulate = () => {
                     isCreating={isCreating}
                     canAccessOperational={canAccessOperational}
                     canAccessStrategic={canAccessStrategic}
+                    canCreateProject={isAdmin}
                   />
                 </CardContent>
               </Card>

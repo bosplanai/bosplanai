@@ -20,6 +20,7 @@ interface TaskChecklistPreviewProps {
   isCreating?: boolean;
   canAccessOperational?: boolean;
   canAccessStrategic?: boolean;
+  canCreateProject?: boolean;
 }
 
 const TaskChecklistPreview = ({
@@ -36,6 +37,7 @@ const TaskChecklistPreview = ({
   isCreating = false,
   canAccessOperational = true,
   canAccessStrategic = true,
+  canCreateProject = true,
 }: TaskChecklistPreviewProps) => {
   const selectedCount = useMemo(
     () => tasks.filter((t) => t.selected).length,
@@ -130,6 +132,7 @@ const TaskChecklistPreview = ({
                 onQuickUpdate={onQuickUpdate}
                 canAccessOperational={canAccessOperational}
                 canAccessStrategic={canAccessStrategic}
+                canCreateProject={canCreateProject}
               />
             ))}
           </div>

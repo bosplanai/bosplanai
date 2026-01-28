@@ -64,6 +64,7 @@ interface AddTaskDialogProps {
   showSubcategoryFilter: boolean;
   teamMembers: TeamMember[];
   organizationId: string | null;
+  canCreateProject?: boolean;
   onAddTask: (params: {
     title: string;
     icon: string;
@@ -88,6 +89,7 @@ const AddTaskDialog = ({
   showSubcategoryFilter,
   teamMembers,
   organizationId,
+  canCreateProject = true,
   onAddTask,
   onComplete
 }: AddTaskDialogProps) => {
@@ -473,12 +475,14 @@ const AddTaskDialog = ({
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="none">No Project</SelectItem>
-                <SelectItem value="new">
-                  <div className="flex items-center gap-2">
-                    <Plus className="w-4 h-4" />
-                    Create New Project
-                  </div>
-                </SelectItem>
+                {canCreateProject && (
+                  <SelectItem value="new">
+                    <div className="flex items-center gap-2">
+                      <Plus className="w-4 h-4" />
+                      Create New Project
+                    </div>
+                  </SelectItem>
+                )}
                 {projects.map((project) => (
                   <SelectItem key={project.id} value={project.id}>
                     {project.title}
