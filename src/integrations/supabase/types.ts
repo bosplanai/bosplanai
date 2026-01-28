@@ -510,6 +510,7 @@ export type Database = {
       data_room_invites: {
         Row: {
           access_id: string | null
+          access_password: string | null
           created_at: string
           data_room_id: string
           email: string
@@ -523,6 +524,7 @@ export type Database = {
         }
         Insert: {
           access_id?: string | null
+          access_password?: string | null
           created_at?: string
           data_room_id: string
           email: string
@@ -536,6 +538,7 @@ export type Database = {
         }
         Update: {
           access_id?: string | null
+          access_password?: string | null
           created_at?: string
           data_room_id?: string
           email?: string
