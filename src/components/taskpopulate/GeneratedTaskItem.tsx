@@ -34,6 +34,7 @@ interface GeneratedTaskItemProps {
   onQuickUpdate: (id: string, updates: Partial<ParsedTask>) => void;
   canAccessOperational?: boolean;
   canAccessStrategic?: boolean;
+  canCreateProject?: boolean;
 }
 
 const destinationConfig = {
@@ -57,6 +58,7 @@ const GeneratedTaskItem = ({
   onQuickUpdate,
   canAccessOperational = true,
   canAccessStrategic = true,
+  canCreateProject = true,
 }: GeneratedTaskItemProps) => {
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const { projects } = useProjects();
@@ -309,6 +311,7 @@ const GeneratedTaskItem = ({
         onSave={handleSaveDetails}
         canAccessOperational={canAccessOperational}
         canAccessStrategic={canAccessStrategic}
+        canCreateProject={canCreateProject}
       />
     </>
   );

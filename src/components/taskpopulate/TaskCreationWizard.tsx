@@ -48,7 +48,7 @@ const TaskCreationWizard = ({
   const { addTask } = useTasks();
   const { projects, addProject } = useProjects();
   const { members } = useTeamMembers();
-  const { canAccessOperational, canAccessStrategic } = useUserRole();
+  const { canAccessOperational, canAccessStrategic, isAdmin } = useUserRole();
   const { addItem: addChecklistItem } = usePersonalChecklist();
 
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -261,26 +261,28 @@ const TaskCreationWizard = ({
               </SelectContent>
             </Select>
 
-            <div className="flex gap-2">
-              <Input
-                placeholder="Or create new project..."
-                value={newProjectName}
-                onChange={(e) => setNewProjectName(e.target.value)}
-                disabled={isSubmitting}
-              />
-              <Button
-                type="button"
-                variant="outline"
-                onClick={handleCreateProject}
-                disabled={!newProjectName.trim() || isCreatingProject || isSubmitting}
-              >
-                {isCreatingProject ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  "Create"
-                )}
-              </Button>
-            </div>
+            {isAdmin && (
+              <div className="flex gap-2">
+                <Input
+                  placeholder="Or create new project..."
+                  value={newProjectName}
+                  onChange={(e) => setNewProjectName(e.target.value)}
+                  disabled={isSubmitting}
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleCreateProject}
+                  disabled={!newProjectName.trim() || isCreatingProject || isSubmitting}
+                >
+                  {isCreatingProject ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    "Create"
+                  )}
+                </Button>
+              </div>
+            )}
           </div>
 
           {/* Task Title */}
