@@ -138,7 +138,11 @@ const AcceptInvite = () => {
 
     setSubmitting(true);
 
+    let stage: "create_user" | "sign_in" | "accept_invite" = "create_user";
+
     try {
+      const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
       // Create the user via Admin API edge function - this bypasses confirmation email entirely
       const { data: createData, error: createError } = await supabase.functions.invoke("create-invited-user", {
         body: {
@@ -200,7 +204,11 @@ const AcceptInvite = () => {
       // If there was an error and it wasn't USER_EXISTS, throw
       if (createError && !responseBody?.success) {
         console.error("Error creating user:", createError);
-        throw new Error(responseBody?.error || "Failed to create your account. Please try again.");
+        throw new Error(
+          responseBody?.error ||
+            createError.message ||
+            "Failed to create your account. Please try again."
+        );
       }
 
       if (!responseBody?.success || !responseBody?.userId) {
@@ -210,10 +218,20 @@ const AcceptInvite = () => {
       const userId = responseBody.userId;
 
       // Sign the user in immediately - no confirmation email was sent
-      const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
-        email: inviteData.email,
-        password,
-      });
+      // Occasionally, auth can take a moment to become consistent after admin user creation.
+      stage = "sign_in";
+      let signInData: any = null;
+      let signInError: any = null;
+      for (let attempt = 1; attempt <= 5; attempt += 1) {
+        const res = await supabase.auth.signInWithPassword({
+          email: inviteData.email,
+          password,
+        });
+        signInData = res.data;
+        signInError = res.error;
+        if (!signInError && signInData?.session) break;
+        await sleep(300 * attempt);
+      }
       
       if (signInError) {
         console.error("Sign-in error after user creation:", signInError);
@@ -225,6 +243,7 @@ const AcceptInvite = () => {
       }
 
       // Accept the invite using the database function
+      stage = "accept_invite";
       const { data: result, error: acceptError } = await supabase.rpc("accept_invite", {
         _token: token,
         _user_id: userId,
@@ -257,7 +276,7 @@ const AcceptInvite = () => {
       console.error("Error accepting invite:", err);
       toast({
         title: "Failed to complete registration",
-        description: err.message || "An error occurred. Please try again.",
+        description: `(${stage}) ${err?.message || "An error occurred. Please try again."}`,
         variant: "destructive"
       });
     } finally {

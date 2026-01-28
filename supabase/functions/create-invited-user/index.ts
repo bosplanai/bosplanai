@@ -63,43 +63,6 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Check if user already exists.
-    // NOTE: auth-js in edge runtime doesn't expose getUserByEmail, so we page through listUsers()
-    // with early-exit to keep this reliable.
-    const emailLower = email.toLowerCase();
-    let existingUserId: string | null = null;
-    for (let page = 1; page <= 5 && !existingUserId; page += 1) {
-      const { data: existingUsers, error: listError } = await supabaseAdmin.auth.admin.listUsers({
-        page,
-        perPage: 1000,
-      });
-
-      if (listError) {
-        console.error("listUsers error:", listError);
-        break;
-      }
-
-      const found = existingUsers?.users?.find(
-        (u) => (u.email ?? "").toLowerCase() === emailLower
-      );
-      if (found?.id) existingUserId = found.id;
-
-      // If we got less than a full page, we can stop.
-      if ((existingUsers?.users?.length ?? 0) < 1000) break;
-    }
-
-    if (existingUserId) {
-      return new Response(
-        JSON.stringify({
-          success: false,
-          code: "USER_EXISTS",
-          userId: existingUserId,
-          email,
-        }),
-        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
     // Create the user with Admin API - this bypasses email confirmation entirely
     // Setting email_confirm: true means no confirmation email will be sent
     const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
@@ -109,10 +72,27 @@ Deno.serve(async (req) => {
     });
 
     if (createError) {
+      const msg = (createError.message || "").toLowerCase();
+
+      // Supabase returns an error when the email is already registered.
+      // We don't need the user id here; the frontend will route them to login.
+      if (msg.includes("already") && (msg.includes("registered") || msg.includes("exists"))) {
+        return new Response(
+          JSON.stringify({
+            success: false,
+            code: "USER_EXISTS",
+            email,
+            error: "User already exists",
+          }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
       console.error("Failed to create user:", createError);
+      // Return 200 so the frontend gets a consistent, parseable response.
       return new Response(
         JSON.stringify({ success: false, code: "CREATE_FAILED", error: createError.message }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
