@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
-import { ArrowLeft, User, Building2, CreditCard, Users } from "lucide-react";
+import { ArrowLeft, User, Building2, CreditCard } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import SideNavigation from "@/components/SideNavigation";
@@ -11,7 +11,6 @@ import { useOrgNavigation } from "@/hooks/useOrgNavigation";
 import AccountSettingsContent from "@/components/settings/AccountSettingsContent";
 import OrganizationSettingsContent from "@/components/settings/OrganizationSettingsContent";
 import BillingSettingsContent from "@/components/settings/BillingSettingsContent";
-import TeamSettingsContent from "@/components/settings/TeamSettingsContent";
 
 const Settings = () => {
   const { navigateOrg } = useOrgNavigation();
@@ -35,10 +34,10 @@ const Settings = () => {
     }
   }, [searchParams]);
 
+  // Removed "Team" tab - Team Members is now a separate standalone page
   const tabs = [
     { id: "account", label: "Account", icon: User, adminOnly: false },
     { id: "organization", label: "Organisation", icon: Building2, adminOnly: true },
-    { id: "team", label: "Team", icon: Users, adminOnly: true },
     { id: "billing", label: "Billing", icon: CreditCard, adminOnly: true },
   ];
 
@@ -92,10 +91,6 @@ const Settings = () => {
                 <>
                   <TabsContent value="organization" className="mt-0">
                     <OrganizationSettingsContent />
-                  </TabsContent>
-
-                  <TabsContent value="team" className="mt-0">
-                    <TeamSettingsContent />
                   </TabsContent>
 
                   <TabsContent value="billing" className="mt-0">
