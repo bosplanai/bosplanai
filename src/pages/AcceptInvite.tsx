@@ -236,8 +236,9 @@ const AcceptInvite = () => {
         description: `You've joined ${inviteData.org_name} as ${roleConfig[inviteData.role]?.label || inviteData.role}`
       });
 
-      // User is already authenticated - redirect directly to their dashboard/tasks page
-      navigate(`/${inviteData.org_slug}/tasks`);
+       // User is already authenticated - redirect to org home (ProjectBoard)
+       // NOTE: the router does not define /:orgSlug/tasks, so this must be /:orgSlug
+       navigate(`/${inviteData.org_slug}`);
     } catch (err: any) {
       console.error("Error accepting invite:", err);
       toast({
