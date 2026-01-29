@@ -2355,6 +2355,15 @@ export type Database = {
         }
         Returns: Json
       }
+      create_additional_organization: {
+        Args: {
+          _employee_size: string
+          _job_role: string
+          _org_name: string
+          _phone_number: string
+        }
+        Returns: string
+      }
       create_organization_and_profile: {
         Args: {
           _employee_size: string
