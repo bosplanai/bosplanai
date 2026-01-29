@@ -31,13 +31,32 @@ const showFatal = (title: string, details?: unknown) => {
 
 // Keep root element empty during initial load - React will render the app
 
+// Ignore errors from browser extensions (MetaMask, etc.)
+const isExtensionError = (error: unknown): boolean => {
+  const errorStr = String(error);
+  return (
+    errorStr.includes("chrome-extension://") ||
+    errorStr.includes("moz-extension://") ||
+    errorStr.includes("MetaMask") ||
+    errorStr.includes("ethereum")
+  );
+};
+
 window.addEventListener("error", (e) => {
+  if (isExtensionError(e.error) || isExtensionError(e.message)) {
+    e.preventDefault();
+    return;
+  }
   // eslint-disable-next-line no-console
   console.error("[WINDOW_ERROR]", e.error ?? e.message);
   showFatal("Runtime error", e.error ?? e.message);
 });
 
 window.addEventListener("unhandledrejection", (e) => {
+  if (isExtensionError(e.reason)) {
+    e.preventDefault();
+    return;
+  }
   // eslint-disable-next-line no-console
   console.error("[UNHANDLED_REJECTION]", e.reason);
   showFatal("Unhandled promise rejection", e.reason);
