@@ -124,11 +124,13 @@ serve(async (req) => {
 
     const inviterName = inviterProfile?.full_name || "A team administrator";
 
-    // Check if user already exists in this organization
+    // Check if user already exists in the system
     const { data: existingUsers } = await supabaseAdmin.auth.admin.listUsers();
     const existingUser = existingUsers?.users?.find(
       (u) => u.email?.toLowerCase() === email.toLowerCase()
     );
+
+    let userAlreadyExists = false;
 
     if (existingUser) {
       // Check if user is already a member of this organization
@@ -145,9 +147,31 @@ serve(async (req) => {
           { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
+
+      // User exists but is not in this org - we'll add them directly
+      userAlreadyExists = true;
+
+      // Add user directly to the organization with the specified role
+      const { error: roleError } = await supabaseAdmin
+        .from("user_roles")
+        .insert({
+          user_id: existingUser.id,
+          organization_id: organizationId,
+          role: mappedRole,
+        });
+
+      if (roleError) {
+        console.error("Error adding user role:", roleError);
+        return new Response(
+          JSON.stringify({ error: "Failed to add user to organization" }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      console.log("Existing user added directly to organization:", existingUser.id);
     }
 
-    // Check for existing pending invite
+    // Check for existing pending invite (only for new users or tracking purposes)
     const { data: existingInvite } = await supabaseAdmin
       .from("organization_invites")
       .select("id")
@@ -156,45 +180,151 @@ serve(async (req) => {
       .eq("status", "pending")
       .maybeSingle();
 
-    if (existingInvite) {
+    if (existingInvite && !userAlreadyExists) {
       return new Response(
         JSON.stringify({ error: "An invitation is already pending for this email" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // Create the invite record
+    // If user already exists and we added them, mark any pending invite as accepted or skip invite creation
+    if (userAlreadyExists && existingInvite) {
+      await supabaseAdmin
+        .from("organization_invites")
+        .update({ status: "accepted", accepted_at: new Date().toISOString() })
+        .eq("id", existingInvite.id);
+    }
+
+    // For existing users, we already added them - create an accepted invite record for tracking
+    // For new users, create a pending invite
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + 7); // 7 days expiry
 
-    const { data: invite, error: inviteError } = await supabaseAdmin
-      .from("organization_invites")
-      .insert({
-        email: email.toLowerCase(),
-        role: mappedRole,
-        organization_id: organizationId,
-        invited_by: inviterId,
-        status: "pending",
-        expires_at: expiresAt.toISOString(),
-      })
-      .select()
-      .single();
+    let invite;
+    
+    if (userAlreadyExists && !existingInvite) {
+      // Create an already-accepted invite record for tracking purposes
+      const { data: acceptedInvite, error: acceptedInviteError } = await supabaseAdmin
+        .from("organization_invites")
+        .insert({
+          email: email.toLowerCase(),
+          role: mappedRole,
+          organization_id: organizationId,
+          invited_by: inviterId,
+          status: "accepted",
+          accepted_at: new Date().toISOString(),
+          expires_at: expiresAt.toISOString(),
+        })
+        .select()
+        .single();
 
-    if (inviteError) {
-      console.error("Error creating invite:", inviteError);
-      return new Response(
-        JSON.stringify({ error: "Failed to create invitation" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      if (acceptedInviteError) {
+        console.error("Error creating accepted invite record:", acceptedInviteError);
+        // Don't fail - the user was already added successfully
+      }
+      invite = acceptedInvite;
+    } else if (!userAlreadyExists) {
+      // Create pending invite for new users
+      const { data: pendingInvite, error: inviteError } = await supabaseAdmin
+        .from("organization_invites")
+        .insert({
+          email: email.toLowerCase(),
+          role: mappedRole,
+          organization_id: organizationId,
+          invited_by: inviterId,
+          status: "pending",
+          expires_at: expiresAt.toISOString(),
+        })
+        .select()
+        .single();
+
+      if (inviteError) {
+        console.error("Error creating invite:", inviteError);
+        return new Response(
+          JSON.stringify({ error: "Failed to create invitation" }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      invite = pendingInvite;
     }
 
-    // Generate the accept invite link (uses the invite ID as token)
-    const acceptInviteLink = `${siteUrl}/accept-invite?token=${invite.id}`;
     const roleLabel = roleLabels[mappedRole] || mappedRole;
+    const acceptInviteLink = invite ? `${siteUrl}/accept-invite?token=${invite.id}` : siteUrl;
+    const dashboardLink = `${siteUrl}/tasks`;
 
-    // Send invitation email if Resend is configured
+    // Send email notification if Resend is configured
     if (resendApiKey) {
-      const emailHtml = `
+      // Different email content for existing users vs new users
+      const isExistingUserEmail = userAlreadyExists;
+      
+      const emailHtml = isExistingUserEmail ? `
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <meta charset="utf-8">
+            <title>You've been added to ${organizationName}</title>
+            <style>
+              body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f5f5f5; }
+              .container { background-color: white; border-radius: 12px; padding: 40px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+              .header { text-align: center; margin-bottom: 30px; }
+              .header h1 { color: #0d7377; margin-bottom: 10px; font-size: 28px; }
+              .org-card { background: linear-gradient(135deg, #0d7377 0%, #14919b 100%); color: white; padding: 24px; border-radius: 8px; text-align: center; margin: 24px 0; }
+              .org-name { font-size: 24px; font-weight: bold; margin-bottom: 8px; }
+              .role-badge { display: inline-block; background: rgba(255,255,255,0.2); padding: 6px 16px; border-radius: 20px; font-size: 14px; }
+              .details { background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 24px 0; }
+              .details-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #eee; }
+              .details-row:last-child { border-bottom: none; }
+              .details-label { color: #666; }
+              .details-value { font-weight: 500; }
+              .cta-button { display: block; background-color: #0d7377; color: white !important; padding: 16px 32px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px; text-align: center; margin: 32px auto; max-width: 280px; }
+              .cta-button:hover { background-color: #0b6366; }
+              .footer { text-align: center; color: #666; font-size: 14px; margin-top: 40px; padding-top: 20px; border-top: 1px solid #eee; }
+            </style>
+          </head>
+          <body>
+            <div class="container">
+              <div class="header">
+                <h1>You've Been Added! 🎉</h1>
+                <p>${inviterName} has added you to a new organization on BosPlan</p>
+              </div>
+              
+              <div class="org-card">
+                <div class="org-name">${organizationName}</div>
+                <div class="role-badge">${roleLabel} Access</div>
+              </div>
+              
+              <div class="details">
+                <div class="details-row">
+                  <span class="details-label">Your email:</span>
+                  <span class="details-value">${email}</span>
+                </div>
+                <div class="details-row">
+                  <span class="details-label">Access level:</span>
+                  <span class="details-value">${roleLabel}</span>
+                </div>
+                <div class="details-row">
+                  <span class="details-label">Added by:</span>
+                  <span class="details-value">${inviterName}</span>
+                </div>
+              </div>
+              
+              <p style="text-align: center;">You already have a BosPlan account. Simply log in to access your new organization:</p>
+              
+              <a href="${dashboardLink}" class="cta-button">
+                Go to Dashboard
+              </a>
+              
+              <div class="footer">
+                <p>You can switch between organizations using the organization switcher in the dashboard.</p>
+                <p style="margin-top: 16px;">
+                  <strong>BosPlan</strong><br>
+                  Your Business Operations Platform
+                </p>
+              </div>
+            </div>
+          </body>
+        </html>
+      ` : `
         <!DOCTYPE html>
         <html>
           <head>
@@ -267,6 +397,10 @@ serve(async (req) => {
       `;
 
       try {
+        const emailSubject = userAlreadyExists 
+          ? `${inviterName} added you to ${organizationName} on BosPlan`
+          : `${inviterName} invited you to join ${organizationName} on BosPlan`;
+
         const response = await fetch("https://api.resend.com/emails", {
           method: "POST",
           headers: {
@@ -276,7 +410,7 @@ serve(async (req) => {
           body: JSON.stringify({
             from: fromEmail,
             to: [email],
-            subject: `${inviterName} invited you to join ${organizationName} on BosPlan`,
+            subject: emailSubject,
             html: emailHtml,
           }),
         });
@@ -286,7 +420,7 @@ serve(async (req) => {
           console.error("Resend API error:", errorText);
           // Don't fail the whole request if email fails
         } else {
-          console.log("Invitation email sent successfully");
+          console.log("Email sent successfully");
         }
       } catch (emailError) {
         console.error("Error sending email:", emailError);
@@ -296,19 +430,21 @@ serve(async (req) => {
       console.log("Resend API key not configured, skipping email");
     }
 
-    console.log("Invite created successfully:", invite.id);
+    const inviteId = invite?.id || "direct-add";
+    console.log(userAlreadyExists ? "User added directly to organization" : "Invite created successfully:", inviteId);
 
     return new Response(
       JSON.stringify({ 
         success: true, 
-        invite: {
+        userAddedDirectly: userAlreadyExists,
+        invite: invite ? {
           id: invite.id,
           email: invite.email,
           role: invite.role,
           status: invite.status,
           created_at: invite.created_at,
           expires_at: invite.expires_at,
-        }
+        } : null
       }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
