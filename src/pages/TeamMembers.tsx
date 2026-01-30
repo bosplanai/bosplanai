@@ -1314,7 +1314,7 @@ const TeamMembers = () => {
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end" className="w-72">
                               {/* Resend options for pending/expired invites */}
-                              {!hasAccepted && userOrgs.length > 0 && (
+                              {userOrgs.length > 0 && (
                                 <>
                                   <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground">
                                     Resend Invitation
@@ -1342,35 +1342,19 @@ const TeamMembers = () => {
                                 </>
                               )}
                               
-                              {/* Add to other organizations */}
-                              {hasAccepted && otherOrgs.length > 0 && (
+                              {/* Cancel invitation options */}
+                              {userOrgs.length === 1 ? (
+                                <DropdownMenuItem 
+                                  onClick={() => handleRemoveInvitedUser(userOrgs[0].inviteId, email, userOrgs[0].status, false)} 
+                                  className="text-destructive focus:text-destructive"
+                                >
+                                  <Trash2 className="w-4 h-4 mr-2" />
+                                  Cancel Invitation
+                                </DropdownMenuItem>
+                              ) : (
                                 <>
                                   <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground">
-                                    Add to Organisation
-                                  </div>
-                                  {otherOrgs.map(org => (
-                                    <DropdownMenuItem
-                                      key={org.id}
-                                      onClick={() => handleAddToOrganization(email, primaryRole, org.id, org.name)}
-                                      disabled={addingToOrgId === org.id}
-                                    >
-                                      {addingToOrgId === org.id ? (
-                                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                                      ) : (
-                                        <Building2 className="w-4 h-4 mr-2" />
-                                      )}
-                                      {org.name}
-                                    </DropdownMenuItem>
-                                  ))}
-                                  <DropdownMenuSeparator />
-                                </>
-                              )}
-                              
-                              {/* Remove from specific organizations */}
-                              {userOrgs.length > 1 && (
-                                <>
-                                  <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground">
-                                    Remove from Organisation
+                                    Cancel Invitation
                                   </div>
                                   {userOrgs.map(org => (
                                     <DropdownMenuItem
@@ -1382,27 +1366,7 @@ const TeamMembers = () => {
                                       {org.name}
                                     </DropdownMenuItem>
                                   ))}
-                                  <DropdownMenuSeparator />
                                 </>
-                              )}
-                              
-                              {/* Single org removal or remove all */}
-                              {userOrgs.length === 1 ? (
-                                <DropdownMenuItem 
-                                  onClick={() => handleRemoveInvitedUser(userOrgs[0].inviteId, email, userOrgs[0].status, false)} 
-                                  className="text-destructive focus:text-destructive"
-                                >
-                                  <Trash2 className="w-4 h-4 mr-2" />
-                                  {hasAccepted ? "Remove User" : "Cancel Invitation"}
-                                </DropdownMenuItem>
-                              ) : (
-                                <DropdownMenuItem 
-                                  onClick={() => handleRemoveInvitedUser(userOrgs[0].inviteId, email, userOrgs[0].status, true)} 
-                                  className="text-destructive focus:text-destructive"
-                                >
-                                  <Trash2 className="w-4 h-4 mr-2" />
-                                  Remove from ALL Organisations
-                                </DropdownMenuItem>
                               )}
                             </DropdownMenuContent>
                           </DropdownMenu>
