@@ -52,6 +52,7 @@ const AcceptInvite = () => {
   const token = searchParams.get("token");
 
   const [inviteData, setInviteData] = useState<InviteData | null>(null);
+  const [allPendingInvites, setAllPendingInvites] = useState<InviteData[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -73,6 +74,7 @@ const AcceptInvite = () => {
       }
 
       try {
+        // Get the specific invite by token
         const { data, error: rpcError } = await supabase.rpc("get_invite_by_token", {
           _token: token
         });
@@ -88,6 +90,17 @@ const AcceptInvite = () => {
         }
 
         setInviteData(inviteRow as InviteData);
+
+        // Get all pending invites for this email to show multi-org summary
+        const { data: allInvites } = await supabase.rpc("get_pending_invites_by_email", {
+          _email: inviteRow.email
+        });
+
+        if (allInvites && Array.isArray(allInvites)) {
+          setAllPendingInvites(allInvites as InviteData[]);
+        } else {
+          setAllPendingInvites([inviteRow as InviteData]);
+        }
       } catch (err: any) {
         console.error("Error fetching invite:", err);
         setError("Failed to load invitation. Please try again or contact support.");
@@ -143,7 +156,7 @@ const AcceptInvite = () => {
     try {
       const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-      // Create the user via Admin API edge function - this bypasses confirmation email entirely
+      // Create the user via Admin API edge function
       const { data: createData, error: createError } = await supabase.functions.invoke("create-invited-user", {
         body: {
           email: inviteData.email,
@@ -152,7 +165,6 @@ const AcceptInvite = () => {
         }
       });
 
-      // Normalize response body (sometimes invoke surfaces JSON through error.context.body)
       let responseBody: any = createData;
       if (createError) {
         const ctxBody = (createError as any)?.context?.body;
@@ -171,7 +183,7 @@ const AcceptInvite = () => {
       if (responseBody?.code === "USER_EXISTS" || (createError as any)?.context?.status === 409) {
         toast({
           title: "Account already exists",
-          description: "Please sign in with your existing password (or reset it) to join this organization.",
+          description: "Please sign in with your existing password to join this organization.",
         });
         navigate(
           `/auth?mode=login&email=${encodeURIComponent(inviteData.email)}&invite=${token}&returnUrl=${encodeURIComponent(
@@ -181,7 +193,6 @@ const AcceptInvite = () => {
         return;
       }
 
-      // Handled non-success states from the edge function (these come back as 200)
       if (responseBody && responseBody.success === false) {
         const message =
           responseBody?.error ||
@@ -194,14 +205,12 @@ const AcceptInvite = () => {
           description: message,
           variant: "destructive",
         });
-        // If the invite is invalid, show the dedicated invalid state UI.
         if (responseBody?.code === "INVITE_INVALID") {
           setError(message);
         }
         return;
       }
 
-      // If there was an error and it wasn't USER_EXISTS, throw
       if (createError && !responseBody?.success) {
         console.error("Error creating user:", createError);
         throw new Error(
@@ -217,8 +226,7 @@ const AcceptInvite = () => {
 
       const userId = responseBody.userId;
 
-      // Sign the user in immediately - no confirmation email was sent
-      // Occasionally, auth can take a moment to become consistent after admin user creation.
+      // Sign the user in
       stage = "sign_in";
       let signInData: any = null;
       let signInError: any = null;
@@ -242,36 +250,62 @@ const AcceptInvite = () => {
         throw new Error("Failed to establish session");
       }
 
-      // Accept the invite using the database function
+      // Accept all pending invites for this user
       stage = "accept_invite";
-      const { data: result, error: acceptError } = await supabase.rpc("accept_invite", {
-        _token: token,
-        _user_id: userId,
-        _full_name: fullName.trim(),
-        _job_role: jobRole.trim(),
-        _phone_number: phoneNumber.trim()
-      });
+      
+      if (allPendingInvites.length > 1) {
+        // Accept all pending invites
+        const { data: result, error: acceptError } = await supabase.rpc("accept_all_pending_invites", {
+          _user_id: userId,
+          _email: inviteData.email
+        });
 
-      const resultObj = result as {
-        success: boolean;
-        error?: string;
-        organization_slug?: string;
-        organization_name?: string;
-        role?: string;
-      } | null;
+        const resultObj = result as {
+          success: boolean;
+          accepted_count?: number;
+          first_org_slug?: string;
+        } | null;
 
-      if (acceptError || !resultObj?.success) {
-        throw new Error(resultObj?.error || acceptError?.message || "Failed to accept invitation");
+        if (acceptError || !resultObj?.success) {
+          throw new Error(acceptError?.message || "Failed to accept invitations");
+        }
+
+        toast({
+          title: "Welcome to the team!",
+          description: `You've joined ${resultObj.accepted_count} organization${resultObj.accepted_count !== 1 ? 's' : ''}. Use the organization switcher to navigate between them.`
+        });
+
+        // Redirect to first org
+        navigate(`/${resultObj.first_org_slug || inviteData.org_slug}`);
+      } else {
+        // Accept single invite
+        const { data: result, error: acceptError } = await supabase.rpc("accept_invite", {
+          _token: token,
+          _user_id: userId,
+          _full_name: fullName.trim(),
+          _job_role: jobRole.trim(),
+          _phone_number: phoneNumber.trim()
+        });
+
+        const resultObj = result as {
+          success: boolean;
+          error?: string;
+          organization_slug?: string;
+          organization_name?: string;
+          role?: string;
+        } | null;
+
+        if (acceptError || !resultObj?.success) {
+          throw new Error(resultObj?.error || acceptError?.message || "Failed to accept invitation");
+        }
+
+        toast({
+          title: "Welcome to the team!",
+          description: `You've joined ${inviteData.org_name} as ${roleConfig[inviteData.role]?.label || inviteData.role}`
+        });
+
+        navigate(`/${inviteData.org_slug}`);
       }
-
-      toast({
-        title: "Welcome to the team!",
-        description: `You've joined ${inviteData.org_name} as ${roleConfig[inviteData.role]?.label || inviteData.role}`
-      });
-
-       // User is already authenticated - redirect to org home (ProjectBoard)
-       // NOTE: the router does not define /:orgSlug/tasks, so this must be /:orgSlug
-       navigate(`/${inviteData.org_slug}`);
     } catch (err: any) {
       console.error("Error accepting invite:", err);
       toast({
@@ -317,6 +351,7 @@ const AcceptInvite = () => {
   }
 
   const roleInfo = roleConfig[inviteData.role] || roleConfig.viewer;
+  const hasMultipleInvites = allPendingInvites.length > 1;
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
@@ -328,7 +363,7 @@ const AcceptInvite = () => {
             className="h-10 mx-auto"
           />
           <div className="space-y-2">
-            <CardTitle className="text-2xl">You're Invited!</CardTitle>
+            <CardTitle className="text-2xl">You're Invited! 🎉</CardTitle>
             <CardDescription className="text-base">
               {inviteData.invited_by_name ? (
                 <>{inviteData.invited_by_name} has invited you to join</>
@@ -338,26 +373,56 @@ const AcceptInvite = () => {
             </CardDescription>
           </div>
           
-          {/* Organization info */}
-          <div className="bg-muted/50 rounded-lg p-4 space-y-3">
-            <div className="flex items-center justify-center gap-2">
-              <Building2 className="w-5 h-5 text-primary" />
-              <span className="font-semibold text-lg">{inviteData.org_name}</span>
-            </div>
-            
-            <div className="flex items-center justify-center gap-2 text-muted-foreground">
-              <Mail className="w-4 h-4" />
-              <span className="text-sm">{inviteData.email}</span>
-            </div>
-
-            <div className="flex items-center justify-center gap-2 pt-2 border-t">
-              {roleInfo.icon}
-              <div className="text-left">
-                <p className="font-medium">{roleInfo.label}</p>
-                <p className="text-xs text-muted-foreground">{roleInfo.description}</p>
+          {/* Organization info - show multi-org table if multiple invites */}
+          {hasMultipleInvites ? (
+            <div className="bg-muted/50 rounded-lg p-4 space-y-3">
+              <p className="text-sm font-medium text-muted-foreground">You're invited to join {allPendingInvites.length} organizations:</p>
+              <div className="space-y-2">
+                {allPendingInvites.map((invite) => {
+                  const inviteRoleInfo = roleConfig[invite.role] || roleConfig.viewer;
+                  return (
+                    <div 
+                      key={invite.id} 
+                      className="flex items-center justify-between p-3 bg-background rounded-lg border"
+                    >
+                      <div className="flex items-center gap-2">
+                        <Building2 className="w-4 h-4 text-primary" />
+                        <span className="font-medium">{invite.org_name}</span>
+                      </div>
+                      <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                        {inviteRoleInfo.icon}
+                        <span>{inviteRoleInfo.label}</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="flex items-center justify-center gap-2 text-muted-foreground pt-2 border-t">
+                <Mail className="w-4 h-4" />
+                <span className="text-sm">{inviteData.email}</span>
               </div>
             </div>
-          </div>
+          ) : (
+            <div className="bg-muted/50 rounded-lg p-4 space-y-3">
+              <div className="flex items-center justify-center gap-2">
+                <Building2 className="w-5 h-5 text-primary" />
+                <span className="font-semibold text-lg">{inviteData.org_name}</span>
+              </div>
+              
+              <div className="flex items-center justify-center gap-2 text-muted-foreground">
+                <Mail className="w-4 h-4" />
+                <span className="text-sm">{inviteData.email}</span>
+              </div>
+
+              <div className="flex items-center justify-center gap-2 pt-2 border-t">
+                {roleInfo.icon}
+                <div className="text-left">
+                  <p className="font-medium">{roleInfo.label}</p>
+                  <p className="text-xs text-muted-foreground">{roleInfo.description}</p>
+                </div>
+              </div>
+            </div>
+          )}
         </CardHeader>
 
         <CardContent>
@@ -454,7 +519,7 @@ const AcceptInvite = () => {
               ) : (
                 <>
                   <CheckCircle2 className="w-4 h-4 mr-2" />
-                  Accept Invitation & Create Account
+                  Accept Invitation{hasMultipleInvites ? 's' : ''} & Create Account
                 </>
               )}
             </Button>
