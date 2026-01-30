@@ -2142,6 +2142,66 @@ export type Database = {
           },
         ]
       }
+      team_working_hours: {
+        Row: {
+          created_at: string
+          friday_hours: number
+          id: string
+          monday_hours: number
+          organization_id: string
+          saturday_hours: number
+          sunday_hours: number
+          thursday_hours: number
+          tuesday_hours: number
+          updated_at: string
+          user_id: string
+          wednesday_hours: number
+        }
+        Insert: {
+          created_at?: string
+          friday_hours?: number
+          id?: string
+          monday_hours?: number
+          organization_id: string
+          saturday_hours?: number
+          sunday_hours?: number
+          thursday_hours?: number
+          tuesday_hours?: number
+          updated_at?: string
+          user_id: string
+          wednesday_hours?: number
+        }
+        Update: {
+          created_at?: string
+          friday_hours?: number
+          id?: string
+          monday_hours?: number
+          organization_id?: string
+          saturday_hours?: number
+          sunday_hours?: number
+          thursday_hours?: number
+          tuesday_hours?: number
+          updated_at?: string
+          user_id?: string
+          wednesday_hours?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "team_working_hours_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "team_working_hours_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_appearance_settings: {
         Row: {
           brand_coral: string | null
