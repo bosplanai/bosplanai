@@ -2472,6 +2472,7 @@ export type Database = {
       get_pending_invites_by_email: {
         Args: { _email: string }
         Returns: {
+          created_at: string
           email: string
           expires_at: string
           id: string
