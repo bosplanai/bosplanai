@@ -2336,10 +2336,18 @@ export type Database = {
       }
     }
     Functions: {
-      accept_all_pending_invites: {
-        Args: { _email: string; _user_id: string }
-        Returns: Json
-      }
+      accept_all_pending_invites:
+        | { Args: { _email: string; _user_id: string }; Returns: Json }
+        | {
+            Args: {
+              _email: string
+              _full_name?: string
+              _job_role?: string
+              _phone_number?: string
+              _user_id: string
+            }
+            Returns: Json
+          }
       accept_invite: {
         Args: {
           _full_name: string
