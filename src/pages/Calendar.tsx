@@ -15,7 +15,9 @@ import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Checkbox } from '@/components/ui/checkbox';
-import { CalendarDays, CheckSquare, ListTodo, ArrowLeft, User, FileText, Clock, Paperclip, MessageSquare, Filter, X } from 'lucide-react';
+import { CalendarDays, CheckSquare, ListTodo, ArrowLeft, User, FileText, Clock, Paperclip, MessageSquare, Filter, X, RefreshCw } from 'lucide-react';
+import OrganizationSwitcher from '@/components/OrganizationSwitcher';
+import { NotificationBell } from '@/components/NotificationBell';
 import SideNavigation from '@/components/SideNavigation';
 import BetaFooter from '@/components/BetaFooter';
 import { TaskNotesDialog } from '@/components/TaskNotesDialog';
@@ -271,68 +273,79 @@ const Calendar = () => {
   };
 
   return (
-    <div className="flex flex-col min-h-screen w-full">
+    <div className="flex flex-col min-h-screen bg-background">
       <div className="flex flex-1">
-        <div className="flex-1 p-4 sm:p-6 md:p-8 overflow-auto pb-24 sm:pb-8">
-        <div className="max-w-7xl mx-auto">
+        <div className="flex-1 flex flex-col">
           {/* Header */}
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 mb-6 sm:mb-8">
-            <div>
-              <div className="flex items-center gap-2 sm:gap-3 mb-1 sm:mb-2">
-                <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-primary/10 flex items-center justify-center">
-                  <CalendarDays className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
+          <header className="bg-card border-b border-border px-4 sm:px-6 py-4 sm:py-5">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
+              <div className="flex items-center gap-3 sm:gap-4">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => navigate('/')}
+                  className="shrink-0 h-9 w-9 sm:h-10 sm:w-10 rounded-xl hover:bg-secondary/80 transition-all duration-200"
+                >
+                  <ArrowLeft className="w-5 h-5" />
+                </Button>
+                <div className="flex items-center gap-2 sm:gap-3">
+                  <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-xl bg-gradient-to-br from-brand-teal to-brand-teal/70 flex items-center justify-center shadow-sm">
+                    <CalendarDays className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
+                  </div>
+                  <div>
+                    <h1 className="text-lg sm:text-xl font-semibold text-foreground">Task Calendar</h1>
+                    <p className="text-xs sm:text-sm text-muted-foreground hidden sm:block">View and manage your upcoming deadlines</p>
+                  </div>
                 </div>
-                <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-foreground">Task Calendar</h1>
               </div>
-              <p className="text-xs sm:text-sm text-muted-foreground line-clamp-2 sm:line-clamp-none">View and manage your upcoming deadlines</p>
-            </div>
-            <Button 
-              variant="outline" 
-              onClick={() => navigate('/')}
-              className="gap-2 h-9 sm:h-10 text-sm self-start sm:self-auto"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              <span className="hidden sm:inline">Return to Dashboard</span>
-              <span className="sm:hidden">Back</span>
-            </Button>
-          </div>
 
-          {/* Stats Cards */}
-          <div className="grid grid-cols-3 gap-2 sm:gap-4 mb-6 sm:mb-8">
-            <Card className="bg-destructive/5 border-destructive/20">
-              <CardContent className="p-2.5 sm:p-4 flex items-center gap-2 sm:gap-3">
-                <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-destructive/10 flex items-center justify-center shrink-0">
-                  <ListTodo className="w-4 h-4 sm:w-5 sm:h-5 text-destructive" />
-                </div>
-                <div className="min-w-0">
-                  <p className="text-lg sm:text-2xl font-bold text-foreground">{highPriorityCount}</p>
-                  <p className="text-[10px] sm:text-sm text-muted-foreground truncate">High</p>
-                </div>
-              </CardContent>
-            </Card>
-            <Card className="bg-yellow-500/5 border-yellow-500/20">
-              <CardContent className="p-2.5 sm:p-4 flex items-center gap-2 sm:gap-3">
-                <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-yellow-500/10 flex items-center justify-center shrink-0">
-                  <ListTodo className="w-4 h-4 sm:w-5 sm:h-5 text-yellow-500" />
-                </div>
-                <div className="min-w-0">
-                  <p className="text-lg sm:text-2xl font-bold text-foreground">{mediumPriorityCount}</p>
-                  <p className="text-[10px] sm:text-sm text-muted-foreground truncate">Medium</p>
-                </div>
-              </CardContent>
-            </Card>
-            <Card className="bg-green-500/5 border-green-500/20">
-              <CardContent className="p-2.5 sm:p-4 flex items-center gap-2 sm:gap-3">
-                <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-green-500/10 flex items-center justify-center shrink-0">
-                  <CheckSquare className="w-4 h-4 sm:w-5 sm:h-5 text-green-500" />
-                </div>
-                <div className="min-w-0">
-                  <p className="text-lg sm:text-2xl font-bold text-foreground">{lowPriorityCount}</p>
-                  <p className="text-[10px] sm:text-sm text-muted-foreground truncate">Low</p>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
+              <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto">
+                <OrganizationSwitcher />
+                <NotificationBell />
+              </div>
+            </div>
+          </header>
+
+          {/* Main Content */}
+          <main className="flex-1 p-4 sm:p-6 overflow-auto">
+          <div className="max-w-7xl mx-auto space-y-6">
+
+            {/* Stats Cards */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4">
+              <Card className="bg-destructive/5 border-destructive/20 rounded-xl transition-all hover:shadow-sm">
+                <CardContent className="p-3 sm:p-4 flex items-start justify-between gap-2">
+                  <div className="space-y-0.5 sm:space-y-1 min-w-0 flex-1">
+                    <p className="text-xs sm:text-sm text-muted-foreground truncate">High Priority</p>
+                    <p className="text-xl sm:text-2xl font-bold text-foreground">{highPriorityCount}</p>
+                  </div>
+                  <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-destructive/10 flex items-center justify-center shrink-0">
+                    <ListTodo className="w-4 h-4 sm:w-5 sm:h-5 text-destructive" />
+                  </div>
+                </CardContent>
+              </Card>
+              <Card className="bg-brand-orange/5 border-brand-orange/20 rounded-xl transition-all hover:shadow-sm">
+                <CardContent className="p-3 sm:p-4 flex items-start justify-between gap-2">
+                  <div className="space-y-0.5 sm:space-y-1 min-w-0 flex-1">
+                    <p className="text-xs sm:text-sm text-muted-foreground truncate">Medium Priority</p>
+                    <p className="text-xl sm:text-2xl font-bold text-foreground">{mediumPriorityCount}</p>
+                  </div>
+                  <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-brand-orange/10 flex items-center justify-center shrink-0">
+                    <ListTodo className="w-4 h-4 sm:w-5 sm:h-5 text-brand-orange" />
+                  </div>
+                </CardContent>
+              </Card>
+              <Card className="bg-brand-green/5 border-brand-green/20 rounded-xl transition-all hover:shadow-sm col-span-2 sm:col-span-1">
+                <CardContent className="p-3 sm:p-4 flex items-start justify-between gap-2">
+                  <div className="space-y-0.5 sm:space-y-1 min-w-0 flex-1">
+                    <p className="text-xs sm:text-sm text-muted-foreground truncate">Low Priority</p>
+                    <p className="text-xl sm:text-2xl font-bold text-foreground">{lowPriorityCount}</p>
+                  </div>
+                  <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-brand-green/10 flex items-center justify-center shrink-0">
+                    <CheckSquare className="w-4 h-4 sm:w-5 sm:h-5 text-brand-green" />
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
 
           {/* Main Content - Combined Card */}
           <Card>
@@ -618,7 +631,8 @@ const Calendar = () => {
               </div>
             </CardContent>
           </Card>
-        </div>
+          </div>
+          </main>
         </div>
     
         <SideNavigation />
