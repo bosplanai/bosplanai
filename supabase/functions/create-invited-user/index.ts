@@ -30,11 +30,13 @@ Deno.serve(async (req) => {
     );
 
     // Verify the invite token is valid and pending
+    // Check against both 'token' column (new) and 'id' column (legacy) for compatibility
     const { data: invite, error: inviteError } = await supabaseAdmin
       .from("organization_invites")
-      .select("id, email, status")
-      .eq("id", inviteToken)
+      .select("id, email, status, token, expires_at")
+      .or(`token.eq.${inviteToken},id.eq.${inviteToken}`)
       .eq("status", "pending")
+      .gte("expires_at", new Date().toISOString())
       .single();
 
     // IMPORTANT: For expected/handled states, return 200 with a structured body.
