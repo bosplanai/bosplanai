@@ -1533,6 +1533,7 @@ export type Database = {
           phone_number: string
           scheduled_deletion_at: string | null
           updated_at: string
+          welcome_email_sent_at: string | null
         }
         Insert: {
           created_at?: string
@@ -1545,6 +1546,7 @@ export type Database = {
           phone_number: string
           scheduled_deletion_at?: string | null
           updated_at?: string
+          welcome_email_sent_at?: string | null
         }
         Update: {
           created_at?: string
@@ -1557,6 +1559,7 @@ export type Database = {
           phone_number?: string
           scheduled_deletion_at?: string | null
           updated_at?: string
+          welcome_email_sent_at?: string | null
         }
         Relationships: [
           {
