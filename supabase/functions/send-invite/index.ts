@@ -163,6 +163,36 @@ serve(async (req) => {
     const results: { orgId: string; orgName: string; role: string; status: string; inviteId?: string; token?: string }[] = [];
     let userAlreadyExists = !!existingUser;
 
+    // IMPORTANT: Clean up any existing pending invites for this email from organizations 
+    // where the inviter is admin. This ensures that when a new invite is sent, only the 
+    // newly selected organizations are included (not stale invites from previous sessions).
+    if (!existingUser) {
+      // Get all org IDs where inviter is admin
+      const { data: inviterAdminOrgs } = await supabaseAdmin
+        .from("user_roles")
+        .select("organization_id")
+        .eq("user_id", inviterId)
+        .eq("role", "admin");
+
+      if (inviterAdminOrgs && inviterAdminOrgs.length > 0) {
+        const adminOrgIds = inviterAdminOrgs.map(o => o.organization_id);
+        
+        // Delete all pending invites for this email from orgs where inviter is admin
+        const { error: deleteError } = await supabaseAdmin
+          .from("organization_invites")
+          .delete()
+          .ilike("email", email)
+          .eq("status", "pending")
+          .in("organization_id", adminOrgIds);
+
+        if (deleteError) {
+          console.log("Warning: Could not clean up old pending invites:", deleteError.message);
+        } else {
+          console.log("Cleaned up existing pending invites for", email, "from admin's organizations");
+        }
+      }
+    }
+
     // Process each organization
     for (const org of organizations) {
       const mappedRole = mapRoleToDbRole(org.role);
