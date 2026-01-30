@@ -446,18 +446,23 @@ const ProjectBoard = () => {
   return <DndContext sensors={sensors} collisionDetection={closestCorners} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
       <div className="flex flex-col min-h-screen bg-background">
         <div className="flex flex-1 overflow-x-hidden">
-        <div className="flex-1 flex flex-col bg-card/50 w-full max-w-full">
-          {/* Fixed Header Area */}
-          <div className="bg-background border-b border-border/50 p-3 sm:p-6 md:px-8 md:pt-8 md:pb-6 w-full max-w-full overflow-x-hidden">
-            {/* Header - responsive layout */}
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-              <div className="flex items-center gap-3 sm:gap-5">
-                <img alt="Bosplan" className="h-9 w-auto cursor-pointer sm:h-10 transition-transform duration-200 hover:scale-105" onClick={() => navigate("/")} src="/lovable-uploads/ae2e0e00-979d-4807-aba7-9534bd9a71ed.png" />
+        <div className="flex-1 flex flex-col w-full max-w-full">
+          {/* Header */}
+          <header className="bg-card border-b border-border px-4 sm:px-6 py-4 sm:py-5">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
+              <div className="flex items-center gap-3 sm:gap-4">
+                <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-xl bg-gradient-to-br from-brand-green to-brand-green/70 flex items-center justify-center shadow-sm cursor-pointer transition-transform duration-200 hover:scale-105" onClick={() => navigate("/")}>
+                  <ListTodo className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
+                </div>
+                <div>
+                  <h1 className="text-lg sm:text-xl font-semibold text-foreground">Task Management</h1>
+                  <p className="text-xs sm:text-sm text-muted-foreground hidden sm:block">Manage your team's tasks and deadlines</p>
+                </div>
                 <TabNavigation activeTab={activeTab} onTabChange={setActiveTab} />
               </div>
-              {user && <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+              {user && <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto">
                   <OrganizationSwitcher />
-                  <span className="hidden sm:inline text-sm text-muted-foreground font-medium truncate max-w-[150px]">{profile?.full_name || user.email}</span>
+                  <span className="hidden lg:inline text-sm text-muted-foreground font-medium truncate max-w-[150px]">{profile?.full_name || user.email}</span>
                   <NotificationBell />
                   <Button variant="ghost" size="icon" className="rounded-xl hover:bg-secondary/80 transition-all duration-200 btn-smooth h-9 w-9 sm:h-10 sm:w-10" onClick={() => navigate("/settings")} title="Settings">
                     <Settings className="w-4 h-4" />
@@ -468,11 +473,14 @@ const ProjectBoard = () => {
                   </Button>
                 </div>}
             </div>
-            
+          </header>
+          
+          {/* Main Content */}
+          <main className="flex-1 p-3 sm:p-6 md:p-8 overflow-auto">
           {/* Filters and actions - responsive layout */}
-            <div className="flex flex-col gap-3 sm:gap-4">
+            <div className="flex flex-col gap-3 sm:gap-4 mb-6">
               <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
-                <h2 className="text-lg sm:text-xl font-semibold text-foreground mr-1 sm:mr-2">
+                <h2 className="text-base sm:text-lg font-semibold text-foreground mr-1 sm:mr-2">
                   {activeTab === "product" ? "Product" : activeTab === "operational" ? "Operational" : "Strategic"}
                   <span className="hidden sm:inline"> Management</span>
                 </h2>
@@ -587,10 +595,8 @@ const ProjectBoard = () => {
                 <RecyclingBin onRestore={refetch} />
               </div>
             </div>
-          </div>
           
           {/* Scrollable Content Area */}
-          <div className="flex-1 overflow-y-auto overflow-x-hidden p-3 sm:p-6 md:p-8 w-full max-w-full">
           
           {loading ? <div className="flex items-center justify-center h-64">
               <div className="text-muted-foreground animate-pulse">Loading tasks...</div>
@@ -664,7 +670,7 @@ const ProjectBoard = () => {
               </SortableColumn>
               </div>
             </div>}
-          </div>
+          </main>
         </div>
         
         <SideNavigation activeItem={activeSideItem} onItemClick={setActiveSideItem} />
