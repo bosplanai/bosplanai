@@ -81,8 +81,7 @@ const TeamMembers = () => {
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteFirstName, setInviteFirstName] = useState("");
   const [inviteLastName, setInviteLastName] = useState("");
-  const [inviteRole, setInviteRole] = useState<AppRole>("member");
-  const [inviteOrgIds, setInviteOrgIds] = useState<string[]>([]);
+  const [inviteOrgRoles, setInviteOrgRoles] = useState<Record<string, AppRole>>({});
   const [isSending, setIsSending] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [isBulkCreating, setIsBulkCreating] = useState(false);
@@ -142,20 +141,33 @@ const TeamMembers = () => {
   const [isUpdatingProfile, setIsUpdatingProfile] = useState(false);
   const [editProfileErrors, setEditProfileErrors] = useState<Record<string, string>>({});
   
-  // Get selected org IDs - if none selected and only one admin org, use that
+  // Get selected org IDs from the roles map
   const getSelectedOrgIds = () => {
-    if (inviteOrgIds.length > 0) return inviteOrgIds;
+    const selectedIds = Object.keys(inviteOrgRoles);
+    if (selectedIds.length > 0) return selectedIds;
     if (adminOrgs.length === 1) return [adminOrgs[0].id];
     if (organization) return [organization.id];
     return [];
   };
 
   const toggleOrgSelection = (orgId: string) => {
-    setInviteOrgIds(prev => 
-      prev.includes(orgId) 
-        ? prev.filter(id => id !== orgId)
-        : [...prev, orgId]
-    );
+    setInviteOrgRoles(prev => {
+      if (prev[orgId]) {
+        // Remove the org
+        const { [orgId]: _, ...rest } = prev;
+        return rest;
+      } else {
+        // Add the org with default role
+        return { ...prev, [orgId]: "member" };
+      }
+    });
+  };
+
+  const setOrgRole = (orgId: string, role: AppRole) => {
+    setInviteOrgRoles(prev => ({
+      ...prev,
+      [orgId]: role
+    }));
   };
 
   const handleInvite = async () => {
@@ -188,17 +200,20 @@ const TeamMembers = () => {
     
     try {
       // Build organizations array for batch invite (sends single email)
+      // Each org gets its own role from inviteOrgRoles map
       const organizations = selectedOrgIds
         .map(orgId => {
           const targetOrg = adminOrgs.find(o => o.id === orgId);
           if (!targetOrg) return null;
+          // Get role for this specific org, fallback to member
+          const orgRole = inviteOrgRoles[orgId] || "member";
           return {
             orgId: targetOrg.id,
             orgName: targetOrg.name,
-            role: inviteRole
+            role: orgRole
           };
         })
-        .filter((o): o is { orgId: string; orgName: string; role: typeof inviteRole } => o !== null);
+        .filter((o): o is { orgId: string; orgName: string; role: AppRole } => o !== null);
 
       // Use batch invite for multi-org (single email per spec)
       const data = await sendBatchInvite(inviteEmail, fullName, organizations);
@@ -249,8 +264,7 @@ const TeamMembers = () => {
         setInviteEmail("");
         setInviteFirstName("");
         setInviteLastName("");
-        setInviteRole("member");
-        setInviteOrgIds([]);
+        setInviteOrgRoles({});
       }
     } catch (error: any) {
       toast({
@@ -813,37 +827,69 @@ const TeamMembers = () => {
                       </DialogDescription>
                     </DialogHeader>
                     <div className="space-y-4 py-4">
-                      {/* Organization selector - show checkboxes for multi-select */}
+                      {/* Organization selector with per-org role - show checkboxes for multi-select */}
                       {adminOrgs.length > 0 && <div className="space-y-3">
                           <Label>Organisation{adminOrgs.length > 1 ? 's' : ''}</Label>
-                          <div className="space-y-2 max-h-40 overflow-y-auto rounded-lg border border-border p-3">
+                          <div className="space-y-2 max-h-56 overflow-y-auto rounded-lg border border-border p-3">
                             {adminOrgs.map(org => {
                               const isSelected = getSelectedOrgIds().includes(org.id);
+                              const currentRole = inviteOrgRoles[org.id] || "member";
                               return (
-                                <label 
+                                <div 
                                   key={org.id} 
-                                  className={`flex items-center gap-3 p-2 rounded-md cursor-pointer transition-colors ${
+                                  className={`flex items-center gap-3 p-2 rounded-md transition-colors ${
                                     isSelected ? "bg-primary/10" : "hover:bg-muted"
                                   }`}
                                 >
-                                  <input 
-                                    type="checkbox"
-                                    checked={isSelected}
-                                    onChange={() => toggleOrgSelection(org.id)}
-                                    className="h-4 w-4 rounded border-border text-primary focus:ring-primary"
-                                  />
-                                  <div className="flex items-center gap-2">
-                                    <Building2 className="w-4 h-4 text-muted-foreground" />
-                                    <span className="text-sm font-medium">{org.name}</span>
-                                  </div>
-                                  {isSelected && <CheckCircle2 className="w-4 h-4 text-primary ml-auto" />}
-                                </label>
+                                  <label className="flex items-center gap-3 cursor-pointer flex-1 min-w-0">
+                                    <input 
+                                      type="checkbox"
+                                      checked={isSelected}
+                                      onChange={() => toggleOrgSelection(org.id)}
+                                      className="h-4 w-4 rounded border-border text-primary focus:ring-primary shrink-0"
+                                    />
+                                    <div className="flex items-center gap-2 min-w-0 flex-1">
+                                      <Building2 className="w-4 h-4 text-muted-foreground shrink-0" />
+                                      <span className="text-sm font-medium truncate">{org.name}</span>
+                                    </div>
+                                  </label>
+                                  {isSelected && (
+                                    <Select 
+                                      value={currentRole} 
+                                      onValueChange={(v) => setOrgRole(org.id, v as AppRole)}
+                                    >
+                                      <SelectTrigger className="w-auto min-w-[100px] h-8 text-xs shrink-0">
+                                        <SelectValue />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        <SelectItem value="admin">
+                                          <div className="flex items-center gap-2">
+                                            <Shield className="w-3 h-3" />
+                                            <span>Full Access</span>
+                                          </div>
+                                        </SelectItem>
+                                        <SelectItem value="member">
+                                          <div className="flex items-center gap-2">
+                                            <User className="w-3 h-3" />
+                                            <span>Manager</span>
+                                          </div>
+                                        </SelectItem>
+                                        <SelectItem value="viewer">
+                                          <div className="flex items-center gap-2">
+                                            <Eye className="w-3 h-3" />
+                                            <span>Team</span>
+                                          </div>
+                                        </SelectItem>
+                                      </SelectContent>
+                                    </Select>
+                                  )}
+                                </div>
                               );
                             })}
                           </div>
                           <p className="text-xs text-muted-foreground">
                             {adminOrgs.length > 1 
-                              ? "Select one or more organisations to invite this user to." 
+                              ? "Select one or more organisations and choose an access level for each." 
                               : "The user will be invited to this organisation."
                             }
                           </p>
@@ -884,37 +930,6 @@ const TeamMembers = () => {
                       setEmailError(null);
                     }} />
                         {emailError && <p className="text-sm text-destructive">{emailError}</p>}
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="role">Role</Label>
-                        <Select value={inviteRole} onValueChange={v => setInviteRole(v as AppRole)}>
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="admin">
-                              <div className="flex items-center gap-2">
-                                <Shield className="w-4 h-4" />
-                                <span>Full Access</span>
-                                <span className="text-muted-foreground">- Complete control over tasks, projects, and settings</span>
-                              </div>
-                            </SelectItem>
-                            <SelectItem value="member">
-                              <div className="flex items-center gap-2">
-                                <User className="w-4 h-4" />
-                                <span>Manager</span>
-                                <span className="text-muted-foreground">- Create and assign tasks</span>
-                              </div>
-                            </SelectItem>
-                            <SelectItem value="viewer">
-                              <div className="flex items-center gap-2">
-                                <Eye className="w-4 h-4" />
-                                <span>Team</span>
-                                <span className="text-muted-foreground">- View and interact with task cards</span>
-                              </div>
-                            </SelectItem>
-                          </SelectContent>
-                        </Select>
                       </div>
                     </div>
                     <DialogFooter>
