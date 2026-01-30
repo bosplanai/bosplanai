@@ -101,3 +101,6 @@ verify_jwt = false
 
 [functions.set-member-password]
 verify_jwt = false
+
+[functions.delete-test-users]
+verify_jwt = false
