@@ -54,31 +54,22 @@ serve(async (req) => {
       <html>
         <head>
           <meta charset="utf-8">
-          <title>Welcome to BosPlan</title>
+          <title>Welcome to Bosplan</title>
         </head>
         <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
-          <div style="text-align: center; margin-bottom: 30px;">
-            <h1 style="color: #0d7377; margin-bottom: 10px;">Welcome to BosPlan!</h1>
-          </div>
+          <p>Hi there,</p>
           
-          <p>Hi ${fullName || "there"},</p>
+          <p>Welcome to Bosplan — your account has now been successfully created.</p>
           
-          <p>Welcome to BosPlan! We're excited to have ${organizationName || "you"} on board.</p>
+          <p>You can now log in and start using your Bosplan account.</p>
           
-          <p>Your account has been successfully created and you can now start using all of our features:</p>
-          
-          <ul style="margin: 20px 0;">
-            <li><strong>Task Flow</strong> - Manage your projects efficiently</li>
-            <li><strong>Magic Merge</strong> - Combine and process documents</li>
-            <li><strong>TaskPopulate</strong> - Auto-generate tasks from templates</li>
-            <li><strong>Data Rooms</strong> - Secure document sharing</li>
-          </ul>
-          
-          <p>If you have any questions, feel free to reach out to our support team.</p>
+          <p>If you didn't create this account, please contact the Bosplan support team immediately.</p>
           
           <p style="margin-top: 30px;">
-            Best regards,<br>
-            The BosPlan Team
+            Thanks,<br>
+            Bosplan<br>
+            <a href="mailto:support@bosplan.com" style="color: #0d7377;">support@bosplan.com</a><br>
+            <a href="https://www.bosplan.com" style="color: #0d7377;">www.bosplan.com</a>
           </p>
         </body>
       </html>
@@ -93,7 +84,7 @@ serve(async (req) => {
       body: JSON.stringify({
         from: fromEmail,
         to: [recipientEmail],
-        subject: `Welcome to BosPlan, ${fullName || ""}!`.trim(),
+        subject: "Welcome to Bosplan!",
         html: emailHtml,
       }),
     });
