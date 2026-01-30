@@ -362,7 +362,7 @@ export const useTeamMembers = () => {
   };
 
   const resendInvite = async (inviteId: string) => {
-    // Get the invite details including organization
+    // Get the invite to find the email
     const { data: invite, error: fetchError } = await supabase
       .from("organization_invites")
       .select("*")
@@ -371,29 +371,56 @@ export const useTeamMembers = () => {
 
     if (fetchError || !invite) throw new Error("Invite not found");
 
-    // Find the organization name
-    const inviteOrg = adminOrgs.find(org => org.id === invite.organization_id);
-    if (!inviteOrg) throw new Error("Organization not found");
+    // Fetch ALL pending invites for this email to preserve the full invitation state
+    const { data: allInvites, error: allInvitesError } = await supabase
+      .from("organization_invites")
+      .select("id, email, role, organization_id, status")
+      .eq("email", invite.email.toLowerCase())
+      .eq("status", "pending");
 
-    // Delete the old invite
+    if (allInvitesError) throw allInvitesError;
+    if (!allInvites || allInvites.length === 0) throw new Error("No pending invites found");
+
+    // Build the list of organizations with their original roles
+    const orgsToInvite: Array<{ orgId: string; orgName: string; role: AppRole }> = [];
+    
+    for (const inv of allInvites) {
+      const org = adminOrgs.find(o => o.id === inv.organization_id);
+      if (org) {
+        orgsToInvite.push({
+          orgId: org.id,
+          orgName: org.name,
+          role: inv.role as AppRole,
+        });
+      }
+    }
+
+    if (orgsToInvite.length === 0) throw new Error("No valid organizations found for resend");
+
+    // Delete all existing invites for this email
     const { error: deleteError } = await supabase
       .from("organization_invites")
       .delete()
-      .eq("id", inviteId);
+      .eq("email", invite.email.toLowerCase())
+      .eq("status", "pending");
 
     if (deleteError) throw deleteError;
 
-    // Create new invite and send email via edge function
-    await sendInvite(
-      invite.email,
-      invite.role as AppRole,
-      inviteOrg.id,
-      inviteOrg.name,
-      "Team Member" // Default name for resends
-    );
+    // Resend using batch invite to preserve all organizations and roles
+    if (orgsToInvite.length === 1) {
+      await sendInvite(
+        invite.email,
+        orgsToInvite[0].role,
+        orgsToInvite[0].orgId,
+        orgsToInvite[0].orgName,
+        "Team Member"
+      );
+    } else {
+      await sendBatchInvite(invite.email, "Team Member", orgsToInvite);
+    }
 
     await fetchInvites();
-    await fetchMembers(); // Refresh members as user may have been created
+    await fetchMembers();
   };
 
   // Add user to another organization (for accepted invites)
