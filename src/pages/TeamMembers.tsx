@@ -1312,62 +1312,42 @@ const TeamMembers = () => {
                                 )}
                               </Button>
                             </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="w-72">
-                              {/* Resend options for pending/expired invites */}
-                              {userOrgs.length > 0 && (
-                                <>
-                                  <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground">
-                                    Resend Invitation
-                                  </div>
-                                  {userOrgs.map(org => {
-                                    const orgExpiresAt = new Date(org.expires_at);
-                                    const isOrgExpired = org.status === "pending" && orgExpiresAt < new Date();
-                                    return (
-                                      <DropdownMenuItem 
-                                        key={org.inviteId}
-                                        onClick={() => handleResendInvite(org.inviteId, email)} 
-                                        disabled={resendingId === org.inviteId}
-                                      >
-                                        {resendingId === org.inviteId ? (
-                                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                                        ) : (
-                                          <RefreshCw className="w-4 h-4 mr-2" />
-                                        )}
-                                        {org.name}
-                                        {isOrgExpired && <span className="ml-auto text-xs text-destructive">(Expired)</span>}
-                                      </DropdownMenuItem>
-                                    );
-                                  })}
-                                  <DropdownMenuSeparator />
-                                </>
-                              )}
+                            <DropdownMenuContent align="end" className="w-56">
+                              {/* Resend the last invitation */}
+                              <DropdownMenuItem 
+                                onClick={() => {
+                                  // Resend the most recent invite (first in the list)
+                                  const mostRecentInvite = userOrgs[0];
+                                  if (mostRecentInvite) {
+                                    handleResendInvite(mostRecentInvite.inviteId, email);
+                                  }
+                                }} 
+                                disabled={resendingId !== null}
+                              >
+                                {resendingId !== null ? (
+                                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                ) : (
+                                  <RefreshCw className="w-4 h-4 mr-2" />
+                                )}
+                                Resend Invitation
+                              </DropdownMenuItem>
                               
-                              {/* Cancel invitation options */}
-                              {userOrgs.length === 1 ? (
-                                <DropdownMenuItem 
-                                  onClick={() => handleRemoveInvitedUser(userOrgs[0].inviteId, email, userOrgs[0].status, false)} 
-                                  className="text-destructive focus:text-destructive"
-                                >
-                                  <Trash2 className="w-4 h-4 mr-2" />
-                                  Cancel Invitation
-                                </DropdownMenuItem>
-                              ) : (
-                                <>
-                                  <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground">
-                                    Cancel Invitation
-                                  </div>
-                                  {userOrgs.map(org => (
-                                    <DropdownMenuItem
-                                      key={org.inviteId}
-                                      onClick={() => handleRemoveInvitedUser(org.inviteId, email, org.status, false)}
-                                      className="text-destructive focus:text-destructive"
-                                    >
-                                      <Trash2 className="w-4 h-4 mr-2" />
-                                      {org.name}
-                                    </DropdownMenuItem>
-                                  ))}
-                                </>
-                              )}
+                              <DropdownMenuSeparator />
+                              
+                              {/* Cancel the invitation (removes all pending invites for this user) */}
+                              <DropdownMenuItem 
+                                onClick={() => {
+                                  // Cancel all invites for this user
+                                  const mostRecentInvite = userOrgs[0];
+                                  if (mostRecentInvite) {
+                                    handleRemoveInvitedUser(mostRecentInvite.inviteId, email, mostRecentInvite.status, userOrgs.length > 1);
+                                  }
+                                }} 
+                                className="text-destructive focus:text-destructive"
+                              >
+                                <Trash2 className="w-4 h-4 mr-2" />
+                                Cancel Invitation
+                              </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
                         )}
