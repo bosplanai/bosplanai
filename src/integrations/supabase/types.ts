@@ -1232,6 +1232,7 @@ export type Database = {
           organization_id: string
           role: string
           status: string
+          token: string
         }
         Insert: {
           accepted_at?: string | null
@@ -1243,6 +1244,7 @@ export type Database = {
           organization_id: string
           role?: string
           status?: string
+          token?: string
         }
         Update: {
           accepted_at?: string | null
@@ -1254,6 +1256,7 @@ export type Database = {
           organization_id?: string
           role?: string
           status?: string
+          token?: string
         }
         Relationships: [
           {
@@ -2330,6 +2333,10 @@ export type Database = {
       }
     }
     Functions: {
+      accept_all_pending_invites: {
+        Args: { _email: string; _user_id: string }
+        Returns: Json
+      }
       accept_invite: {
         Args: {
           _full_name: string
@@ -2378,6 +2385,21 @@ export type Database = {
       generate_org_slug: { Args: { org_name: string }; Returns: string }
       get_invite_by_token: {
         Args: { _token: string }
+        Returns: {
+          email: string
+          expires_at: string
+          id: string
+          invited_by_name: string
+          org_name: string
+          org_slug: string
+          organization_id: string
+          role: string
+          status: string
+          token: string
+        }[]
+      }
+      get_pending_invites_by_email: {
+        Args: { _email: string }
         Returns: {
           email: string
           expires_at: string

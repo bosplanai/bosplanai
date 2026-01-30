@@ -62,6 +62,7 @@ const TeamMembers = () => {
     isAdmin,
     loading,
     sendInvite,
+    sendBatchInvite,
     cancelInvite,
     resendInvite,
     updateMemberRole,
@@ -186,36 +187,59 @@ const TeamMembers = () => {
     setIsSending(true);
     
     try {
-      // Send invite to each selected organization
-      const results: { success: boolean; orgName: string; error?: string }[] = [];
+      // Build organizations array for batch invite (sends single email)
+      const organizations = selectedOrgIds
+        .map(orgId => {
+          const targetOrg = adminOrgs.find(o => o.id === orgId);
+          if (!targetOrg) return null;
+          return {
+            orgId: targetOrg.id,
+            orgName: targetOrg.name,
+            role: inviteRole
+          };
+        })
+        .filter((o): o is { orgId: string; orgName: string; role: typeof inviteRole } => o !== null);
+
+      // Use batch invite for multi-org (single email per spec)
+      const data = await sendBatchInvite(inviteEmail, fullName, organizations);
       
-      for (const orgId of selectedOrgIds) {
-        const targetOrg = adminOrgs.find(o => o.id === orgId);
-        if (!targetOrg) continue;
-        
-        try {
-          await sendInvite(inviteEmail, inviteRole, orgId, targetOrg.name, fullName);
-          results.push({ success: true, orgName: targetOrg.name });
-        } catch (error: any) {
-          results.push({ success: false, orgName: targetOrg.name, error: error.message });
-        }
-      }
-      
-      const successCount = results.filter(r => r.success).length;
-      const failedResults = results.filter(r => !r.success);
+      // Check results
+      const results = data?.results || [];
+      const successCount = results.filter((r: any) => r.status !== "error" && r.status !== "already_member").length;
+      const alreadyMemberCount = results.filter((r: any) => r.status === "already_member").length;
+      const errorResults = results.filter((r: any) => r.status === "error");
       
       if (successCount > 0) {
-        const orgNames = results.filter(r => r.success).map(r => r.orgName).join(", ");
+        const orgNames = results
+          .filter((r: any) => r.status !== "error" && r.status !== "already_member")
+          .map((r: any) => r.orgName)
+          .join(", ");
+        
+        const addedDirectly = data?.userAddedDirectly;
         toast({
-          title: successCount === selectedOrgIds.length ? "Invitations sent" : "Some invitations sent",
-          description: `Invite sent to ${fullName} (${inviteEmail}) for: ${orgNames}`
+          title: addedDirectly ? "User added" : "Invitation sent",
+          description: addedDirectly 
+            ? `${fullName} has been added to: ${orgNames}` 
+            : `Invite sent to ${fullName} (${inviteEmail}) for: ${orgNames}`
         });
       }
       
-      if (failedResults.length > 0) {
+      if (alreadyMemberCount > 0) {
+        const orgNames = results
+          .filter((r: any) => r.status === "already_member")
+          .map((r: any) => r.orgName)
+          .join(", ");
+        toast({
+          title: "Already a member",
+          description: `${inviteEmail} is already a member of: ${orgNames}`,
+          variant: "default"
+        });
+      }
+      
+      if (errorResults.length > 0) {
         toast({
           title: "Some invitations failed",
-          description: failedResults.map(r => `${r.orgName}: ${r.error}`).join("; "),
+          description: errorResults.map((r: any) => r.orgName).join(", "),
           variant: "destructive"
         });
       }

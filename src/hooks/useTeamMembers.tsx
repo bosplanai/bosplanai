@@ -26,6 +26,7 @@ interface Invite {
   expires_at: string;
   organization_id: string;
   organization_name?: string;
+  token?: string;
 }
 
 export const useTeamMembers = () => {
@@ -139,7 +140,7 @@ export const useTeamMembers = () => {
       const adminOrgIds = currentAdminOrgs.map(org => org.id);
       const { data, error } = await supabase
         .from("organization_invites")
-        .select("id, email, role, status, created_at, expires_at, organization_id")
+        .select("id, email, role, status, created_at, expires_at, organization_id, token")
         .in("organization_id", adminOrgIds)
         .in("status", ["pending", "accepted"])
         .order("created_at", { ascending: false });
@@ -219,7 +220,13 @@ export const useTeamMembers = () => {
     await Promise.all([fetchInvites(), fetchMembers()]);
   };
 
-  const sendInvite = async (email: string, role: AppRole, targetOrgId?: string, targetOrgName?: string, fullName?: string) => {
+  const sendInvite = async (
+    email: string, 
+    role: AppRole, 
+    targetOrgId?: string, 
+    targetOrgName?: string, 
+    fullName?: string
+  ) => {
     if (!user) {
       throw new Error("User not found");
     }
@@ -276,9 +283,10 @@ export const useTeamMembers = () => {
         role: role,
         status: data.invite.status || "pending",
         created_at: data.invite.created_at || new Date().toISOString(),
-        expires_at: data.invite.expires_at || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+        expires_at: data.invite.expires_at || new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(),
         organization_id: orgId,
         organization_name: orgName,
+        token: data.invite.token,
       };
       setInvites(prev => [newInvite, ...prev.filter(i => !(i.email.toLowerCase() === email.toLowerCase() && i.organization_id === orgId))]);
     }
@@ -286,6 +294,60 @@ export const useTeamMembers = () => {
     // Also fetch to reconcile with server state
     await fetchInvites();
     await fetchMembers(); // Refresh members as user may have been created
+    return data;
+  };
+
+  // Send batch invite to multiple organizations at once (single email)
+  const sendBatchInvite = async (
+    email: string,
+    fullName: string,
+    organizations: Array<{ orgId: string; orgName: string; role: AppRole }>
+  ) => {
+    if (!user) {
+      throw new Error("User not found");
+    }
+
+    if (organizations.length === 0) {
+      throw new Error("No organizations selected");
+    }
+
+    // Call edge function with multi-org format
+    const { data, error } = await supabase.functions.invoke("send-invite", {
+      body: {
+        email,
+        fullName: fullName || "Team Member",
+        organizations: organizations.map(org => ({
+          organizationId: org.orgId,
+          organizationName: org.orgName,
+          role: org.role
+        }))
+      },
+    });
+
+    if (error) {
+      console.error("Error sending batch invite:", error);
+
+      let message = error.message || "Failed to send invitation";
+      const ctxBody = (error as any)?.context?.body;
+      if (typeof ctxBody === "string") {
+        try {
+          const parsed = JSON.parse(ctxBody);
+          if (parsed?.error) message = String(parsed.error);
+        } catch {}
+      } else if (ctxBody && typeof ctxBody === "object" && (ctxBody as any).error) {
+        message = String((ctxBody as any).error);
+      }
+
+      throw new Error(message);
+    }
+
+    if ((data as any)?.error) {
+      throw new Error((data as any).error);
+    }
+
+    // Fetch to reconcile with server state
+    await fetchInvites();
+    await fetchMembers();
     return data;
   };
 
@@ -493,6 +555,7 @@ export const useTeamMembers = () => {
     isAdmin,
     loading,
     sendInvite,
+    sendBatchInvite,
     cancelInvite,
     resendInvite,
     updateMemberRole,
