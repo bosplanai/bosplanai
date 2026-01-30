@@ -24,6 +24,68 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const inactivityTimerRef = useRef<NodeJS.Timeout | null>(null);
   const isSigningOutRef = useRef(false);
 
+  // Send welcome email on first login (only once per user)
+  const sendFirstLoginWelcomeEmail = async (userEmail: string) => {
+    try {
+      // Check if welcome email was already sent
+      const { data: profile, error: profileError } = await supabase
+        .from("profiles")
+        .select("id, full_name, welcome_email_sent_at, organization_id")
+        .eq("id", (await supabase.auth.getUser()).data.user?.id || "")
+        .maybeSingle();
+
+      if (profileError) {
+        console.error("[AUTH] Error checking profile for welcome email:", profileError);
+        return;
+      }
+
+      // If no profile or already sent, skip
+      if (!profile || profile.welcome_email_sent_at) {
+        console.log("[AUTH] Welcome email already sent or no profile found");
+        return;
+      }
+
+      // Get organization name
+      let organizationName = "";
+      if (profile.organization_id) {
+        const { data: org } = await supabase
+          .from("organizations")
+          .select("name")
+          .eq("id", profile.organization_id)
+          .maybeSingle();
+        organizationName = org?.name || "";
+      }
+
+      // Send the welcome email
+      const { error: emailError } = await supabase.functions.invoke("send-welcome-email", {
+        body: {
+          email: userEmail,
+          fullName: profile.full_name,
+          organizationName,
+        },
+      });
+
+      if (emailError) {
+        console.error("[AUTH] Error sending welcome email:", emailError);
+        return;
+      }
+
+      // Mark welcome email as sent
+      const { error: updateError } = await supabase
+        .from("profiles")
+        .update({ welcome_email_sent_at: new Date().toISOString() })
+        .eq("id", profile.id);
+
+      if (updateError) {
+        console.error("[AUTH] Error updating welcome_email_sent_at:", updateError);
+      } else {
+        console.log("[AUTH] Welcome email sent successfully");
+      }
+    } catch (err) {
+      console.error("[AUTH] Error in first login welcome email:", err);
+    }
+  };
+
   // Check and cancel any pending account deletion when user logs in
   const checkAndCancelDeletion = async () => {
     try {
@@ -112,6 +174,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         if (checkDeletion && data.user) {
           setTimeout(() => {
             checkAndCancelDeletion();
+            // Send welcome email on first login (only once)
+            if (data.user.email) {
+              sendFirstLoginWelcomeEmail(data.user.email);
+            }
           }, 500);
         }
       } catch (e) {
