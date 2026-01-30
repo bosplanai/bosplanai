@@ -32,14 +32,36 @@ Deno.serve(async (req) => {
     // Verify the invite token is valid and pending
     // Check against both 'token' column (new) and 'id' column (legacy) for compatibility
     // Use limit(1) to avoid "multiple rows returned" error when user has invites to multiple orgs
-    const { data: invite, error: inviteError } = await supabaseAdmin
+    // First try the token column (new format), then fall back to id column (legacy UUID)
+    let invite = null;
+    let inviteError = null;
+
+    // Try token column first (new hex tokens)
+    const tokenResult = await supabaseAdmin
       .from("organization_invites")
       .select("id, email, status, token, expires_at")
-      .or(`token.eq.${inviteToken},id.eq.${inviteToken}`)
+      .eq("token", inviteToken)
       .eq("status", "pending")
       .gte("expires_at", new Date().toISOString())
       .limit(1)
       .maybeSingle();
+
+    if (tokenResult.data) {
+      invite = tokenResult.data;
+    } else {
+      // Fall back to legacy id column (UUID format)
+      const idResult = await supabaseAdmin
+        .from("organization_invites")
+        .select("id, email, status, token, expires_at")
+        .eq("id", inviteToken)
+        .eq("status", "pending")
+        .gte("expires_at", new Date().toISOString())
+        .limit(1)
+        .maybeSingle();
+      
+      invite = idResult.data;
+      inviteError = idResult.error;
+    }
 
     // IMPORTANT: For expected/handled states, return 200 with a structured body.
     // This avoids Supabase `functions.invoke` treating non-2xx as a transport error,
