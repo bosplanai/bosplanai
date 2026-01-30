@@ -154,9 +154,9 @@ serve(async (req) => {
           !!(existingUser as any)?.email_confirmed_at ||
           !!(existingUser as any)?.confirmed_at;
 
-        // If the account is already confirmed AND they don't have a profile yet,
-        // we don't have proof-of-ownership to finalize org/profile here.
-        if (isConfirmed && !existingProfile) {
+        // If the account is already confirmed AND they have a profile,
+        // they should sign in instead
+        if (isConfirmed && existingProfile) {
           return new Response(
             JSON.stringify({
               error:
@@ -169,46 +169,29 @@ serve(async (req) => {
           );
         }
 
-        // Critical fix: previously-created (unconfirmed) users can't log in.
-        // Confirm their email and set the password so the post-payment sign-in succeeds.
-        if (!isConfirmed) {
-          console.log(
-            "[complete-paid-signup] Confirming existing unverified user",
-          );
-          const { error: updateErr } =
-            await supabaseAdmin.auth.admin.updateUserById(userId, {
-              email_confirm: true,
-              password,
-              user_metadata: {
-                full_name: fullName,
-              },
-            });
-          if (updateErr) {
-            console.error(
-              "[complete-paid-signup] updateUserById error",
-              updateErr,
-            );
-            throw new Error(
-              updateErr.message || "Failed to confirm existing user account",
-            );
-          }
-        }
-        
-        if (existingProfile) {
-          console.log("[complete-paid-signup] User already has profile, returning success");
-          return new Response(
-            JSON.stringify({
-              success: true,
-              email,
-              existingUser: true,
-            }),
-            {
-              status: 200,
-              headers: { ...corsHeaders, "Content-Type": "application/json" },
+        // If account exists but no profile (incomplete signup), update password and continue
+        // This handles users who started signup but didn't complete profile creation
+        console.log(
+          "[complete-paid-signup] Updating existing user without profile",
+        );
+        const { error: updateErr } =
+          await supabaseAdmin.auth.admin.updateUserById(userId, {
+            email_confirm: true,
+            password,
+            user_metadata: {
+              full_name: fullName,
             },
+          });
+        if (updateErr) {
+          console.error(
+            "[complete-paid-signup] updateUserById error",
+            updateErr,
+          );
+          throw new Error(
+            updateErr.message || "Failed to update existing user account",
           );
         }
-        
+
         // User exists but no profile - continue to create org/profile
         console.log("[complete-paid-signup] User exists but no profile, creating org/profile");
       } else {
