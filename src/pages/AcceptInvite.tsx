@@ -254,10 +254,13 @@ const AcceptInvite = () => {
       stage = "accept_invite";
       
       if (allPendingInvites.length > 1) {
-        // Accept all pending invites
+        // Accept all pending invites (and create profile if new user)
         const { data: result, error: acceptError } = await supabase.rpc("accept_all_pending_invites", {
           _user_id: userId,
-          _email: inviteData.email
+          _email: inviteData.email,
+          _full_name: fullName.trim(),
+          _job_role: jobRole.trim(),
+          _phone_number: phoneNumber.trim()
         });
 
         const resultObj = result as {
