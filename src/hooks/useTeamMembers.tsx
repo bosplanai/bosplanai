@@ -288,17 +288,16 @@ export const useTeamMembers = () => {
 
       let message = error.message || "Failed to send invitation";
 
-      // Supabase Functions often returns a generic non-2xx message; try to extract the real error
-      const ctxBody = (error as any)?.context?.body;
-      if (typeof ctxBody === "string") {
-        try {
-          const parsed = JSON.parse(ctxBody);
-          if (parsed?.error) message = String(parsed.error);
-        } catch {
-          // If it's not JSON, keep the original message
+      // For FunctionsHttpError, the response body is in error.context and needs to be read as json()
+      try {
+        if ((error as any)?.context?.json && typeof (error as any).context.json === "function") {
+          const errorData = await (error as any).context.json();
+          if (errorData?.error) {
+            message = String(errorData.error);
+          }
         }
-      } else if (ctxBody && typeof ctxBody === "object" && (ctxBody as any).error) {
-        message = String((ctxBody as any).error);
+      } catch (parseError) {
+        console.error("Error parsing edge function response:", parseError);
       }
 
       throw new Error(message);
@@ -361,14 +360,17 @@ export const useTeamMembers = () => {
       console.error("Error sending batch invite:", error);
 
       let message = error.message || "Failed to send invitation";
-      const ctxBody = (error as any)?.context?.body;
-      if (typeof ctxBody === "string") {
-        try {
-          const parsed = JSON.parse(ctxBody);
-          if (parsed?.error) message = String(parsed.error);
-        } catch {}
-      } else if (ctxBody && typeof ctxBody === "object" && (ctxBody as any).error) {
-        message = String((ctxBody as any).error);
+      
+      // For FunctionsHttpError, the response body is in error.context and needs to be read as json()
+      try {
+        if ((error as any)?.context?.json && typeof (error as any).context.json === "function") {
+          const errorData = await (error as any).context.json();
+          if (errorData?.error) {
+            message = String(errorData.error);
+          }
+        }
+      } catch (parseError) {
+        console.error("Error parsing edge function response:", parseError);
       }
 
       throw new Error(message);
