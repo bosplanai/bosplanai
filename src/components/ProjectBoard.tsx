@@ -241,17 +241,14 @@ const ProjectBoard = () => {
   })), [members]);
 
   // Memoize filtered team members for assignment based on current user's role
+  // All users need to see team members for reassignment (when they're the assignee)
   // Full Access (admin): can assign to anyone
-  // Manager (member): can assign to member or viewer only (not admin)
-  // Team (viewer): cannot assign tasks (handled in UI)
-  const teamMembers = useMemo(() => members.filter(m => {
-    if (isAdmin) return true; // Admin can assign to anyone
-    if (isMember) return true; // Manager can assign to anyone in the organization
-    return false; // Viewer cannot assign
-  }).map(m => ({
+  // Manager (member): can assign to anyone in the organization
+  // Team (viewer): can only reassign tasks assigned to them (needs to see members for dropdown)
+  const teamMembers = useMemo(() => members.map(m => ({
     id: m.id,
     full_name: m.full_name
-  })), [members, isAdmin, isMember]);
+  })), [members]);
 
   // Memoize project options
   const projectOptions = useMemo(() => projects.map(p => ({
