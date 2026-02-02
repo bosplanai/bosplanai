@@ -575,15 +575,16 @@ export const useTasks = () => {
     }
   };
 
-  const updateTaskAssignment = async (taskId: string, assignedUserId: string | null) => {
+  const updateTaskAssignment = async (taskId: string, assignedUserId: string | null, reassignmentReason?: string) => {
     try {
       if (assignedUserId && assignedUserId !== user?.id) {
         // Reassigning to someone else - use the SECURITY DEFINER RPC
         // This sets assignment_status to 'pending', clears decline_reason and last_reminder_sent_at,
-        // and triggers the notification
+        // stores the reassignment reason, and triggers the notification
         const { error } = await supabase.rpc("reassign_task", {
           p_task_id: taskId,
           p_new_assignee_id: assignedUserId,
+          p_reassignment_reason: reassignmentReason || null,
         });
         
         if (error) throw error;
@@ -609,6 +610,7 @@ export const useTasks = () => {
             assignment_status: 'accepted',
             decline_reason: null,
             last_reminder_sent_at: null,
+            reassignment_reason: null,
           })
           .eq("id", taskId)
           .select(`

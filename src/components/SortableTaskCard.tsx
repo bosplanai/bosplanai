@@ -6,6 +6,7 @@ import { CSSProperties, useRef, useState, memo, useCallback } from "react";
 import { TaskPriority, TaskUser, TaskProject, TaskAssignmentUser } from "@/hooks/useTasks";
 import { useTaskAssignments } from "@/hooks/useTaskAssignments";
 import { useAppearance } from "@/contexts/AppearanceContext";
+import { useAuth } from "@/hooks/useAuth";
 import { Input } from "./ui/input";
 import { Textarea } from "./ui/textarea";
 import { Avatar, AvatarFallback } from "./ui/avatar";
@@ -22,6 +23,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "./ui/dropdown-menu";
+import { TaskReassignmentReasonDialog } from "./taskflow/TaskReassignmentReasonDialog";
 
 interface TeamMember {
   id: string;
@@ -53,7 +55,7 @@ interface SortableTaskCardProps {
   canEditAttachments?: boolean;
   onTitleChange?: (newTitle: string) => void;
   onDescriptionChange?: (newDescription: string) => void;
-  onAssignmentChange?: (userId: string | null) => void;
+  onAssignmentChange?: (userId: string | null, reassignmentReason?: string) => void;
   onDueDateChange?: (date: string | null) => void;
   onProjectChange?: (projectId: string | null) => void;
   onPriorityChange?: (priority: TaskPriority) => void;
@@ -111,6 +113,7 @@ const SortableTaskCard = memo(({
   // Task is considered complete if status is "complete" OR completedAt is set
   const isComplete = status === "complete" || !!completedAt;
   const { pendingSettings } = useAppearance();
+  const { user } = useAuth();
   const textSizeMultiplier = pendingSettings.taskCardTextSize;
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [isEditingDescription, setIsEditingDescription] = useState(false);
@@ -123,6 +126,12 @@ const SortableTaskCard = memo(({
   const [isProjectOpenDesktop, setIsProjectOpenDesktop] = useState(false);
   const [isPriorityOpenMobile, setIsPriorityOpenMobile] = useState(false);
   const [isPriorityOpenDesktop, setIsPriorityOpenDesktop] = useState(false);
+  
+  // Reassignment reason dialog state
+  const [isReassignDialogOpen, setIsReassignDialogOpen] = useState(false);
+  const [pendingReassignUserId, setPendingReassignUserId] = useState<string | null>(null);
+  const [pendingReassignUserName, setPendingReassignUserName] = useState<string>("");
+  
   const titleInputRef = useRef<HTMLInputElement>(null);
   const descriptionInputRef = useRef<HTMLTextAreaElement>(null);
   const priorityInfo = priorityConfig[priority];
@@ -213,6 +222,44 @@ const SortableTaskCard = memo(({
       setEditedDescription(description || "");
       setIsEditingDescription(false);
     }
+  };
+
+  // Check if current user is the primary assignee
+  const isCurrentUserPrimaryAssignee = user?.id === assignedUser?.id;
+
+  // Handle assignment click - show dialog if reassigning to someone else while being the current assignee
+  const handleAssignmentClick = (memberId: string, memberName: string) => {
+    const isAssigned = isUserAssigned(memberId) || assignedUser?.id === memberId;
+    
+    // If clicking to unassign the current primary assignee
+    if (assignedUser?.id === memberId) {
+      onAssignmentChange?.(null);
+      return;
+    }
+    
+    // If the current user is the primary assignee and selecting a different user
+    // They need to provide a reason for reassignment
+    if (isCurrentUserPrimaryAssignee && !isAssigned && onAssignmentChange) {
+      setPendingReassignUserId(memberId);
+      setPendingReassignUserName(memberName);
+      setIsReassignDialogOpen(true);
+      setIsAssignmentOpenMobile(false);
+      setIsAssignmentOpenDesktop(false);
+      return;
+    }
+    
+    // Otherwise, use multi-assignment toggle
+    toggleAssignment(memberId);
+    onAssignmentsRefetch?.();
+  };
+
+  // Handle confirmed reassignment with reason
+  const handleConfirmReassignment = async (reason: string) => {
+    if (pendingReassignUserId && onAssignmentChange) {
+      onAssignmentChange(pendingReassignUserId, reason);
+    }
+    setPendingReassignUserId(null);
+    setPendingReassignUserName("");
   };
 
   return (
@@ -761,10 +808,7 @@ const SortableTaskCard = memo(({
                             "flex items-center gap-2 px-2 py-1.5 rounded-md cursor-pointer transition-colors",
                             isAssigned ? "bg-primary/10" : "hover:bg-muted"
                           )}
-                          onClick={() => {
-                            toggleAssignment(member.id);
-                            onAssignmentsRefetch?.();
-                          }}
+                          onClick={() => handleAssignmentClick(member.id, member.full_name)}
                         >
                           <Checkbox checked={isAssigned} className="pointer-events-none" />
                           <Avatar className="w-5 h-5 border border-border">
@@ -900,15 +944,7 @@ const SortableTaskCard = memo(({
                           "flex items-center gap-2 px-2 py-1.5 rounded-md cursor-pointer hover:bg-muted transition-colors",
                           isAssigned && "bg-primary/10"
                         )}
-                        onClick={async () => {
-                          // If this is the legacy assigned user, use the old callback to unassign
-                          if (assignedUser?.id === member.id) {
-                            onAssignmentChange(null);
-                          } else {
-                            await toggleAssignment(member.id);
-                            onAssignmentsRefetch?.();
-                          }
-                        }}
+                        onClick={() => handleAssignmentClick(member.id, member.full_name)}
                       >
                         <Checkbox checked={isAssigned} className="pointer-events-none" />
                         <Avatar className="w-5 h-5">
@@ -975,6 +1011,15 @@ const SortableTaskCard = memo(({
           </div>
         )}
       </div>
+      
+      {/* Reassignment Reason Dialog */}
+      <TaskReassignmentReasonDialog
+        open={isReassignDialogOpen}
+        onOpenChange={setIsReassignDialogOpen}
+        taskTitle={title}
+        newAssigneeName={pendingReassignUserName}
+        onConfirm={handleConfirmReassignment}
+      />
     </div>
   );
 });
