@@ -281,7 +281,7 @@ const SortableTaskCard = memo(({
           </DropdownMenu>
         </div>
       )}
-      <div className="flex-1 min-w-0 pr-10 sm:pr-0">
+      <div className="flex-1 min-w-0 pr-10 sm:pr-0 overflow-hidden">
         {/* Title row - no priority badge on mobile to avoid overlap */}
         <div className="flex items-center gap-1.5 sm:gap-2">
           {isEditingTitle ? (

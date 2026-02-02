@@ -470,8 +470,8 @@ const ProjectBoard = () => {
   const filteredMembers = members.filter(m => m.full_name?.toLowerCase().includes(userSearchQuery.toLowerCase()) || m.email?.toLowerCase().includes(userSearchQuery.toLowerCase()));
   return <DndContext sensors={sensors} collisionDetection={closestCorners} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
       <div className="flex flex-col min-h-screen bg-background">
-        <div className="flex flex-1 overflow-x-hidden">
-        <div className="flex-1 flex flex-col w-full max-w-full">
+        <div className="flex flex-1 overflow-hidden">
+        <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
           {/* Header */}
           <header className="bg-card border-b border-border px-4 sm:px-6 py-4 sm:py-5">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
@@ -625,12 +625,12 @@ const ProjectBoard = () => {
           
           {loading ? <div className="flex items-center justify-center h-64">
               <div className="text-muted-foreground animate-pulse">Loading tasks...</div>
-            </div> : <div className="space-y-6 w-full max-w-full">
+            </div> : <div className="space-y-6 w-full overflow-hidden">
               {/* Pending Task Requests Section */}
               <PendingTaskRequests teamMembers={allTeamMembers} currentUserId={user?.id} onTaskAccepted={refetch} />
               
               {/* Task Columns */}
-              <div className="flex flex-col md:flex-row gap-4 sm:gap-6 w-full max-w-full">
+              <div className="flex flex-col md:flex-row gap-4 sm:gap-6 w-full overflow-hidden">
               <SortableColumn id="todo" title="TO DO" variant="todo" items={todoTasks.map(t => t.id)}>
               {todoTasks.map(task => {
                   const IconComponent = iconMap[task.icon] || ListTodo;

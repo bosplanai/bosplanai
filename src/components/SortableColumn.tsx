@@ -59,7 +59,7 @@ const SortableColumn = forwardRef<HTMLDivElement, SortableColumnProps>(({
         <span className="text-xs text-white/70 ml-auto">{items.length}</span>
       </div>
       <SortableContext items={items} strategy={verticalListSortingStrategy}>
-        <div className="flex flex-col gap-3 sm:gap-4">{children}</div>
+        <div className="flex flex-col gap-3 sm:gap-4 overflow-hidden">{children}</div>
       </SortableContext>
     </div>
   );
