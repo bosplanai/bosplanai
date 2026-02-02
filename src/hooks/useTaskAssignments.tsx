@@ -109,8 +109,8 @@ export const useTaskAssignments = (
       
       if (isAssigningToOther) {
         toast({
-          title: "Task request sent",
-          description: `${data.user?.full_name || 'The user'} will need to accept or decline this task`,
+          title: "Task sent for approval",
+          description: `This task has been sent to ${data.user?.full_name || 'the assignee'}. They must accept it before it's added to their dashboard.`,
         });
       } else {
         toast({
