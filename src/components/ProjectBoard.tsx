@@ -102,11 +102,23 @@ const subcategoryOptions = [{
   value: "misc",
   label: "MISC"
 }];
+// Storage key for persisting add task dialog open state
+const ADD_DIALOG_OPEN_KEY = "projectBoard_addDialogOpen";
+
 const ProjectBoard = () => {
   // Default to Product Management; it's the only visible tab for non-admin users.
   const [activeTab, setActiveTab] = useState("product");
   const [activeSideItem, setActiveSideItem] = useState("calendar");
-  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  
+  // Initialize dialog open state from sessionStorage to persist across tab switches
+  const [isAddDialogOpen, setIsAddDialogOpen] = useState(() => {
+    try {
+      return sessionStorage.getItem(ADD_DIALOG_OPEN_KEY) === "true";
+    } catch {
+      return false;
+    }
+  });
+  
   const [activeTask, setActiveTask] = useState<Task | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
@@ -123,6 +135,19 @@ const ProjectBoard = () => {
     }, 200);
     return () => clearTimeout(timer);
   }, [searchQuery]);
+  // Persist dialog open state to sessionStorage
+  useEffect(() => {
+    try {
+      if (isAddDialogOpen) {
+        sessionStorage.setItem(ADD_DIALOG_OPEN_KEY, "true");
+      } else {
+        sessionStorage.removeItem(ADD_DIALOG_OPEN_KEY);
+      }
+    } catch {
+      // Ignore storage errors
+    }
+  }, [isAddDialogOpen]);
+
   const [archiveDialogOpen, setArchiveDialogOpen] = useState(false);
   const [taskToDelete, setTaskToDelete] = useState<{
     id: string;
