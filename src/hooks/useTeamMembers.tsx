@@ -220,6 +220,39 @@ export const useTeamMembers = () => {
     await Promise.all([fetchInvites(), fetchMembers()]);
   };
 
+  const deleteUserFromPlatform = async (email: string) => {
+    if (!organization) throw new Error("Organization not found");
+
+    const { data, error: funcError } = await supabase.functions.invoke("remove-team-member-by-email", {
+      body: {
+        email,
+        organizationId: organization.id,
+        deleteFromPlatform: true,
+      },
+    });
+
+    if (funcError) {
+      console.error("Error deleting user from platform:", funcError);
+      let message = funcError.message || "Failed to delete user";
+      const ctxBody = (funcError as any)?.context?.body;
+      if (typeof ctxBody === "string") {
+        try {
+          const parsed = JSON.parse(ctxBody);
+          if (parsed?.error) message = String(parsed.error);
+        } catch {
+          // keep original
+        }
+      }
+      throw new Error(message);
+    }
+
+    if (data?.error) {
+      throw new Error(data.error);
+    }
+    
+    await Promise.all([fetchInvites(), fetchMembers()]);
+  };
+
   const sendInvite = async (
     email: string, 
     role: AppRole, 
@@ -594,6 +627,7 @@ export const useTeamMembers = () => {
     resendPasswordReset,
     setMemberPassword,
     addToOrganization,
+    deleteUserFromPlatform,
     refetch: () => Promise.all([fetchMembers(), fetchInvites()]),
   };
 };
