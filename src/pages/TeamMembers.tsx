@@ -17,6 +17,7 @@ import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, UserPlus, MoreHorizontal, Mail, Shield, User, Eye, Trash2, Clock, Loader2, X, RefreshCw, Upload, Download, FileSpreadsheet, CheckCircle2, XCircle, Building2 } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import BetaFooter from "@/components/BetaFooter";
+import OrganizationSwitcher from "@/components/OrganizationSwitcher";
 import { z } from "zod";
 type AppRole = "admin" | "member" | "viewer";
 const emailSchema = z.string().email("Please enter a valid email address");
@@ -563,12 +564,14 @@ const TeamMembers = () => {
       <div className="flex-1">
         <div className="max-w-4xl mx-auto p-6 md:p-8">
         <div className="mb-8">
-          <div className="flex items-center gap-5 mb-6">
-            
-            <Button variant="ghost" onClick={() => navigate("/")} className="gap-2 rounded-xl hover:bg-secondary/80 transition-all duration-200 btn-smooth">
-              <ArrowLeft className="w-4 h-4" />
-              Back to Dashboard
-            </Button>
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-3">
+              <Button variant="ghost" onClick={() => navigate("/")} className="gap-2 rounded-xl hover:bg-secondary/80 transition-all duration-200 btn-smooth">
+                <ArrowLeft className="w-4 h-4" />
+                Back to Dashboard
+              </Button>
+              <OrganizationSwitcher />
+            </div>
           </div>
           <div className="flex items-center justify-between">
             <div>
