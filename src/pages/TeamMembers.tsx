@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -93,6 +94,10 @@ const TeamMembers = () => {
   const [deletingUserId, setDeletingUserId] = useState<string | null>(null);
   const [emailError, setEmailError] = useState<string | null>(null);
   const [inviteNameError, setInviteNameError] = useState<string | null>(null);
+  
+  // Delete from platform confirmation dialog state
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [userToDelete, setUserToDelete] = useState<{ userId: string; email: string; name: string } | null>(null);
 
   // Get organizations where user is admin (can invite to)
   const adminOrgs = organizations.filter(org => org.role === "admin");
@@ -530,11 +535,18 @@ const TeamMembers = () => {
       });
     }
   };
-  const handleDeleteFromPlatform = async (userId: string, email: string, name: string) => {
-    if (!confirm(`Are you sure you want to permanently delete ${name} from the platform? This will revoke all access and cannot be undone.`)) {
-      return;
-    }
+  const handleDeleteFromPlatform = (userId: string, email: string, name: string) => {
+    setUserToDelete({ userId, email, name });
+    setDeleteConfirmOpen(true);
+  };
+  
+  const confirmDeleteFromPlatform = async () => {
+    if (!userToDelete) return;
+    
+    const { userId, email, name } = userToDelete;
+    setDeleteConfirmOpen(false);
     setDeletingUserId(userId);
+    
     try {
       await deleteUserFromPlatform(email);
       toast({
@@ -549,6 +561,7 @@ const TeamMembers = () => {
       });
     } finally {
       setDeletingUserId(null);
+      setUserToDelete(null);
     }
   };
 
@@ -1190,6 +1203,29 @@ const TeamMembers = () => {
 
         </div>
       </div>
+      
+      {/* Delete from Platform Confirmation Dialog */}
+      <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete User from Platform</AlertDialogTitle>
+            <AlertDialogDescription>
+              You are about to permanently remove <strong>{userToDelete?.name}</strong> from the platform. 
+              This will revoke all their access across all organisations and cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setUserToDelete(null)}>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={confirmDeleteFromPlatform}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete User
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      
       <BetaFooter />
     </div>;
 };
