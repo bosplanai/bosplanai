@@ -2047,6 +2047,7 @@ export type Database = {
           position: number
           priority: string
           project_id: string | null
+          reassignment_reason: string | null
           status: string
           subcategory: string
           title: string
@@ -2076,6 +2077,7 @@ export type Database = {
           position?: number
           priority?: string
           project_id?: string | null
+          reassignment_reason?: string | null
           status?: string
           subcategory?: string
           title: string
@@ -2105,6 +2107,7 @@ export type Database = {
           position?: number
           priority?: string
           project_id?: string | null
+          reassignment_reason?: string | null
           status?: string
           subcategory?: string
           title?: string
@@ -2503,10 +2506,19 @@ export type Database = {
       }
       is_super_admin: { Args: { _user_id: string }; Returns: boolean }
       notify_policy_expired: { Args: never; Returns: undefined }
-      reassign_task: {
-        Args: { p_new_assignee_id: string; p_task_id: string }
-        Returns: undefined
-      }
+      reassign_task:
+        | {
+            Args: { p_new_assignee_id: string; p_task_id: string }
+            Returns: undefined
+          }
+        | {
+            Args: {
+              p_new_assignee_id: string
+              p_reassignment_reason?: string
+              p_task_id: string
+            }
+            Returns: undefined
+          }
       validate_referral_code: {
         Args: { code: string }
         Returns: {
