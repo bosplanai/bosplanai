@@ -111,7 +111,16 @@ const Auth = () => {
   useEffect(() => {
     if (modeParam === "login") setIsLogin(true);
     if (modeParam === "signup") setIsLogin(false);
-  }, [modeParam]);
+    
+    // Show success message when arriving after email change confirmation
+    const emailChanged = searchParams.get("emailChanged");
+    if (emailChanged === "true") {
+      toast({
+        title: "Email updated successfully",
+        description: "Please log in with your new email address.",
+      });
+    }
+  }, [modeParam, searchParams, toast]);
 
   useEffect(() => {
     if (emailParam && !email) {
