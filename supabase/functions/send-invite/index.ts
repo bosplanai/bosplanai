@@ -331,8 +331,12 @@ serve(async (req) => {
     // Check if all orgs already have the user as member
     const allAlreadyMember = results.every(r => r.status === "already_member");
     if (allAlreadyMember) {
+      // Provide clearer error message for single org vs multi-org scenarios
+      const errorMessage = organizations.length === 1 
+        ? "User already belongs to this organisation"
+        : "User is already a member of all selected organisations";
       return new Response(
-        JSON.stringify({ error: "User is already a member of all selected organizations" }),
+        JSON.stringify({ error: errorMessage }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
