@@ -537,18 +537,30 @@ export const useTaskFlowData = () => {
   };
 
   const reassignTask = async (taskId: string, newUserId: string | null) => {
-    // Determine assignment status: 'pending' if assigned to someone else, 'accepted' if self-assigned or unassigned
-    const assignmentStatus = newUserId && newUserId !== user?.id ? 'pending' : 'accepted';
+    if (newUserId) {
+      // Use the SECURITY DEFINER RPC for reassignment - this sets assignment_status to 'pending',
+      // clears decline_reason and last_reminder_sent_at, and triggers the notification
+      const { error } = await supabase.rpc("reassign_task", {
+        p_task_id: taskId,
+        p_new_assignee_id: newUserId,
+      });
+      
+      if (error) throw error;
+    } else {
+      // Unassigning - direct update is fine, set to 'accepted' since there's no pending request
+      const { error } = await supabase
+        .from("tasks")
+        .update({ 
+          assigned_user_id: null,
+          assignment_status: 'accepted',
+          decline_reason: null,
+          last_reminder_sent_at: null,
+        })
+        .eq("id", taskId);
+      
+      if (error) throw error;
+    }
     
-    const { error } = await supabase
-      .from("tasks")
-      .update({ 
-        assigned_user_id: newUserId,
-        assignment_status: assignmentStatus,
-      })
-      .eq("id", taskId);
-    
-    if (error) throw error;
     await fetchData();
   };
 

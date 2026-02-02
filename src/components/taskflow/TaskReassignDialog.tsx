@@ -49,12 +49,20 @@ export function TaskReassignDialog({
     setSaving(true);
     try {
       await onReassign(task.id, selectedUserId);
-      toast({
-        title: "Task reassigned",
-        description: selectedUserId 
-          ? `Task assigned to ${teamMembers.find(m => m.id === selectedUserId)?.full_name}`
-          : "Task is now unassigned",
-      });
+      const assigneeName = teamMembers.find(m => m.id === selectedUserId)?.full_name;
+      
+      if (selectedUserId) {
+        // Reassigning to someone - task enters pending approval state
+        toast({
+          title: "Task sent for approval",
+          description: `This task has been sent to ${assigneeName}. They must accept it before it's added to their dashboard.`,
+        });
+      } else {
+        toast({
+          title: "Task unassigned",
+          description: "Task is now unassigned",
+        });
+      }
       onOpenChange(false);
     } catch (error) {
       toast({
