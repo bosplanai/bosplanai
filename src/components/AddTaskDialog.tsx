@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { format } from "date-fns";
 import { Plus, CalendarIcon, Upload, X, Paperclip, LucideIcon, ListTodo, Search, Users, BarChart3, Coins, TrendingUp, CheckSquare, Navigation, Lightbulb, FileText, ClipboardList, Library, Save, AlertTriangle, Link2 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -82,6 +82,25 @@ interface AddTaskDialogProps {
   onComplete?: () => void; // Called after all uploads finish
 }
 
+// Session storage key for persisting form state
+const FORM_STORAGE_KEY = "addTaskDialog_formState";
+
+interface PersistedFormState {
+  title: string;
+  description: string;
+  icon: string;
+  priority: TaskPriority;
+  subcategory: TaskSubcategory;
+  projectSelection: string;
+  newProjectTitle: string;
+  dueDate: string | null;
+  assignedUserIds: string[];
+  taskUrls: { url: string; title: string }[];
+  newUrl: string;
+  newUrlTitle: string;
+  isRecurring: boolean;
+}
+
 const AddTaskDialog = ({
   open,
   onOpenChange,
@@ -93,20 +112,37 @@ const AddTaskDialog = ({
   onAddTask,
   onComplete
 }: AddTaskDialogProps) => {
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
-  const [icon, setIcon] = useState("ListTodo");
-  const [priority, setPriority] = useState<TaskPriority>("medium");
-  const [subcategory, setSubcategory] = useState<TaskSubcategory>("weekly");
-  const [projectSelection, setProjectSelection] = useState<string>("none");
-  const [newProjectTitle, setNewProjectTitle] = useState("");
-  const [dueDate, setDueDate] = useState<Date | undefined>();
-  const [assignedUserIds, setAssignedUserIds] = useState<string[]>([]);
-  const [attachments, setAttachments] = useState<File[]>([]);
-  const [taskUrls, setTaskUrls] = useState<{ url: string; title: string }[]>([]);
-  const [newUrl, setNewUrl] = useState("");
-  const [newUrlTitle, setNewUrlTitle] = useState("");
-  const [isRecurring, setIsRecurring] = useState(false);
+  // Initialize state from sessionStorage if available
+  const getInitialState = useCallback(() => {
+    try {
+      const stored = sessionStorage.getItem(FORM_STORAGE_KEY);
+      if (stored) {
+        return JSON.parse(stored) as PersistedFormState;
+      }
+    } catch (e) {
+      console.error("Error reading form state from sessionStorage:", e);
+    }
+    return null;
+  }, []);
+
+  const initialState = getInitialState();
+
+  const [title, setTitle] = useState(initialState?.title || "");
+  const [description, setDescription] = useState(initialState?.description || "");
+  const [icon, setIcon] = useState(initialState?.icon || "ListTodo");
+  const [priority, setPriority] = useState<TaskPriority>(initialState?.priority || "medium");
+  const [subcategory, setSubcategory] = useState<TaskSubcategory>(initialState?.subcategory || "weekly");
+  const [projectSelection, setProjectSelection] = useState<string>(initialState?.projectSelection || "none");
+  const [newProjectTitle, setNewProjectTitle] = useState(initialState?.newProjectTitle || "");
+  const [dueDate, setDueDate] = useState<Date | undefined>(
+    initialState?.dueDate ? new Date(initialState.dueDate) : undefined
+  );
+  const [assignedUserIds, setAssignedUserIds] = useState<string[]>(initialState?.assignedUserIds || []);
+  const [attachments, setAttachments] = useState<File[]>([]); // Files can't be persisted to sessionStorage
+  const [taskUrls, setTaskUrls] = useState<{ url: string; title: string }[]>(initialState?.taskUrls || []);
+  const [newUrl, setNewUrl] = useState(initialState?.newUrl || "");
+  const [newUrlTitle, setNewUrlTitle] = useState(initialState?.newUrlTitle || "");
+  const [isRecurring, setIsRecurring] = useState(initialState?.isRecurring || false);
   const [isUploading, setIsUploading] = useState(false);
   const [showCloseWarning, setShowCloseWarning] = useState(false);
   const [isSavingDraft, setIsSavingDraft] = useState(false);
@@ -120,6 +156,33 @@ const AddTaskDialog = ({
   const { projects, addProject } = useProjects();
   
   const hasTaskTemplates = templates.some(t => t.template_type === "task");
+
+  // Persist form state to sessionStorage whenever it changes (only when dialog is open)
+  useEffect(() => {
+    if (!open) return;
+    
+    const formState: PersistedFormState = {
+      title,
+      description,
+      icon,
+      priority,
+      subcategory,
+      projectSelection,
+      newProjectTitle,
+      dueDate: dueDate ? dueDate.toISOString() : null,
+      assignedUserIds,
+      taskUrls,
+      newUrl,
+      newUrlTitle,
+      isRecurring,
+    };
+    
+    try {
+      sessionStorage.setItem(FORM_STORAGE_KEY, JSON.stringify(formState));
+    } catch (e) {
+      console.error("Error saving form state to sessionStorage:", e);
+    }
+  }, [open, title, description, icon, priority, subcategory, projectSelection, newProjectTitle, dueDate, assignedUserIds, taskUrls, newUrl, newUrlTitle, isRecurring]);
 
   // Check if user has entered any data
   const hasUnsavedChanges = title.trim() !== "" || 
@@ -145,6 +208,12 @@ const AddTaskDialog = ({
     setNewUrl("");
     setNewUrlTitle("");
     setIsRecurring(false);
+    // Clear persisted state
+    try {
+      sessionStorage.removeItem(FORM_STORAGE_KEY);
+    } catch (e) {
+      console.error("Error clearing form state from sessionStorage:", e);
+    }
   };
 
   const handleCloseAttempt = (isOpen: boolean) => {
