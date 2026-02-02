@@ -325,10 +325,19 @@ export const useTasks = () => {
         ]);
       }
 
-      toast({
-        title: "Task added",
-        description: "Your task has been added successfully",
-      });
+      // Show different toast based on whether task is assigned to another user
+      if (assignedUserId && assignedUserId !== user.id) {
+        const assigneeName = (data.assigned_user as any)?.full_name || 'the assignee';
+        toast({
+          title: "Task sent for approval",
+          description: `This task has been sent to ${assigneeName}. They must accept it before it's added to their dashboard.`,
+        });
+      } else {
+        toast({
+          title: "Task added",
+          description: "Your task has been added successfully",
+        });
+      }
 
       return data.id;
     } catch (error) {
