@@ -77,12 +77,10 @@ export const useTaskRequests = () => {
       if (error) throw error;
 
       // Filter out draft/deleted tasks and transform data
-      // Note: We don't filter by current organization since users may have task requests
-      // from multiple organizations they belong to via user_roles
       const requests: TaskRequest[] = (data || [])
         .filter((item: any) => {
           const task = item.task;
-          return task && !task.is_draft && !task.deleted_at;
+          return task && !task.is_draft && !task.deleted_at && task.organization_id === organization.id;
         })
         .map((item: any) => ({
           id: item.id,
