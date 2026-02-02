@@ -1740,22 +1740,34 @@ export type Database = {
       }
       task_assignments: {
         Row: {
+          accepted_at: string | null
           assigned_by: string | null
+          assignment_status: string
           created_at: string
+          decline_reason: string | null
+          declined_at: string | null
           id: string
           task_id: string
           user_id: string
         }
         Insert: {
+          accepted_at?: string | null
           assigned_by?: string | null
+          assignment_status?: string
           created_at?: string
+          decline_reason?: string | null
+          declined_at?: string | null
           id?: string
           task_id: string
           user_id: string
         }
         Update: {
+          accepted_at?: string | null
           assigned_by?: string | null
+          assignment_status?: string
           created_at?: string
+          decline_reason?: string | null
+          declined_at?: string | null
           id?: string
           task_id?: string
           user_id?: string
@@ -2421,6 +2433,10 @@ export type Database = {
         }
         Returns: Json
       }
+      accept_task_assignment: {
+        Args: { p_task_id: string }
+        Returns: undefined
+      }
       check_ai_usage_allowed: { Args: { org_id: string }; Returns: boolean }
       cleanup_expired_notifications: { Args: never; Returns: undefined }
       cleanup_guest_auth_attempts: { Args: never; Returns: undefined }
@@ -2455,6 +2471,10 @@ export type Database = {
           _user_id: string
         }
         Returns: string
+      }
+      decline_task_assignment: {
+        Args: { p_decline_reason?: string; p_task_id: string }
+        Returns: undefined
       }
       generate_org_slug: { Args: { org_name: string }; Returns: string }
       get_invite_by_token: {

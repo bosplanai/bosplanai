@@ -47,6 +47,14 @@ const PendingTaskRequests = ({ teamMembers, currentUserId, onTaskAccepted }: Pen
     setSheetOpen(true);
   };
 
+  // Filter to show only one entry per task (in case of duplicate assignments)
+  const uniqueTaskRequests = pendingRequests.reduce((acc, request) => {
+    if (!acc.some(r => r.task_id === request.task_id)) {
+      acc.push(request);
+    }
+    return acc;
+  }, [] as TaskRequest[]);
+
   return (
     <>
       <Card className="border-primary/30 bg-primary/5 overflow-hidden">
@@ -59,14 +67,14 @@ const PendingTaskRequests = ({ teamMembers, currentUserId, onTaskAccepted }: Pen
                 </div>
                 <div className="text-left">
                   <h3 className="font-semibold text-foreground">Pending Task Requests</h3>
-                  <p className="text-sm text-muted-foreground">
-                    {pendingRequests.length} task{pendingRequests.length !== 1 ? "s" : ""} awaiting your response
-                  </p>
+                <p className="text-sm text-muted-foreground">
+                  {uniqueTaskRequests.length} task{uniqueTaskRequests.length !== 1 ? "s" : ""} awaiting your response
+                </p>
                 </div>
               </div>
               <div className="flex items-center gap-2">
                 <Badge variant="secondary" className="bg-primary text-primary-foreground">
-                  {pendingRequests.length}
+                  {uniqueTaskRequests.length}
                 </Badge>
                 {isOpen ? (
                   <ChevronUp className="h-4 w-4 text-muted-foreground" />
@@ -79,7 +87,7 @@ const PendingTaskRequests = ({ teamMembers, currentUserId, onTaskAccepted }: Pen
 
           <CollapsibleContent>
             <div className="px-4 pb-4 space-y-2">
-              {pendingRequests.map((request) => {
+              {uniqueTaskRequests.map((request) => {
                 const priorityInfo = priorityConfig[request.priority] || priorityConfig.medium;
                 
                 return (

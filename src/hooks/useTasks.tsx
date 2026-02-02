@@ -21,6 +21,7 @@ export interface TaskProject {
 export interface TaskAssignmentUser {
   id: string;
   user_id: string;
+  assignment_status?: string;
   user?: TaskUser;
 }
 
@@ -83,6 +84,7 @@ export const useTasks = () => {
     }
 
     try {
+      // Fetch tasks with assignment details to filter by per-user acceptance
       const { data, error } = await supabase
         .from("tasks")
         .select(`
@@ -90,13 +92,12 @@ export const useTasks = () => {
           assigned_user:profiles!tasks_assigned_user_id_fkey(id, full_name),
           created_by_user:profiles!tasks_created_by_user_id_fkey(id, full_name),
           project:projects!tasks_project_id_fkey(id, title),
-          task_assignments(id, user_id, user:profiles!task_assignments_user_id_fkey(id, full_name))
+          task_assignments(id, user_id, assignment_status, user:profiles!task_assignments_user_id_fkey(id, full_name))
         `)
         .eq("organization_id", organization.id)
         .is("deleted_at", null)
         .is("archived_at", null)
         .or("is_draft.is.null,is_draft.eq.false")
-        .eq("assignment_status", "accepted")
         .order("position", { ascending: true });
 
       if (error) throw error;
@@ -105,9 +106,28 @@ export const useTasks = () => {
       // avoid crashing and incorrectly showing a load error.
       const rows = Array.isArray(data) ? data : [];
 
+      // Filter tasks based on per-assignee acceptance:
+      // - Task appears on user's board if they have an accepted assignment
+      // - Task appears on creator's board if at least one assignee accepted
+      const filteredRows = rows.filter((t: any) => {
+        const assignments = t.task_assignments || [];
+        const userHasAcceptedAssignment = assignments.some(
+          (a: any) => a.user_id === user.id && a.assignment_status === "accepted"
+        );
+        const anyAssigneeAccepted = assignments.some(
+          (a: any) => a.assignment_status === "accepted"
+        );
+        const userIsCreator = t.created_by_user_id === user.id;
+        
+        // User sees task if:
+        // 1. They have personally accepted the assignment, OR
+        // 2. They created the task AND at least one person has accepted
+        return userHasAcceptedAssignment || (userIsCreator && anyAssigneeAccepted);
+      });
+
       // Generate signed URLs for attachments
       const tasksWithSignedUrls = await Promise.all(
-        rows.map(async (t) => {
+        filteredRows.map(async (t: any) => {
           let signedUrl: string | null = null;
           // Check if attachment_url is a file path (not a full URL)
           if (t.attachment_url && !t.attachment_url.startsWith('http')) {
@@ -233,9 +253,7 @@ export const useTasks = () => {
       : -1;
 
     try {
-      // Determine assignment status: 'pending' if assigned to someone else, 'accepted' if self-assigned or unassigned
-      const assignmentStatus = assignedUserId && assignedUserId !== user.id ? 'pending' : 'accepted';
-      
+      // Create the task without assignment - assignments are handled separately in task_assignments
       const { data, error } = await supabase
         .from("tasks")
         .insert({
@@ -252,10 +270,10 @@ export const useTasks = () => {
           created_by_user_id: user.id,
           project_id: projectId,
           due_date: dueDate,
-          assigned_user_id: assignedUserId,
+          assigned_user_id: assignedUserId, // Keep for backward compatibility / primary assignee
           is_recurring: isRecurring,
           is_draft: isDraft,
-          assignment_status: assignmentStatus,
+          assignment_status: "accepted", // Task-level status deprecated in favor of per-assignment status
         } as any)
         .select(`
           *,
@@ -267,20 +285,22 @@ export const useTasks = () => {
 
       if (error) throw error;
 
-      // Create additional task assignments for multi-user assignment
-      if (assignedUserIds.length > 0) {
-        const additionalAssignees = assignedUserIds.filter(id => id !== assignedUserId);
-        if (additionalAssignees.length > 0) {
-          await supabase
-            .from("task_assignments")
-            .insert(
-              additionalAssignees.map(userId => ({
-                task_id: data.id,
-                user_id: userId,
-                assigned_by: user.id,
-              }))
-            );
-        }
+      // Collect all assignees: primary + additional
+      const allAssigneeIds = assignedUserId 
+        ? [assignedUserId, ...assignedUserIds.filter(id => id !== assignedUserId)]
+        : assignedUserIds;
+      
+      // Create task_assignments for all assignees with proper per-user status
+      if (allAssigneeIds.length > 0) {
+        const assignmentInserts = allAssigneeIds.map(userId => ({
+          task_id: data.id,
+          user_id: userId,
+          assigned_by: user.id,
+          assignment_status: userId === user.id ? "accepted" : "pending",
+          accepted_at: userId === user.id ? new Date().toISOString() : null,
+        }));
+
+        await supabase.from("task_assignments").insert(assignmentInserts);
       }
 
       // Generate signed URL for attachment if exists
@@ -291,9 +311,13 @@ export const useTasks = () => {
         signedUrl = data.attachment_url;
       }
 
-      // Only add to local state if assignment_status is 'accepted' (matches what we fetch)
-      const taskAssignmentStatus = (data as any).assignment_status;
-      if (taskAssignmentStatus === 'accepted') {
+      // Check if current user has an accepted assignment (self-assigned)
+      const userHasAcceptedAssignment = allAssigneeIds.includes(user.id) && 
+        allAssigneeIds.length > 0 && 
+        allAssigneeIds.some(id => id === user.id);
+      
+      // Add to local state only if user self-assigned (accepted)
+      if (userHasAcceptedAssignment) {
         setTasks((prev) => [
           ...prev,
           {
@@ -315,27 +339,37 @@ export const useTasks = () => {
             assigned_user: data.assigned_user as TaskUser | null,
             created_by_user: data.created_by_user as TaskUser | null,
             project: data.project as TaskProject | null,
-            task_assignments: [],
+            task_assignments: allAssigneeIds.map(id => ({
+              id: '',
+              user_id: id,
+              assignment_status: id === user.id ? 'accepted' : 'pending',
+            })),
             created_at: data.created_at,
             due_date: data.due_date,
             completed_at: data.completed_at,
             is_recurring: data.is_recurring,
-            assignment_status: taskAssignmentStatus as AssignmentStatus,
+            assignment_status: "accepted" as AssignmentStatus,
           },
         ]);
       }
 
-      // Show different toast based on whether task is assigned to another user
-      if (assignedUserId && assignedUserId !== user.id) {
-        const assigneeName = (data.assigned_user as any)?.full_name || 'the assignee';
+      // Show different toast based on whether all assignees are self or include others
+      const hasOtherAssignees = allAssigneeIds.some(id => id !== user.id);
+      if (hasOtherAssignees) {
+        const otherCount = allAssigneeIds.filter(id => id !== user.id).length;
         toast({
           title: "Task sent for approval",
-          description: `This task has been sent to ${assigneeName}. They must accept it before it's added to their dashboard.`,
+          description: `Task request sent to ${otherCount} team member${otherCount > 1 ? 's' : ''}. They must accept before the task appears on their dashboard.`,
+        });
+      } else if (allAssigneeIds.length > 0) {
+        toast({
+          title: "Task added",
+          description: "Your task has been added successfully",
         });
       } else {
         toast({
           title: "Task added",
-          description: "Your task has been added successfully",
+          description: "Task created without assignees",
         });
       }
 

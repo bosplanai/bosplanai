@@ -60,12 +60,18 @@ export const useTaskAssignments = (
       // Check if assigning to someone else (not self) - triggers pending request flow
       const isAssigningToOther = userId !== currentUser.id;
 
+      // Set per-assignee status: pending if assigning to others, accepted if self
+      const assignmentStatus = isAssigningToOther ? "pending" : "accepted";
+      const acceptedAt = isAssigningToOther ? null : new Date().toISOString();
+
       const { data, error } = await supabase
         .from("task_assignments")
         .insert({
           task_id: taskId,
           user_id: userId,
           assigned_by: currentUser.id,
+          assignment_status: assignmentStatus,
+          accepted_at: acceptedAt,
         })
         .select(`
           *,
@@ -85,24 +91,19 @@ export const useTaskAssignments = (
         throw error;
       }
 
-      // If assigning to someone else, update task assignment_status to 'pending'
-      if (isAssigningToOther) {
-        const { error: updateError } = await supabase
-          .from("tasks")
-          .update({ 
-            assignment_status: 'pending',
-            assigned_user_id: userId,
-            decline_reason: null,
-            last_reminder_sent_at: null,
-          })
-          .eq("id", taskId);
+      // Check if any assignee has accepted - if not, task should be hidden from board
+      const { data: acceptedAssignments } = await supabase
+        .from("task_assignments")
+        .select("id")
+        .eq("task_id", taskId)
+        .eq("assignment_status", "accepted")
+        .limit(1);
 
-        if (updateError) {
-          console.error("Error updating task assignment status:", updateError);
-        } else {
-          // Notify parent that task became pending so it can be removed from the board
-          onTaskBecamePending?.(taskId);
-        }
+      const hasAcceptedAssignment = (acceptedAssignments?.length || 0) > 0;
+
+      // If no one has accepted yet, notify parent to remove from board
+      if (!hasAcceptedAssignment && isAssigningToOther) {
+        onTaskBecamePending?.(taskId);
       }
 
       setAssignments((prev) => [...prev, data]);
@@ -110,7 +111,7 @@ export const useTaskAssignments = (
       if (isAssigningToOther) {
         toast({
           title: "Task sent for approval",
-          description: `This task has been sent to ${data.user?.full_name || 'the assignee'}. They must accept it before it's added to their dashboard.`,
+          description: `This task has been sent to ${data.user?.full_name || 'the assignee'}. They must accept it before it appears on their dashboard.`,
         });
       } else {
         toast({
