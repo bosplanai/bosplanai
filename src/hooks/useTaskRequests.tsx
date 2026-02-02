@@ -2,7 +2,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "./useAuth";
-import { useOrganization } from "./useOrganization";
 import { useToast } from "./use-toast";
 import { useQueryClient } from "@tanstack/react-query";
 
@@ -31,12 +30,14 @@ export const useTaskRequests = () => {
   const [pendingRequests, setPendingRequests] = useState<TaskRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
-  const { organization } = useOrganization();
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
   const fetchPendingRequests = async () => {
-    if (!user || !organization) {
+    // Don't gate this by a selected/active organization.
+    // Users can belong to multiple orgs (via user_roles) even if their profile.organization_id
+    // points somewhere else; RLS will correctly scope what they can see.
+    if (!user) {
       setPendingRequests([]);
       setLoading(false);
       return;
@@ -116,11 +117,11 @@ export const useTaskRequests = () => {
 
   useEffect(() => {
     fetchPendingRequests();
-  }, [user, organization]);
+  }, [user]);
 
   // Real-time subscription for task assignment changes
   useEffect(() => {
-    if (!user || !organization) return;
+    if (!user) return;
 
     const channel = supabase
       .channel(`task-assignments-${user.id}`)
@@ -141,7 +142,7 @@ export const useTaskRequests = () => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [user, organization]);
+  }, [user]);
 
   const acceptTask = async (taskId: string, onSuccess?: () => void): Promise<boolean> => {
     try {
