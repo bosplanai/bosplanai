@@ -288,20 +288,26 @@ const AccountSettingsContent = () => {
             Email Address
           </CardTitle>
           <CardDescription>
-            Your login email address cannot be changed
+            Used for login and notifications
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="email">Email</Label>
             <Input
               id="email"
               type="email"
               value={email}
-              disabled
-              className="bg-muted cursor-not-allowed"
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="Enter your email"
             />
           </div>
+          <Button
+            onClick={handleUpdateEmail}
+            disabled={isUpdatingEmail || email === user?.email}
+          >
+            {isUpdatingEmail ? "Updating..." : "Update Email"}
+          </Button>
         </CardContent>
       </Card>
 
