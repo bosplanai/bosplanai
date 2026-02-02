@@ -947,7 +947,7 @@ const TeamMembers = () => {
                             )}
                             <DropdownMenuItem onClick={() => handleRemoveMember(member.user_id, member.full_name)} className="text-destructive focus:text-destructive">
                               <Trash2 className="w-4 h-4 mr-2" />
-                              Remove from Organisation
+                              Remove from {organization?.name || "Organisation"}
                             </DropdownMenuItem>
                             {memberEmail && (
                               <DropdownMenuItem 
