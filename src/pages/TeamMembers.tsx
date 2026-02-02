@@ -14,13 +14,13 @@ import { useOrganization } from "@/hooks/useOrganization";
 import { useUserOrganizations } from "@/contexts/UserOrganizationsContext";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, UserPlus, MoreHorizontal, Mail, Shield, User, Eye, Trash2, Clock, Loader2, X, RefreshCw, Upload, Download, FileSpreadsheet, CheckCircle2, XCircle, KeyRound, Building2, Pencil } from "lucide-react";
+import { ArrowLeft, UserPlus, MoreHorizontal, Mail, Shield, User, Eye, Trash2, Clock, Loader2, X, RefreshCw, Upload, Download, FileSpreadsheet, CheckCircle2, XCircle, Building2, Pencil } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import BetaFooter from "@/components/BetaFooter";
 import { z } from "zod";
 type AppRole = "admin" | "member" | "viewer";
 const emailSchema = z.string().email("Please enter a valid email address");
-const passwordSchema = z.string().min(8, "Password must be at least 8 characters").max(72, "Password must be less than 72 characters");
+
 const roleConfig: Record<AppRole, {
   label: string;
   icon: React.ReactNode;
@@ -71,8 +71,6 @@ const TeamMembers = () => {
     removeInvitedUser,
     createMember,
     bulkCreateMembers,
-    resendPasswordReset,
-    setMemberPassword,
     addToOrganization,
     deleteUserFromPlatform
   } = useTeamMembers();
@@ -90,7 +88,6 @@ const TeamMembers = () => {
   const [isCreating, setIsCreating] = useState(false);
   const [isBulkCreating, setIsBulkCreating] = useState(false);
   const [resendingId, setResendingId] = useState<string | null>(null);
-  const [resendingPasswordId, setResendingPasswordId] = useState<string | null>(null);
   const [removingInviteId, setRemovingInviteId] = useState<string | null>(null);
   const [addingToOrgId, setAddingToOrgId] = useState<string | null>(null);
   const [deletingUserId, setDeletingUserId] = useState<string | null>(null);
@@ -124,17 +121,6 @@ const TeamMembers = () => {
     success: boolean;
     error?: string;
   }[] | null>(null);
-
-  // Set password dialog state
-  const [passwordDialogOpen, setPasswordDialogOpen] = useState(false);
-  const [passwordMember, setPasswordMember] = useState<{
-    id: string;
-    name: string;
-  } | null>(null);
-  const [newPassword, setNewPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [passwordErrors, setPasswordErrors] = useState<Record<string, string>>({});
-  const [isSettingPassword, setIsSettingPassword] = useState(false);
 
   // Edit profile dialog state
   const [editProfileDialogOpen, setEditProfileDialogOpen] = useState(false);
@@ -575,34 +561,6 @@ const TeamMembers = () => {
       setDeletingUserId(null);
     }
   };
-  const handleResendPasswordReset = async (userId: string, fullName: string) => {
-    setResendingPasswordId(userId);
-    try {
-      await resendPasswordReset(userId, fullName);
-      toast({
-        title: "Password reset email sent",
-        description: `A password setup link has been sent to ${fullName}`
-      });
-    } catch (error: any) {
-      toast({
-        title: "Failed to send password reset",
-        description: error.message,
-        variant: "destructive"
-      });
-    } finally {
-      setResendingPasswordId(null);
-    }
-  };
-  const openPasswordDialog = (memberId: string, memberName: string) => {
-    setPasswordMember({
-      id: memberId,
-      name: memberName
-    });
-    setNewPassword("");
-    setConfirmPassword("");
-    setPasswordErrors({});
-    setPasswordDialogOpen(true);
-  };
 
   const openEditProfileDialog = (member: { user_id: string; full_name: string; job_role: string }) => {
     setEditingMember({
@@ -649,46 +607,6 @@ const TeamMembers = () => {
       });
     } finally {
       setIsUpdatingProfile(false);
-    }
-  };
-  const handleSetPassword = async () => {
-    setPasswordErrors({});
-    const errors: Record<string, string> = {};
-
-    // Validate password
-    const passwordResult = passwordSchema.safeParse(newPassword);
-    if (!passwordResult.success) {
-      errors.password = passwordResult.error.errors[0].message;
-    }
-
-    // Check passwords match
-    if (newPassword !== confirmPassword) {
-      errors.confirm = "Passwords do not match";
-    }
-    if (Object.keys(errors).length > 0) {
-      setPasswordErrors(errors);
-      return;
-    }
-    if (!passwordMember) return;
-    setIsSettingPassword(true);
-    try {
-      await setMemberPassword(passwordMember.id, newPassword);
-      toast({
-        title: "Password updated",
-        description: `Password has been set for ${passwordMember.name}`
-      });
-      setPasswordDialogOpen(false);
-      setPasswordMember(null);
-      setNewPassword("");
-      setConfirmPassword("");
-    } catch (error: any) {
-      toast({
-        title: "Failed to set password",
-        description: error.message,
-        variant: "destructive"
-      });
-    } finally {
-      setIsSettingPassword(false);
     }
   };
   const getInitials = (name: string) => {
@@ -1139,15 +1057,6 @@ const TeamMembers = () => {
                                 <DropdownMenuSeparator />
                               </>
                             )}
-                            <DropdownMenuItem onClick={() => handleResendPasswordReset(member.user_id, member.full_name)} disabled={resendingPasswordId === member.user_id}>
-                              {resendingPasswordId === member.user_id ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <KeyRound className="w-4 h-4 mr-2" />}
-                              Resend Password Setup
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => openPasswordDialog(member.user_id, member.full_name)}>
-                              <KeyRound className="w-4 h-4 mr-2" />
-                              Set Password
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
                             <DropdownMenuItem onClick={() => handleRemoveMember(member.user_id, member.full_name)} className="text-destructive focus:text-destructive">
                               <Trash2 className="w-4 h-4 mr-2" />
                               Remove from Organisation
@@ -1388,70 +1297,6 @@ const TeamMembers = () => {
           )}
         </div>
 
-        {/* Set Password Dialog */}
-        <Dialog open={passwordDialogOpen} onOpenChange={open => {
-                  setPasswordDialogOpen(open);
-                  if (!open) {
-                    setPasswordMember(null);
-                    setNewPassword("");
-                    setConfirmPassword("");
-                    setPasswordErrors({});
-                  }
-                }}>
-          <DialogContent className="sm:max-w-md">
-            <DialogHeader>
-              <DialogTitle>Set Password</DialogTitle>
-              <DialogDescription>
-                Set a new password for {passwordMember?.name}
-              </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4 py-4">
-              <div className="space-y-2">
-                <Label htmlFor="newPassword">New Password</Label>
-                <Input id="newPassword" type="password" placeholder="Enter new password" value={newPassword} onChange={e => {
-                          setNewPassword(e.target.value);
-                          setPasswordErrors(prev => ({
-                            ...prev,
-                            password: ""
-                          }));
-                        }} />
-                {passwordErrors.password && <p className="text-sm text-destructive">{passwordErrors.password}</p>}
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="confirmPassword">Confirm Password</Label>
-                <Input id="confirmPassword" type="password" placeholder="Confirm new password" value={confirmPassword} onChange={e => {
-                          setConfirmPassword(e.target.value);
-                          setPasswordErrors(prev => ({
-                            ...prev,
-                            confirm: ""
-                          }));
-                        }} />
-                {passwordErrors.confirm && <p className="text-sm text-destructive">{passwordErrors.confirm}</p>}
-              </div>
-              <div className="bg-muted/50 rounded-lg p-3 text-sm text-muted-foreground">
-                <p>Password requirements:</p>
-                <ul className="list-disc list-inside mt-1 space-y-1">
-                  <li>At least 8 characters</li>
-                  <li>Maximum 72 characters</li>
-                </ul>
-              </div>
-            </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setPasswordDialogOpen(false)}>
-                Cancel
-              </Button>
-              <Button onClick={handleSetPassword} disabled={isSettingPassword}>
-                {isSettingPassword ? <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Setting...
-                  </> : <>
-                    <KeyRound className="w-4 h-4 mr-2" />
-                    Set Password
-                  </>}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
         </div>
       </div>
       <BetaFooter />
