@@ -241,7 +241,7 @@ const ProductManagementBoard = () => {
       }
     }
   };
-  return <div className="p-4 sm:p-8 bg-card min-h-screen">
+  return <div className="p-4 sm:p-8 bg-card min-h-screen overflow-x-hidden">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 sm:mb-8">
         <h2 className="text-base sm:text-lg font-semibold text-foreground">
           {organization?.name ? `${organization.name} Projects` : "Projects"}
@@ -335,7 +335,7 @@ const ProductManagementBoard = () => {
       {loading ? <div className="flex items-center justify-center h-64">
           <div className="text-muted-foreground">Loading projects...</div>
         </div> : <DndContext sensors={sensors} collisionDetection={closestCorners} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
-          <div className="flex flex-col sm:flex-row gap-4 sm:gap-6">
+          <div className="flex flex-col sm:flex-row gap-4 sm:gap-6 w-full">
             <ProductBoardColumn id="todo" title="TO DO" items={todoProjects.map(p => p.id)}>
               {todoProjects.map(project => <SortableProjectCard key={project.id} id={project.id} title={project.title} description={project.description} dueDate={project.due_date} status="todo" onEdit={() => openEditDialog(project)} onDelete={() => handleDeleteProject({ id: project.id, title: project.title, status: "todo" })} onViewTasks={() => setSelectedProject(project)} onClick={() => setSelectedProject(project)} onStatusChange={(newStatus) => updateProject(project.id, { status: newStatus })} />)}
               {todoProjects.length === 0 && <p className="text-sm text-white text-center py-6 sm:py-8">
