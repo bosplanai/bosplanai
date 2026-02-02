@@ -45,7 +45,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    const { email, organizationId, removeFromAllOrgs } = await req.json();
+    const { email, organizationId, removeFromAllOrgs, deleteFromPlatform } = await req.json();
 
     if (!email || !organizationId) {
       return new Response(
@@ -112,7 +112,65 @@ Deno.serve(async (req) => {
       );
     }
 
-    if (removeFromAllOrgs) {
+    if (deleteFromPlatform) {
+      // Complete deletion from platform - remove all data and auth user
+      console.log(`Deleting user ${targetUser.id} from platform completely`);
+      
+      // First, remove all organization invites for this user
+      const { error: deleteInvitesError } = await supabaseAdmin
+        .from("organization_invites")
+        .delete()
+        .eq("email", email.toLowerCase());
+
+      if (deleteInvitesError) {
+        console.error("Error deleting invites:", deleteInvitesError);
+        // Continue anyway - not critical
+      }
+
+      // Remove from all organizations
+      const { error: deleteAllRolesError } = await supabaseAdmin
+        .from("user_roles")
+        .delete()
+        .eq("user_id", targetUser.id);
+
+      if (deleteAllRolesError) {
+        console.error("Error removing user roles:", deleteAllRolesError);
+        return new Response(
+          JSON.stringify({ error: "Failed to remove user from organizations" }),
+          {
+            status: 500,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          }
+        );
+      }
+
+      // Delete the user's profile
+      const { error: deleteProfileError } = await supabaseAdmin
+        .from("profiles")
+        .delete()
+        .eq("id", targetUser.id);
+
+      if (deleteProfileError) {
+        console.error("Error deleting profile:", deleteProfileError);
+        // Continue anyway - auth user deletion is more important
+      }
+
+      // Delete the auth user completely
+      const { error: deleteAuthError } = await supabaseAdmin.auth.admin.deleteUser(targetUser.id);
+
+      if (deleteAuthError) {
+        console.error("Error deleting auth user:", deleteAuthError);
+        return new Response(
+          JSON.stringify({ error: "Failed to delete user account" }),
+          {
+            status: 500,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          }
+        );
+      }
+
+      console.log(`User ${targetUser.id} completely deleted from platform`);
+    } else if (removeFromAllOrgs) {
       // Remove from all organizations - delete all user_roles for this user
       const { error: deleteAllError } = await supabaseAdmin
         .from("user_roles")

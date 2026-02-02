@@ -73,8 +73,12 @@ const TeamMembers = () => {
     bulkCreateMembers,
     resendPasswordReset,
     setMemberPassword,
-    addToOrganization
+    addToOrganization,
+    deleteUserFromPlatform
   } = useTeamMembers();
+
+  // Filter invites to only show pending (not accepted)
+  const pendingInvites = invites.filter(i => i.status !== "accepted");
   const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [bulkDialogOpen, setBulkDialogOpen] = useState(false);
@@ -89,6 +93,7 @@ const TeamMembers = () => {
   const [resendingPasswordId, setResendingPasswordId] = useState<string | null>(null);
   const [removingInviteId, setRemovingInviteId] = useState<string | null>(null);
   const [addingToOrgId, setAddingToOrgId] = useState<string | null>(null);
+  const [deletingUserId, setDeletingUserId] = useState<string | null>(null);
   const [emailError, setEmailError] = useState<string | null>(null);
   const [inviteNameError, setInviteNameError] = useState<string | null>(null);
 
@@ -547,6 +552,27 @@ const TeamMembers = () => {
         description: error.message,
         variant: "destructive"
       });
+    }
+  };
+  const handleDeleteFromPlatform = async (userId: string, email: string, name: string) => {
+    if (!confirm(`Are you sure you want to permanently delete ${name} from the platform? This will revoke all access and cannot be undone.`)) {
+      return;
+    }
+    setDeletingUserId(userId);
+    try {
+      await deleteUserFromPlatform(email);
+      toast({
+        title: "User deleted",
+        description: `${name} has been permanently removed from the platform`
+      });
+    } catch (error: any) {
+      toast({
+        title: "Failed to delete user",
+        description: error.message,
+        variant: "destructive"
+      });
+    } finally {
+      setDeletingUserId(null);
     }
   };
   const handleResendPasswordReset = async (userId: string, fullName: string) => {
@@ -1126,6 +1152,20 @@ const TeamMembers = () => {
                               <Trash2 className="w-4 h-4 mr-2" />
                               Remove from Organisation
                             </DropdownMenuItem>
+                            {memberEmail && (
+                              <DropdownMenuItem 
+                                onClick={() => handleDeleteFromPlatform(member.user_id, memberEmail, member.full_name)} 
+                                className="text-destructive focus:text-destructive"
+                                disabled={deletingUserId === member.user_id}
+                              >
+                                {deletingUserId === member.user_id ? (
+                                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                ) : (
+                                  <Trash2 className="w-4 h-4 mr-2" />
+                                )}
+                                Delete from Platform
+                              </DropdownMenuItem>
+                            )}
                           </DropdownMenuContent>
                         </DropdownMenu>
                       );
@@ -1136,21 +1176,21 @@ const TeamMembers = () => {
           </div>
         </div>
 
-        {/* Invitations List - Always visible */}
+        {/* Invitations List - Only pending invitations */}
         <div className="bg-card border border-border rounded-xl overflow-hidden">
           <div className="px-6 py-4 border-b border-border">
             <h2 className="font-semibold">
               Invitations ({(() => {
                 // Group by email and count unique users
-                const uniqueEmails = new Set(invites.map(i => i.email.toLowerCase()));
+                const uniqueEmails = new Set(pendingInvites.map(i => i.email.toLowerCase()));
                 return uniqueEmails.size;
               })()})
             </h2>
           </div>
-          {invites.length === 0 ? (
+          {pendingInvites.length === 0 ? (
             <div className="px-6 py-8 text-center text-muted-foreground">
               <Mail className="w-8 h-8 mx-auto mb-3 opacity-50" />
-              <p className="text-sm">No pending or recent invitations</p>
+              <p className="text-sm">No pending invitations</p>
               {isAdmin && (
                 <p className="text-xs mt-1">Use the "Invite Member" button above to add team members</p>
               )}
@@ -1159,18 +1199,17 @@ const TeamMembers = () => {
             <div className="divide-y divide-border">
               {(() => {
                 // Group invites by email
-                const groupedInvites = invites.reduce((acc, invite) => {
+                const groupedInvites = pendingInvites.reduce((acc, invite) => {
                   const email = invite.email.toLowerCase();
                   if (!acc[email]) {
                     acc[email] = [];
                   }
                   acc[email].push(invite);
                   return acc;
-                }, {} as Record<string, typeof invites>);
+                }, {} as Record<string, typeof pendingInvites>);
 
                 return Object.entries(groupedInvites).map(([email, userInvites]) => {
-                  // Determine overall status - if any is accepted, show accepted
-                  const hasAccepted = userInvites.some(i => i.status === "accepted");
+                  // All invites here are pending since we've filtered out accepted ones
                   const allExpired = userInvites.every(i => {
                     const expiresAt = new Date(i.expires_at);
                     return i.status === "pending" && expiresAt < new Date();
@@ -1211,8 +1250,8 @@ const TeamMembers = () => {
                     <div key={email} className="px-6 py-4 flex items-center justify-between">
                       <div className="flex items-center gap-4">
                         <Avatar>
-                          <AvatarFallback className={hasAccepted ? "bg-primary/10 text-primary" : allExpired ? "bg-destructive/10 text-destructive" : "bg-muted text-muted-foreground"}>
-                            {hasAccepted ? <CheckCircle2 className="w-4 h-4" /> : allExpired ? <XCircle className="w-4 h-4" /> : <Mail className="w-4 h-4" />}
+                          <AvatarFallback className={allExpired ? "bg-destructive/10 text-destructive" : "bg-muted text-muted-foreground"}>
+                            {allExpired ? <XCircle className="w-4 h-4" /> : <Mail className="w-4 h-4" />}
                           </AvatarFallback>
                         </Avatar>
                         <div className="space-y-1">
@@ -1222,35 +1261,26 @@ const TeamMembers = () => {
                             {userOrgs.map((org, idx) => {
                               const orgExpiresAt = new Date(org.expires_at);
                               const isOrgExpired = org.status === "pending" && orgExpiresAt < new Date();
-                              const isOrgAccepted = org.status === "accepted";
                               
                               return (
                                 <Badge 
                                   key={org.inviteId} 
                                   variant="outline" 
                                   className={`text-xs gap-1 ${
-                                    isOrgAccepted 
-                                      ? "bg-primary/5 text-primary/80 border-primary/20" 
-                                      : isOrgExpired 
-                                        ? "bg-destructive/5 text-destructive/80 border-destructive/20" 
-                                        : "bg-muted text-muted-foreground border-border"
+                                    isOrgExpired 
+                                      ? "bg-destructive/5 text-destructive/80 border-destructive/20" 
+                                      : "bg-muted text-muted-foreground border-border"
                                   }`}
                                 >
                                   <Building2 className="w-3 h-3" />
                                   {org.name}
-                                  {isOrgAccepted && <CheckCircle2 className="w-3 h-3" />}
                                   {isOrgExpired && <XCircle className="w-3 h-3" />}
                                 </Badge>
                               );
                             })}
                           </div>
                           <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                            {hasAccepted ? (
-                              <span className="text-primary flex items-center gap-1">
-                                <CheckCircle2 className="w-3 h-3" />
-                                Accepted
-                              </span>
-                            ) : allExpired ? (
+                            {allExpired ? (
                               <span className="text-destructive flex items-center gap-1">
                                 <XCircle className="w-3 h-3" />
                                 All invites expired
@@ -1270,15 +1300,13 @@ const TeamMembers = () => {
                         <Badge 
                           variant="outline" 
                           className={`gap-1 ${
-                            hasAccepted 
-                              ? "bg-primary/10 text-primary border-primary/20" 
-                              : allExpired 
-                                ? "bg-destructive/10 text-destructive border-destructive/20" 
-                                : "bg-amber-500/10 text-amber-600 border-amber-500/20"
+                            allExpired 
+                              ? "bg-destructive/10 text-destructive border-destructive/20" 
+                              : "bg-amber-500/10 text-amber-600 border-amber-500/20"
                           }`}
                         >
-                          {hasAccepted ? <CheckCircle2 className="w-3 h-3" /> : allExpired ? <XCircle className="w-3 h-3" /> : <Clock className="w-3 h-3" />}
-                          {hasAccepted ? "Accepted" : allExpired ? "Expired" : "Pending"}
+                          {allExpired ? <XCircle className="w-3 h-3" /> : <Clock className="w-3 h-3" />}
+                          {allExpired ? "Expired" : "Pending"}
                         </Badge>
                         <Badge variant="outline" className={`gap-1 ${config.color}`}>
                           {config.icon}
