@@ -634,8 +634,11 @@ const ProjectBoard = () => {
               <SortableColumn id="todo" title="TO DO" variant="todo" items={todoTasks.map(t => t.id)}>
               {todoTasks.map(task => {
                   const IconComponent = iconMap[task.icon] || ListTodo;
-                  // Team (viewer) users cannot change assignment, and assignment is only available in Product Management
+                  // Team (viewer) users cannot change assignment normally, but all users can reassign tasks assigned to them
                   const canAssign = canAssignTasks && activeTab === "product";
+                  // Any user can reassign a task that is currently assigned to them
+                  const isCurrentAssignee = task.assigned_user_id === user?.id;
+                  const canReassignAssignedTask = isCurrentAssignee && activeTab === "product";
                   
                   // Determine if current user can edit this task
                   // Viewer: Cannot edit tasks at all (can only move their assigned tasks)
@@ -644,8 +647,11 @@ const ProjectBoard = () => {
                   const isOwnTask = task.created_by_user_id === user?.id || task.assigned_user_id === user?.id;
                   const canEditThisTask = isAdmin || (canEditOwnTasks && isOwnTask);
                   
+                  // Assignment change is allowed if user can generally assign tasks OR if they are the current assignee
+                  const canChangeAssignment = canAssign || canReassignAssignedTask;
+                  
                   return <div key={task.id} className="relative group animate-fade-in">
-                      <SortableTaskCard id={task.id} title={task.title} description={task.description} icon={IconComponent} priority={task.priority} organizationId={task.organization_id || undefined} assignedUser={task.assigned_user} assignedUsers={task.task_assignments} createdByUser={task.created_by_user} project={task.project} teamMembers={teamMembers} projects={projectOptions} createdAt={task.created_at} dueDate={task.due_date} completedAt={task.completed_at} status="todo" canEditAttachments={canEditThisTask} onTitleChange={canEditThisTask ? newTitle => handleTitleChange(task.id, newTitle) : undefined} onDescriptionChange={canEditThisTask ? newDesc => handleDescriptionChange(task.id, newDesc) : undefined} onAssignmentChange={canAssign && canEditThisTask ? userId => handleAssignmentChange(task.id, userId) : undefined} onDueDateChange={canEditThisTask ? date => handleDueDateChange(task.id, date) : undefined} onProjectChange={canEditThisTask ? projectId => handleProjectChange(task.id, projectId) : undefined} onPriorityChange={canEditThisTask ? priority => handlePriorityChange(task.id, priority) : undefined} onStatusChange={status => handleStatusChange(task.id, status)} onTaskBecamePending={refetch} />
+                      <SortableTaskCard id={task.id} title={task.title} description={task.description} icon={IconComponent} priority={task.priority} organizationId={task.organization_id || undefined} assignedUser={task.assigned_user} assignedUsers={task.task_assignments} createdByUser={task.created_by_user} project={task.project} teamMembers={teamMembers} projects={projectOptions} createdAt={task.created_at} dueDate={task.due_date} completedAt={task.completed_at} status="todo" canEditAttachments={canEditThisTask} onTitleChange={canEditThisTask ? newTitle => handleTitleChange(task.id, newTitle) : undefined} onDescriptionChange={canEditThisTask ? newDesc => handleDescriptionChange(task.id, newDesc) : undefined} onAssignmentChange={canChangeAssignment ? userId => handleAssignmentChange(task.id, userId) : undefined} onDueDateChange={canEditThisTask ? date => handleDueDateChange(task.id, date) : undefined} onProjectChange={canEditThisTask ? projectId => handleProjectChange(task.id, projectId) : undefined} onPriorityChange={canEditThisTask ? priority => handlePriorityChange(task.id, priority) : undefined} onStatusChange={status => handleStatusChange(task.id, status)} onTaskBecamePending={refetch} />
                       {canDeleteTasks && <button onClick={() => handleDeleteTask({
                       id: task.id,
                       title: task.title,
@@ -667,15 +673,21 @@ const ProjectBoard = () => {
               <SortableColumn ref={completeColumnRef} id="complete" title="COMPLETE" variant="complete" items={completeTasks.map(t => t.id)}>
                 {completeTasks.map(task => {
                   const IconComponent = iconMap[task.icon] || ListTodo;
-                  // Team (viewer) users cannot change assignment, and assignment is only available in Product Management
+                  // Team (viewer) users cannot change assignment normally, but all users can reassign tasks assigned to them
                   const canAssign = canAssignTasks && activeTab === "product";
+                  // Any user can reassign a task that is currently assigned to them
+                  const isCurrentAssignee = task.assigned_user_id === user?.id;
+                  const canReassignAssignedTask = isCurrentAssignee && activeTab === "product";
                   
                   // Determine if current user can edit this task
                   const isOwnTask = task.created_by_user_id === user?.id || task.assigned_user_id === user?.id;
                   const canEditThisTask = isAdmin || (canEditOwnTasks && isOwnTask);
                   
+                  // Assignment change is allowed if user can generally assign tasks OR if they are the current assignee
+                  const canChangeAssignment = canAssign || canReassignAssignedTask;
+                  
                   return <div key={task.id} className="relative group animate-fade-in">
-                      <SortableTaskCard id={task.id} title={task.title} description={task.description} icon={IconComponent} priority={task.priority} organizationId={task.organization_id || undefined} assignedUser={task.assigned_user} assignedUsers={task.task_assignments} createdByUser={task.created_by_user} project={task.project} teamMembers={teamMembers} projects={projectOptions} createdAt={task.created_at} dueDate={task.due_date} completedAt={task.completed_at} status="complete" canEditAttachments={canEditThisTask} onTitleChange={canEditThisTask ? newTitle => handleTitleChange(task.id, newTitle) : undefined} onDescriptionChange={canEditThisTask ? newDesc => handleDescriptionChange(task.id, newDesc) : undefined} onAssignmentChange={canAssign && canEditThisTask ? userId => handleAssignmentChange(task.id, userId) : undefined} onDueDateChange={canEditThisTask ? date => handleDueDateChange(task.id, date) : undefined} onProjectChange={canEditThisTask ? projectId => handleProjectChange(task.id, projectId) : undefined} onPriorityChange={canEditThisTask ? priority => handlePriorityChange(task.id, priority) : undefined} onStatusChange={status => handleStatusChange(task.id, status)} onTaskBecamePending={refetch} />
+                      <SortableTaskCard id={task.id} title={task.title} description={task.description} icon={IconComponent} priority={task.priority} organizationId={task.organization_id || undefined} assignedUser={task.assigned_user} assignedUsers={task.task_assignments} createdByUser={task.created_by_user} project={task.project} teamMembers={teamMembers} projects={projectOptions} createdAt={task.created_at} dueDate={task.due_date} completedAt={task.completed_at} status="complete" canEditAttachments={canEditThisTask} onTitleChange={canEditThisTask ? newTitle => handleTitleChange(task.id, newTitle) : undefined} onDescriptionChange={canEditThisTask ? newDesc => handleDescriptionChange(task.id, newDesc) : undefined} onAssignmentChange={canChangeAssignment ? userId => handleAssignmentChange(task.id, userId) : undefined} onDueDateChange={canEditThisTask ? date => handleDueDateChange(task.id, date) : undefined} onProjectChange={canEditThisTask ? projectId => handleProjectChange(task.id, projectId) : undefined} onPriorityChange={canEditThisTask ? priority => handlePriorityChange(task.id, priority) : undefined} onStatusChange={status => handleStatusChange(task.id, status)} onTaskBecamePending={refetch} />
                       {canDeleteTasks && <button onClick={() => handleDeleteTask({
                       id: task.id,
                       title: task.title,
