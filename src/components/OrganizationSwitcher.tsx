@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { Check, ChevronsUpDown, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -29,6 +29,7 @@ const OrganizationSwitcher = () => {
   const { organizations, loading, setActiveOrganization } = useUserOrganizations();
   const { organization: currentOrg, refetch } = useOrganization();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const handleSelectOrg = async (org: UserOrganization) => {
     if (org.id === currentOrg?.id) {
@@ -39,9 +40,19 @@ const OrganizationSwitcher = () => {
     await setActiveOrganization(org.id);
     await refetch();
     setOpen(false);
-    // Navigate to the new org's root URL
+    // Navigate to the same path under the new org
     if (org.slug) {
-      navigate(`/${org.slug}`);
+      // Extract the path after the current org slug and preserve it
+      const currentPath = location.pathname;
+      const currentOrgSlug = currentOrg?.slug;
+      let subPath = "";
+      
+      if (currentOrgSlug && currentPath.startsWith(`/${currentOrgSlug}`)) {
+        // Remove the current org slug to get the sub-path (e.g., /team, /settings)
+        subPath = currentPath.slice(`/${currentOrgSlug}`.length);
+      }
+      
+      navigate(`/${org.slug}${subPath}`);
     }
   };
 
