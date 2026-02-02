@@ -86,7 +86,7 @@ const TaskRequestSheet = ({
   const handleAccept = async () => {
     if (!request) return;
     setIsProcessing(true);
-    const success = await onAccept(request.id);
+    const success = await onAccept(request.task_id);
     if (success) {
       handleOpenChange(false);
     }
@@ -96,7 +96,7 @@ const TaskRequestSheet = ({
   const handleDecline = async () => {
     if (!request) return;
     setIsProcessing(true);
-    const success = await onDecline(request.id, reason);
+    const success = await onDecline(request.task_id, reason);
     if (success) {
       handleOpenChange(false);
     }
@@ -106,7 +106,7 @@ const TaskRequestSheet = ({
   const handleReassign = async () => {
     if (!request || !selectedAssignee) return;
     setIsProcessing(true);
-    const success = await onReassign(request.id, selectedAssignee, reason);
+    const success = await onReassign(request.task_id, selectedAssignee, reason);
     if (success) {
       handleOpenChange(false);
     }
@@ -126,9 +126,9 @@ const TaskRequestSheet = ({
             <AlertCircle className="h-5 w-5 text-primary" />
             <SheetTitle>Task Request</SheetTitle>
           </div>
-          <SheetDescription>
-            {request.created_by_user?.full_name || "Someone"} has requested you to take on this task
-          </SheetDescription>
+        <SheetDescription>
+          {request.assigned_by_user?.full_name || request.created_by_user?.full_name || "Someone"} has requested you to take on this task
+        </SheetDescription>
         </SheetHeader>
 
         <div className="mt-6 space-y-6">

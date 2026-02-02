@@ -9,7 +9,8 @@ import { useQueryClient } from "@tanstack/react-query";
 export type AssignmentStatus = "pending" | "accepted" | "declined";
 
 export interface TaskRequest {
-  id: string;
+  id: string; // task_assignment id
+  task_id: string;
   title: string;
   description: string | null;
   priority: "high" | "medium" | "low";
@@ -19,7 +20,8 @@ export interface TaskRequest {
   project?: { id: string; title: string } | null;
   created_by_user_id: string | null;
   created_by_user?: { id: string; full_name: string } | null;
-  assigned_user_id: string;
+  assigned_by: string | null;
+  assigned_by_user?: { id: string; full_name: string } | null;
   assignment_status: AssignmentStatus;
   created_at: string;
   organization_id: string;
@@ -41,39 +43,66 @@ export const useTaskRequests = () => {
     }
 
     try {
+      // Query task_assignments for pending assignments to this user
       const { data, error } = await supabase
-        .from("tasks")
-        .select(
-          `
+        .from("task_assignments")
+        .select(`
           id,
-          title,
-          description,
-          priority,
-          due_date,
-          category,
-          project_id,
-          project:projects!tasks_project_id_fkey(id, title),
-          created_by_user_id,
-          assigned_user_id,
+          task_id,
+          user_id,
+          assigned_by,
           assignment_status,
           created_at,
-          organization_id,
-          created_by_user:profiles!tasks_created_by_user_id_fkey(id, full_name)
-        `
-        )
-        .eq("organization_id", organization.id)
-        .eq("assigned_user_id", user.id)
+          assigned_by_user:profiles!task_assignments_assigned_by_fkey(id, full_name),
+          task:tasks!task_assignments_task_id_fkey(
+            id,
+            title,
+            description,
+            priority,
+            due_date,
+            category,
+            project_id,
+            created_by_user_id,
+            organization_id,
+            is_draft,
+            deleted_at,
+            project:projects!tasks_project_id_fkey(id, title),
+            created_by_user:profiles!tasks_created_by_user_id_fkey(id, full_name)
+          )
+        `)
+        .eq("user_id", user.id)
         .eq("assignment_status", "pending")
-        // Draft tasks should NOT create visible requests for assignees until published
-        .eq("is_draft", false)
-        .is("deleted_at", null)
         .order("created_at", { ascending: false });
 
       if (error) throw error;
 
-      setPendingRequests(data as TaskRequest[]);
+      // Filter out draft/deleted tasks and transform data
+      const requests: TaskRequest[] = (data || [])
+        .filter((item: any) => {
+          const task = item.task;
+          return task && !task.is_draft && !task.deleted_at && task.organization_id === organization.id;
+        })
+        .map((item: any) => ({
+          id: item.id,
+          task_id: item.task_id,
+          title: item.task.title,
+          description: item.task.description,
+          priority: item.task.priority,
+          due_date: item.task.due_date,
+          category: item.task.category,
+          project_id: item.task.project_id,
+          project: item.task.project,
+          created_by_user_id: item.task.created_by_user_id,
+          created_by_user: item.task.created_by_user,
+          assigned_by: item.assigned_by,
+          assigned_by_user: item.assigned_by_user,
+          assignment_status: item.assignment_status,
+          created_at: item.created_at,
+          organization_id: item.task.organization_id,
+        }));
+
+      setPendingRequests(requests);
     } catch (error: any) {
-      // Silently handle missing table/relationship errors (PGRST205/PGRST200)
       const ignoredCodes = ['PGRST205', 'PGRST200'];
       if (!ignoredCodes.includes(error?.code)) {
         console.error("Error fetching pending task requests:", error);
@@ -87,19 +116,19 @@ export const useTaskRequests = () => {
     fetchPendingRequests();
   }, [user, organization]);
 
-  // Real-time subscription for task request changes
+  // Real-time subscription for task assignment changes
   useEffect(() => {
     if (!user || !organization) return;
 
     const channel = supabase
-      .channel(`task-requests-${user.id}`)
+      .channel(`task-assignments-${user.id}`)
       .on(
         "postgres_changes",
         {
           event: "*",
           schema: "public",
-          table: "tasks",
-          filter: `assigned_user_id=eq.${user.id}`,
+          table: "task_assignments",
+          filter: `user_id=eq.${user.id}`,
         },
         () => {
           fetchPendingRequests();
@@ -114,22 +143,19 @@ export const useTaskRequests = () => {
 
   const acceptTask = async (taskId: string, onSuccess?: () => void): Promise<boolean> => {
     try {
-      const { error } = await supabase
-        .from("tasks")
-        .update({
-          assignment_status: "accepted",
-        })
-        .eq("id", taskId);
+      // Use the RPC to accept the assignment
+      const { error } = await supabase.rpc("accept_task_assignment", {
+        p_task_id: taskId,
+      });
 
       if (error) throw error;
 
-      setPendingRequests((prev) => prev.filter((r) => r.id !== taskId));
+      setPendingRequests((prev) => prev.filter((r) => r.task_id !== taskId));
       
-      // Invalidate all task-related queries to refresh main task board immediately
+      // Invalidate all task-related queries
       queryClient.invalidateQueries({ queryKey: ["tasks"] });
       queryClient.invalidateQueries({ queryKey: ["task-requests"] });
       
-      // Call the success callback to trigger any additional refreshes (e.g., useTasks refetch)
       if (onSuccess) {
         onSuccess();
       }
@@ -162,57 +188,21 @@ export const useTaskRequests = () => {
     }
 
     try {
-      // Get the task details first (for notification)
-      const { data: task, error: taskError } = await supabase
-        .from("tasks")
-        .select("title, created_by_user_id, organization_id")
-        .eq("id", taskId)
-        .single();
-
-      if (taskError || !task) throw taskError || new Error("Task not found");
-
-      // Get the current user's name for the notification
-      const { data: userProfile } = await supabase
-        .from("profiles")
-        .select("full_name")
-        .eq("id", user?.id)
-        .single();
-
-      const declinerName = userProfile?.full_name || "A team member";
-
-      // Update the task status
-      const { error } = await supabase
-        .from("tasks")
-        .update({
-          assignment_status: "declined",
-          decline_reason: reason.trim(),
-          assigned_user_id: null, // Clear the assigned user
-        })
-        .eq("id", taskId);
+      // Use the RPC to decline (which will update, notify, then delete the assignment)
+      const { error } = await supabase.rpc("decline_task_assignment", {
+        p_task_id: taskId,
+        p_decline_reason: reason.trim(),
+      });
 
       if (error) throw error;
 
-      // Create notification for the task creator with the decliner's name
-      if (task.created_by_user_id && task.organization_id) {
-        await supabase.from("notifications").insert({
-          user_id: task.created_by_user_id,
-          organization_id: task.organization_id,
-          type: "task_declined",
-          title: "Task Declined",
-          message: `${declinerName} has declined the task: ${task.title}. Reason: ${reason.trim()}`,
-          reference_id: taskId,
-          reference_type: "task",
-        });
-      }
-
-      setPendingRequests((prev) => prev.filter((r) => r.id !== taskId));
+      setPendingRequests((prev) => prev.filter((r) => r.task_id !== taskId));
       
-      // Invalidate tasks query
       queryClient.invalidateQueries({ queryKey: ["tasks"] });
       
       toast({
         title: "Task declined",
-        description: "The task has been returned to the creator",
+        description: "You have been removed from this task",
       });
 
       return true;
@@ -242,19 +232,28 @@ export const useTaskRequests = () => {
     }
 
     try {
-      // Use a SECURITY DEFINER RPC to avoid RLS blocking reassignment
-      const { error } = await supabase.rpc("reassign_task", {
+      // First decline the current assignment
+      const { error: declineError } = await supabase.rpc("decline_task_assignment", {
         p_task_id: taskId,
-        p_new_assignee_id: newAssigneeId,
+        p_decline_reason: `Reassigned to another user. Reason: ${reason.trim()}`,
       });
 
-      if (error) throw error;
+      if (declineError) throw declineError;
 
-      // Notifications are handled by the notify_task_reassigned trigger
+      // Then add a new assignment for the new assignee
+      const { error: assignError } = await supabase
+        .from("task_assignments")
+        .insert({
+          task_id: taskId,
+          user_id: newAssigneeId,
+          assigned_by: user?.id,
+          assignment_status: "pending",
+        });
 
-      setPendingRequests((prev) => prev.filter((r) => r.id !== taskId));
+      if (assignError) throw assignError;
+
+      setPendingRequests((prev) => prev.filter((r) => r.task_id !== taskId));
       
-      // Invalidate tasks query
       queryClient.invalidateQueries({ queryKey: ["tasks"] });
       
       toast({
@@ -283,4 +282,3 @@ export const useTaskRequests = () => {
     refetch: fetchPendingRequests,
   };
 };
-
