@@ -2437,6 +2437,7 @@ export type Database = {
         Args: { p_task_id: string }
         Returns: undefined
       }
+      can_access_task: { Args: { p_task_id: string }; Returns: boolean }
       check_ai_usage_allowed: { Args: { org_id: string }; Returns: boolean }
       cleanup_expired_notifications: { Args: never; Returns: undefined }
       cleanup_guest_auth_attempts: { Args: never; Returns: undefined }
@@ -2525,6 +2526,7 @@ export type Database = {
         Returns: boolean
       }
       is_super_admin: { Args: { _user_id: string }; Returns: boolean }
+      is_task_assignee: { Args: { p_task_id: string }; Returns: boolean }
       notify_policy_expired: { Args: never; Returns: undefined }
       reassign_task: {
         Args: {
