@@ -606,6 +606,19 @@ export const useTeamMembers = () => {
     }
   }, [organization, fetchMembers, fetchInvites]);
 
+  // Refetch data when page becomes visible (e.g., user returns to tab after invite accepted)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible" && organization) {
+        // Silently refetch without showing loading state
+        Promise.all([fetchMembers(), fetchInvites()]);
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
+  }, [organization, fetchMembers, fetchInvites]);
+
   const isAdmin = currentUserRole === "admin";
 
   return {
