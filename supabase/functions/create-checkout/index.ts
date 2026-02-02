@@ -103,7 +103,7 @@ serve(async (req) => {
       success_url: `${origin}/auth?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${origin}/welcome`,
       subscription_data: {
-        trial_period_days: 14,
+        trial_period_days: 30,
         metadata: {
           organizationName,
           employeeSize,
