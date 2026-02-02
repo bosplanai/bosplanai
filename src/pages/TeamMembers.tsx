@@ -14,7 +14,7 @@ import { useOrganization } from "@/hooks/useOrganization";
 import { useUserOrganizations } from "@/contexts/UserOrganizationsContext";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, UserPlus, MoreHorizontal, Mail, Shield, User, Eye, Trash2, Clock, Loader2, X, RefreshCw, Upload, Download, FileSpreadsheet, CheckCircle2, XCircle, Building2, Pencil } from "lucide-react";
+import { ArrowLeft, UserPlus, MoreHorizontal, Mail, Shield, User, Eye, Trash2, Clock, Loader2, X, RefreshCw, Upload, Download, FileSpreadsheet, CheckCircle2, XCircle, Building2 } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import BetaFooter from "@/components/BetaFooter";
 import { z } from "zod";
@@ -66,7 +66,6 @@ const TeamMembers = () => {
     cancelInvite,
     resendInvite,
     updateMemberRole,
-    updateMemberProfile,
     removeMember,
     removeInvitedUser,
     createMember,
@@ -122,16 +121,6 @@ const TeamMembers = () => {
     error?: string;
   }[] | null>(null);
 
-  // Edit profile dialog state
-  const [editProfileDialogOpen, setEditProfileDialogOpen] = useState(false);
-  const [editingMember, setEditingMember] = useState<{
-    id: string;
-    full_name: string;
-    job_role: string;
-  } | null>(null);
-  const [isUpdatingProfile, setIsUpdatingProfile] = useState(false);
-  const [editProfileErrors, setEditProfileErrors] = useState<Record<string, string>>({});
-  
   // Get selected org IDs from the roles map
   const getSelectedOrgIds = () => {
     const selectedIds = Object.keys(inviteOrgRoles);
@@ -562,53 +551,6 @@ const TeamMembers = () => {
     }
   };
 
-  const openEditProfileDialog = (member: { user_id: string; full_name: string; job_role: string }) => {
-    setEditingMember({
-      id: member.user_id,
-      full_name: member.full_name,
-      job_role: member.job_role
-    });
-    setEditProfileErrors({});
-    setEditProfileDialogOpen(true);
-  };
-
-  const handleUpdateProfile = async () => {
-    if (!editingMember) return;
-    
-    const errors: Record<string, string> = {};
-    if (!editingMember.full_name.trim()) {
-      errors.full_name = "Name is required";
-    }
-    if (!editingMember.job_role.trim()) {
-      errors.job_role = "Job role is required";
-    }
-    if (Object.keys(errors).length > 0) {
-      setEditProfileErrors(errors);
-      return;
-    }
-
-    setIsUpdatingProfile(true);
-    try {
-      await updateMemberProfile(editingMember.id, {
-        full_name: editingMember.full_name.trim(),
-        job_role: editingMember.job_role.trim()
-      });
-      toast({
-        title: "Profile updated",
-        description: "Team member profile has been updated"
-      });
-      setEditProfileDialogOpen(false);
-      setEditingMember(null);
-    } catch (error: any) {
-      toast({
-        title: "Failed to update profile",
-        description: error.message,
-        variant: "destructive"
-      });
-    } finally {
-      setIsUpdatingProfile(false);
-    }
-  };
   const getInitials = (name: string) => {
     return name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2);
   };
@@ -893,56 +835,6 @@ const TeamMembers = () => {
                   </DialogContent>
                 </Dialog>
 
-                {/* Edit Profile Dialog */}
-                <Dialog open={editProfileDialogOpen} onOpenChange={setEditProfileDialogOpen}>
-                  <DialogContent>
-                    <DialogHeader>
-                      <DialogTitle>Edit Team Member</DialogTitle>
-                      <DialogDescription>
-                        Update team member's name and job role
-                      </DialogDescription>
-                    </DialogHeader>
-                    <div className="space-y-4 py-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="editFullName">Full Name</Label>
-                        <Input
-                          id="editFullName"
-                          value={editingMember?.full_name || ""}
-                          onChange={(e) => setEditingMember(prev => prev ? { ...prev, full_name: e.target.value } : null)}
-                        />
-                        {editProfileErrors.full_name && (
-                          <p className="text-sm text-destructive">{editProfileErrors.full_name}</p>
-                        )}
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="editJobRole">Job Role</Label>
-                        <Input
-                          id="editJobRole"
-                          value={editingMember?.job_role || ""}
-                          onChange={(e) => setEditingMember(prev => prev ? { ...prev, job_role: e.target.value } : null)}
-                        />
-                        {editProfileErrors.job_role && (
-                          <p className="text-sm text-destructive">{editProfileErrors.job_role}</p>
-                        )}
-                      </div>
-                    </div>
-                    <DialogFooter>
-                      <Button variant="outline" onClick={() => setEditProfileDialogOpen(false)} disabled={isUpdatingProfile}>
-                        Cancel
-                      </Button>
-                      <Button onClick={handleUpdateProfile} disabled={isUpdatingProfile}>
-                        {isUpdatingProfile ? (
-                          <>
-                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                            Saving...
-                          </>
-                        ) : (
-                          "Save Changes"
-                        )}
-                      </Button>
-                    </DialogFooter>
-                  </DialogContent>
-                </Dialog>
               </div>}
           </div>
         </div>
@@ -1028,10 +920,6 @@ const TeamMembers = () => {
                             <DropdownMenuItem onClick={() => handleRoleChange(member.user_id, "viewer")} disabled={member.role === "viewer"}>
                               <Eye className="w-4 h-4 mr-2" />
                               Team
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => openEditProfileDialog(member)}>
-                              <Pencil className="w-4 h-4 mr-2" />
-                              Edit Profile
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
                             {/* Add to other organizations */}
