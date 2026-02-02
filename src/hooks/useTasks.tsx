@@ -577,37 +577,48 @@ export const useTasks = () => {
 
   const updateTaskAssignment = async (taskId: string, assignedUserId: string | null) => {
     try {
-      // Determine assignment status: 'pending' if assigned to someone else, 'accepted' if self-assigned or unassigned
-      const assignmentStatus = assignedUserId && assignedUserId !== user?.id ? 'pending' : 'accepted';
-      
-      const { data, error } = await supabase
-        .from("tasks")
-        .update({ 
-          assigned_user_id: assignedUserId,
-          assignment_status: assignmentStatus,
-          // Reset decline reason and reminder when reassigning
-          decline_reason: null,
-          last_reminder_sent_at: null,
-        })
-        .eq("id", taskId)
-        .select(`
-          assigned_user:profiles!tasks_assigned_user_id_fkey(id, full_name)
-        `)
-        .single();
-
-      if (error) throw error;
-
-      if (assignmentStatus === 'pending') {
+      if (assignedUserId && assignedUserId !== user?.id) {
+        // Reassigning to someone else - use the SECURITY DEFINER RPC
+        // This sets assignment_status to 'pending', clears decline_reason and last_reminder_sent_at,
+        // and triggers the notification
+        const { error } = await supabase.rpc("reassign_task", {
+          p_task_id: taskId,
+          p_new_assignee_id: assignedUserId,
+        });
+        
+        if (error) throw error;
+        
+        // Get the assignee name for the toast
+        const assignee = profile?.organization_id 
+          ? (await supabase.from("profiles").select("full_name").eq("id", assignedUserId).single()).data
+          : null;
+        
         // Task is now pending - remove from local state as it won't appear in the 'accepted' task list
-        // The assignee will see it in their pending task requests
         setTasks((prev) => prev.filter((t) => t.id !== taskId));
         
         toast({
-          title: "Task request sent",
-          description: `${data.assigned_user?.full_name || 'The user'} will need to accept or decline this task`,
+          title: "Task sent for approval",
+          description: `This task has been sent to ${assignee?.full_name || 'the assignee'}. They must accept it before it's added to their dashboard.`,
         });
       } else {
-        // Self-assigned or unassigned - update in place
+        // Self-assigned or unassigned - direct update is fine
+        const { data, error } = await supabase
+          .from("tasks")
+          .update({ 
+            assigned_user_id: assignedUserId,
+            assignment_status: 'accepted',
+            decline_reason: null,
+            last_reminder_sent_at: null,
+          })
+          .eq("id", taskId)
+          .select(`
+            assigned_user:profiles!tasks_assigned_user_id_fkey(id, full_name)
+          `)
+          .single();
+
+        if (error) throw error;
+
+        // Update in place
         setTasks((prev) =>
           prev.map((t) =>
             t.id === taskId
@@ -615,7 +626,7 @@ export const useTasks = () => {
                   ...t,
                   assigned_user_id: assignedUserId,
                   assigned_user: data.assigned_user as TaskUser | null,
-                  assignment_status: assignmentStatus as AssignmentStatus,
+                  assignment_status: 'accepted' as AssignmentStatus,
                 }
               : t
           )
