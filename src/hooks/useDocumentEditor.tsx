@@ -148,10 +148,66 @@ export function useDocumentEditor({ fileId, filePath, mimeType, onContentChange 
 
         if (existingDoc) {
           setDocumentId(existingDoc.id);
-          setContent(existingDoc.content);
+          
+          // Check if existing content is empty or placeholder - if so, try parsing again
+          const isEmptyOrPlaceholder = !existingDoc.content || 
+            existingDoc.content === "" || 
+            existingDoc.content === "<p></p>" ||
+            existingDoc.content === "<p>Start editing this document...</p>";
+          
+          if (isEmptyOrPlaceholder && filePath && mimeType) {
+            // Try to re-parse the document since we only have placeholder content
+            const parsedContent = await parseUploadedDocument();
+            if (parsedContent) {
+              // Update the document with parsed content
+              await supabase
+                .from("drive_document_content")
+                .update({
+                  content: parsedContent,
+                  last_edited_by: user.id,
+                })
+                .eq("id", existingDoc.id);
+              
+              setContent(parsedContent);
+              lastVersionContentRef.current = parsedContent;
+              onContentChange?.(parsedContent);
+              toast.success("Document content loaded from uploaded file");
+              
+              // Create initial version with parsed content
+              const { data: latestVersion } = await supabase
+                .from("drive_document_versions")
+                .select("version_number")
+                .eq("document_id", existingDoc.id)
+                .order("version_number", { ascending: false })
+                .limit(1)
+                .maybeSingle();
+              
+              if (!latestVersion) {
+                await supabase
+                  .from("drive_document_versions")
+                  .insert({
+                    document_id: existingDoc.id,
+                    file_id: fileId,
+                    content: parsedContent,
+                    version_number: 1,
+                    created_by: user.id,
+                    version_note: "Original uploaded content",
+                  });
+              }
+            } else {
+              // Fall back to existing content if parsing fails
+              setContent(existingDoc.content);
+              lastVersionContentRef.current = existingDoc.content;
+              onContentChange?.(existingDoc.content);
+            }
+          } else {
+            setContent(existingDoc.content);
+            lastVersionContentRef.current = existingDoc.content;
+            onContentChange?.(existingDoc.content);
+          }
+          
           setContentType(existingDoc.content_type as "rich_text" | "plain_text");
           setLastSaved(new Date(existingDoc.updated_at));
-          lastVersionContentRef.current = existingDoc.content;
         } else {
           // No existing document content - try to parse the uploaded file
           let initialContent = "";
