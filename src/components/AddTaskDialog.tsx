@@ -348,7 +348,7 @@ const AddTaskDialog = ({
         dueDate: dueDate ? dueDate.toISOString().split('T')[0] : null,
         assignedUserId: assignedUserIds.length > 0 ? assignedUserIds[0] : null,
         assignedUserIds,
-        isRecurring: showSubcategoryFilter ? isRecurring : false,
+        isRecurring,
         isDraft: false
       });
 
@@ -426,7 +426,7 @@ const AddTaskDialog = ({
         dueDate: dueDate ? dueDate.toISOString().split('T')[0] : null,
         assignedUserId: assignedUserIds.length > 0 ? assignedUserIds[0] : null,
         assignedUserIds,
-        isRecurring: showSubcategoryFilter ? isRecurring : false,
+        isRecurring,
         isDraft: true
       });
       if (taskId && attachments.length > 0) {
@@ -629,13 +629,13 @@ const AddTaskDialog = ({
               </Select>
             </div>}
 
-          {/* Recurring Task Checkbox - only for Operations & Strategic dashboards */}
-          {showSubcategoryFilter && <div className="flex items-center space-x-2">
-              <Checkbox id="isRecurring" checked={isRecurring} onCheckedChange={checked => setIsRecurring(checked === true)} />
-              <Label htmlFor="isRecurring" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer">
-                Recurring Task (repeats based on Task Type)
-              </Label>
-            </div>}
+          {/* Recurring Task Checkbox */}
+          <div className="flex items-center space-x-2">
+            <Checkbox id="isRecurring" checked={isRecurring} onCheckedChange={checked => setIsRecurring(checked === true)} />
+            <Label htmlFor="isRecurring" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer">
+              Recurring Task
+            </Label>
+          </div>
 
           {/* Attachments */}
           <div className="space-y-2">
