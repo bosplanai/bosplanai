@@ -15,6 +15,7 @@ export interface OrganizationWithDetails {
     id: string;
     full_name: string;
     job_role: string;
+    phone_number?: string;
     email?: string;
     role?: string;
   }[];
@@ -61,7 +62,7 @@ export const useSuperAdminData = () => {
       const orgsWithDetails = await Promise.all(
         (orgs || []).map(async (org) => {
           // Fetch users with emails via edge function
-          let usersWithRoles: { id: string; full_name: string; job_role: string; email?: string; role?: string }[] = [];
+          let usersWithRoles: { id: string; full_name: string; job_role: string; phone_number?: string; email?: string; role?: string }[] = [];
           
           try {
             const { data: session } = await supabase.auth.getSession();
@@ -91,6 +92,7 @@ export const useSuperAdminData = () => {
             
             usersWithRoles = (profiles || []).map((p) => ({
               ...p,
+              phone_number: undefined,
               email: undefined,
               role: "member",
             }));

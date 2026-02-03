@@ -59,7 +59,7 @@ serve(async (req) => {
     // Fetch profiles for the organization
     const { data: profiles, error: profilesError } = await adminClient
       .from("profiles")
-      .select("id, full_name, job_role, organization_id")
+      .select("id, full_name, job_role, phone_number, organization_id")
       .eq("organization_id", organization_id);
 
     if (profilesError) throw profilesError;
@@ -102,6 +102,7 @@ serve(async (req) => {
       id: profile.id,
       full_name: profile.full_name,
       job_role: profile.job_role,
+      phone_number: profile.phone_number || "",
       email: emailMap.get(profile.id) || "",
       role: roleMap.get(profile.id) || "member",
     }));
