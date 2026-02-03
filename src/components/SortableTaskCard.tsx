@@ -279,7 +279,7 @@ const SortableTaskCard = memo(({
         {...listeners}
         className="flex-shrink-0 w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-taskIcon/90 flex items-center justify-center shadow-sm transition-transform duration-300 group-hover:scale-105 cursor-grab active:cursor-grabbing touch-none"
       >
-        <CheckSquare className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
+        <CheckSquare className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
       </div>
       
       {/* Mobile-only status dropdown menu */}
