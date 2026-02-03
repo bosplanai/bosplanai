@@ -110,3 +110,12 @@ verify_jwt = false
 
 [functions.superadmin-password-reset]
 verify_jwt = false
+
+[functions.parse-document]
+verify_jwt = false
+
+[functions.get-superadmin-org-stats]
+verify_jwt = false
+
+[functions.export-document]
+verify_jwt = false

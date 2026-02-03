@@ -1472,13 +1472,28 @@ const Drive = () => {
 
     // For office documents, check if there's edited content to download
     if (isOfficeDocument(file.mime_type)) {
-      const { data: docContent } = await supabase
+      console.log('Checking for edited content for file:', file.id);
+      const { data: docContent, error: contentError } = await supabase
         .from("drive_document_content")
         .select("content")
         .eq("file_id", file.id)
         .maybeSingle();
       
-      if (docContent?.content && docContent.content !== "" && docContent.content !== "<p></p>") {
+      if (contentError) {
+        console.error('Error fetching document content:', contentError);
+      }
+      
+      console.log('Document content found:', !!docContent?.content, 'length:', docContent?.content?.length);
+      
+      // Check if there's meaningful edited content
+      const hasEditedContent = docContent?.content && 
+        docContent.content !== "" && 
+        docContent.content !== "<p></p>" &&
+        docContent.content !== "<p>Start editing this document...</p>" &&
+        docContent.content.length > 20;
+      
+      if (hasEditedContent) {
+        console.log('Exporting edited content...');
         // Export edited content as DOCX using the export edge function
         try {
           const { data: sessionData } = await supabase.auth.getSession();
@@ -1502,6 +1517,7 @@ const Drive = () => {
             );
 
             const result = await response.json();
+            console.log('Export result:', result.error ? result.error : 'success');
             
             if (!result.error && result.data) {
               // Download the exported file
@@ -1519,12 +1535,15 @@ const Drive = () => {
               a.download = result.filename;
               a.click();
               URL.revokeObjectURL(url);
+              console.log('Download initiated for edited content');
               return;
             }
           }
         } catch (error) {
           console.error('Export error, falling back to original file:', error);
         }
+      } else {
+        console.log('No edited content found, downloading original file');
       }
     }
 
