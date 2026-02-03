@@ -268,7 +268,7 @@ const SortableTaskCard = memo(({
       {...attributes}
       {...listeners}
       className={cn(
-        "flex items-start gap-2.5 sm:gap-3.5 bg-card rounded-xl p-3 sm:p-4 shadow-sm hover:shadow-md transition-all duration-300 ease-out border border-border/40 hover:border-primary/25 group task-card-smooth",
+        "flex items-start gap-2 sm:gap-2.5 md:gap-3.5 bg-card rounded-lg sm:rounded-xl p-2.5 sm:p-3 md:p-4 shadow-sm hover:shadow-md transition-all duration-300 ease-out border border-border/40 hover:border-primary/25 group task-card-smooth",
         isDragging && "opacity-60 shadow-xl scale-[1.02] rotate-1",
         className
       )}
@@ -278,12 +278,12 @@ const SortableTaskCard = memo(({
       <div className="flex-shrink-0">
         <div 
           {...listeners}
-          className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-taskIcon/90 flex items-center justify-center shadow-sm transition-transform duration-300 group-hover:scale-105 cursor-grab active:cursor-grabbing touch-none"
+          className="w-7 h-7 sm:w-8 sm:h-8 md:w-10 md:h-10 rounded-lg sm:rounded-xl bg-taskIcon/90 flex items-center justify-center shadow-sm transition-transform duration-300 group-hover:scale-105 cursor-grab active:cursor-grabbing touch-none"
         >
           {isComplete ? (
-            <CheckCircle2 className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
+            <CheckCircle2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-5 md:h-5 text-white" />
           ) : (
-            <Circle className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
+            <Circle className="w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-5 md:h-5 text-white" />
           )}
         </div>
       </div>
@@ -359,8 +359,8 @@ const SortableTaskCard = memo(({
           ) : (
             <>
               <p 
-                className="font-medium text-foreground leading-snug group-hover:text-primary transition-colors duration-200 cursor-text flex-1 line-clamp-2 sm:truncate sm:line-clamp-none"
-                style={{ fontSize: `${0.875 * textSizeMultiplier}rem` }}
+                className="font-medium text-foreground leading-snug group-hover:text-primary transition-colors duration-200 cursor-text flex-1 line-clamp-2 sm:truncate sm:line-clamp-none text-xs sm:text-sm"
+                style={{ fontSize: `${0.75 * textSizeMultiplier}rem` }}
                 onClick={handleStartEditingTitle}
                 onPointerDown={(e) => e.stopPropagation()}
               >
@@ -369,10 +369,10 @@ const SortableTaskCard = memo(({
               <button
                 onClick={handleStartEditingTitle}
                 onPointerDown={(e) => e.stopPropagation()}
-                className="p-1 sm:p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground sm:opacity-0 sm:group-hover:opacity-100 transition-all duration-200 flex"
+                className="p-0.5 sm:p-1 md:p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground sm:opacity-0 sm:group-hover:opacity-100 transition-all duration-200 flex"
                 title="Edit title"
               >
-                <Pencil className="w-3 h-3" />
+                <Pencil className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
               </button>
               {/* Status dropdown - desktop, next to title */}
               {onStatusChange && (
