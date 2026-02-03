@@ -16,6 +16,7 @@ import RecyclingBin from "./RecyclingBin";
 import ArchiveFolder from "./ArchiveFolder";
 import ArchiveChoiceDialog from "./ArchiveChoiceDialog";
 import OrganizationSwitcher from "./OrganizationSwitcher";
+import MobileHeaderMenu from "./MobileHeaderMenu";
 import AddTaskDialog from "./AddTaskDialog";
 import PersonalChecklistModal from "./PersonalChecklistModal";
 import TaskDraftsFolder from "./TaskDraftsFolder";
@@ -488,16 +489,24 @@ const ProjectBoard = () => {
                   </div>
                 </div>
                 {user && <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-                    <OrganizationSwitcher />
-                    <span className="hidden lg:inline text-sm text-muted-foreground font-medium truncate max-w-[150px]">{profile?.full_name || user.email}</span>
-                    <NotificationBell />
-                    <Button variant="ghost" size="icon" className="rounded-xl hover:bg-secondary/80 transition-all duration-200 btn-smooth h-8 w-8 sm:h-10 sm:w-10" onClick={() => navigate("/settings")} title="Settings">
-                      <Settings className="w-4 h-4" />
-                    </Button>
-                    <Button variant="ghost" size="sm" className="rounded-xl hover:bg-secondary/80 transition-all duration-200 btn-smooth text-xs sm:text-sm hidden sm:flex" onClick={signOut}>
-                      <LogOut className="w-4 h-4 sm:mr-2" />
-                      <span className="hidden sm:inline">Sign Out</span>
-                    </Button>
+                    {/* Desktop: Full controls */}
+                    <div className="hidden md:flex items-center gap-2">
+                      <OrganizationSwitcher />
+                      <span className="hidden lg:inline text-sm text-muted-foreground font-medium truncate max-w-[150px]">{profile?.full_name || user.email}</span>
+                      <NotificationBell />
+                      <Button variant="ghost" size="icon" className="rounded-xl hover:bg-secondary/80 transition-all duration-200 btn-smooth h-10 w-10" onClick={() => navigate("/settings")} title="Settings">
+                        <Settings className="w-4 h-4" />
+                      </Button>
+                      <Button variant="ghost" size="sm" className="rounded-xl hover:bg-secondary/80 transition-all duration-200 btn-smooth text-sm" onClick={signOut}>
+                        <LogOut className="w-4 h-4 mr-2" />
+                        Sign Out
+                      </Button>
+                    </div>
+                    {/* Mobile: Notification + Burger menu */}
+                    <div className="flex md:hidden items-center gap-1.5">
+                      <NotificationBell />
+                      <MobileHeaderMenu />
+                    </div>
                   </div>}
               </div>
               
