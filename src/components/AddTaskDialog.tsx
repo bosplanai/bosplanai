@@ -622,8 +622,8 @@ const AddTaskDialog = ({
             </Label>
           </div>
 
-          {/* Task Type (Subcategory) - shown when recurring is enabled or on operational/strategic dashboards */}
-          {(showSubcategoryFilter || isRecurring) && <div className="space-y-2">
+          {/* Task Type (Subcategory) - shown when recurring is enabled */}
+          {isRecurring && <div className="space-y-2">
               <Label>Task Type</Label>
               <Select value={subcategory} onValueChange={v => setSubcategory(v as TaskSubcategory)}>
                 <SelectTrigger>
