@@ -87,6 +87,9 @@ const dueDateFilterOptions: {
   label: "No Due Date"
 }];
 const subcategoryOptions = [{
+  value: "daily",
+  label: "Daily Core Duties"
+}, {
   value: "weekly",
   label: "Weekly Core Duties"
 }, {
@@ -98,9 +101,6 @@ const subcategoryOptions = [{
 }, {
   value: "yearly",
   label: "Yearly Core"
-}, {
-  value: "misc",
-  label: "MISC"
 }];
 // Storage key for persisting add task dialog open state
 const ADD_DIALOG_OPEN_KEY = "projectBoard_addDialogOpen";

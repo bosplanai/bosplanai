@@ -80,6 +80,9 @@ const priorityOptions = [{
   className: "text-priority-low"
 }];
 const subcategoryOptions = [{
+  value: "daily",
+  label: "Daily"
+}, {
   value: "weekly",
   label: "Weekly"
 }, {
@@ -91,9 +94,6 @@ const subcategoryOptions = [{
 }, {
   value: "yearly",
   label: "Yearly"
-}, {
-  value: "misc",
-  label: "MISC"
 }];
 interface TeamMember {
   id: string;
