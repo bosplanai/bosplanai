@@ -3,6 +3,7 @@ import BetaFooter from "@/components/BetaFooter";
 import SideNavigation from "@/components/SideNavigation";
 import OrganizationSwitcher from "@/components/OrganizationSwitcher";
 import { NotificationBell } from "@/components/NotificationBell";
+import MobileHeaderMenu from "@/components/MobileHeaderMenu";
 import { useAuth } from "@/hooks/useAuth";
 import { useOrganization } from "@/hooks/useOrganization";
 import { Button } from "@/components/ui/button";
@@ -44,22 +45,30 @@ const ProductManagement = () => {
               </div>
 
               {user && (
-                <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto">
-                  <OrganizationSwitcher />
-                  <span className="hidden sm:inline text-sm text-muted-foreground font-medium truncate max-w-[150px]">
-                    {profile?.full_name || user.email}
-                  </span>
-                  <NotificationBell />
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="rounded-xl hover:bg-secondary/80 transition-all duration-200 btn-smooth text-xs sm:text-sm"
-                    onClick={signOut}
-                  >
-                    <LogOut className="w-4 h-4 sm:mr-2" />
-                    <span className="hidden sm:inline">Sign Out</span>
-                  </Button>
-                </div>
+                <>
+                  {/* Desktop: All controls */}
+                  <div className="hidden md:flex items-center gap-2 shrink-0">
+                    <OrganizationSwitcher />
+                    <span className="text-sm text-muted-foreground font-medium truncate max-w-[150px]">
+                      {profile?.full_name || user.email}
+                    </span>
+                    <NotificationBell />
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="rounded-xl hover:bg-secondary/80 transition-all duration-200 btn-smooth text-sm"
+                      onClick={signOut}
+                    >
+                      <LogOut className="w-4 h-4 mr-2" />
+                      Sign Out
+                    </Button>
+                  </div>
+                  {/* Mobile: Notification + Burger menu */}
+                  <div className="flex md:hidden items-center gap-1.5 self-end">
+                    <NotificationBell />
+                    <MobileHeaderMenu />
+                  </div>
+                </>
               )}
             </div>
           </header>

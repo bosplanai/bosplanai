@@ -28,6 +28,7 @@ import { FileUploadDialog } from "@/components/drive/FileUploadDialog";
 import { Badge } from "@/components/ui/badge";
 import { DocumentEditorDialog } from "@/components/drive/DocumentEditorDialog";
 import { NotificationBell } from "@/components/NotificationBell";
+import MobileHeaderMenu from "@/components/MobileHeaderMenu";
 import BetaFooter from "@/components/BetaFooter";
 import { useDriveStorage, DRIVE_STORAGE_QUERY_KEY } from "@/hooks/useDriveStorage";
 
@@ -1764,7 +1765,8 @@ const Drive = () => {
               </div>
             </div>
 
-            <div className="flex items-center gap-2 sm:gap-4 flex-wrap self-end sm:self-auto">
+            {/* Desktop: All controls */}
+            <div className="hidden md:flex items-center gap-2 sm:gap-4 flex-wrap">
               {canSwitchOrganizations && <OrganizationSwitcher />}
               <NotificationBell />
               <div className="flex items-center gap-2 sm:gap-3 text-xs sm:text-sm text-muted-foreground bg-secondary/50 rounded-full px-3 py-1.5">
@@ -1781,6 +1783,11 @@ const Drive = () => {
                   <span className="hidden md:inline">Buy More</span>
                 </Button>
               </div>
+            </div>
+            {/* Mobile: Notification + Burger menu */}
+            <div className="flex md:hidden items-center gap-1.5 self-end">
+              <NotificationBell />
+              <MobileHeaderMenu />
             </div>
           </div>
         </header>

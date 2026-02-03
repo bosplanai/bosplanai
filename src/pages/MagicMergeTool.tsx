@@ -16,6 +16,8 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import SideNavigation from "@/components/SideNavigation";
 import BetaFooter from "@/components/BetaFooter";
+import { NotificationBell } from "@/components/NotificationBell";
+import MobileHeaderMenu from "@/components/MobileHeaderMenu";
 import ActionBar from "@/components/ActionBar";
 import { useTeamMembers } from "@/hooks/useTeamMembers";
 import { useOrganization } from "@/hooks/useOrganization";
@@ -371,13 +373,20 @@ End of Audit Log
                 <h1 className="text-xl font-semibold text-foreground">Magic Merge Tool</h1>
               </div>
             </div>
-            <div className="flex items-center gap-3">
+            {/* Desktop: All controls */}
+            <div className="hidden md:flex items-center gap-3">
               <OrganizationSwitcher />
+              <NotificationBell />
               <Button variant="outline" onClick={() => navigate("/magic-merge/history")} className="gap-2 rounded-full border-brand-green hover:shadow-md transition-all duration-300">
                 <History className="w-4 h-4" />
                 View History
               </Button>
               <ActionBar />
+            </div>
+            {/* Mobile: Notification + Burger menu */}
+            <div className="flex md:hidden items-center gap-1.5">
+              <NotificationBell />
+              <MobileHeaderMenu />
             </div>
           </div>
         </div>

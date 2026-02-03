@@ -18,6 +18,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { CalendarDays, CheckSquare, ListTodo, ArrowLeft, User, FileText, Clock, Paperclip, MessageSquare, Filter, X, RefreshCw } from 'lucide-react';
 import OrganizationSwitcher from '@/components/OrganizationSwitcher';
 import { NotificationBell } from '@/components/NotificationBell';
+import MobileHeaderMenu from '@/components/MobileHeaderMenu';
 import SideNavigation from '@/components/SideNavigation';
 import BetaFooter from '@/components/BetaFooter';
 import { TaskNotesDialog } from '@/components/TaskNotesDialog';
@@ -299,9 +300,15 @@ const Calendar = () => {
                 </div>
               </div>
 
-              <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto">
+              {/* Desktop: All controls */}
+              <div className="hidden md:flex items-center gap-2 shrink-0">
                 <OrganizationSwitcher />
                 <NotificationBell />
+              </div>
+              {/* Mobile: Notification + Burger menu */}
+              <div className="flex md:hidden items-center gap-1.5 self-end">
+                <NotificationBell />
+                <MobileHeaderMenu />
               </div>
             </div>
           </header>
