@@ -34,6 +34,8 @@ import { FolderPermissionsDialog } from "@/components/dataroom/FolderPermissions
 import { AddToFolderDropdown } from "@/components/dataroom/AddToFolderDropdown";
 import { useNdaResignCheck } from "@/hooks/useNdaResignCheck";
 import BetaFooter from "@/components/BetaFooter";
+import { NotificationBell } from "@/components/NotificationBell";
+import MobileHeaderMenu from "@/components/MobileHeaderMenu";
 import { DataRoomRecyclingBin } from "@/components/dataroom/DataRoomRecyclingBin";
 import { DataRoomBins } from "@/components/dataroom/DataRoomBins";
 import { useDataroomStorage, DATAROOM_STORAGE_QUERY_KEY } from "@/hooks/useDataroomStorage";
@@ -1417,8 +1419,10 @@ By signing below, you acknowledge that you have read, understood, and agree to b
               </div>
             </div>
 
-            <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto">
+            {/* Desktop: All controls */}
+            <div className="hidden md:flex items-center gap-2 shrink-0">
               <OrganizationSwitcher />
+              <NotificationBell />
               <Button size="sm" onClick={() => setCreateRoomOpen(true)} className="gap-2 rounded-full bg-emerald-500 hover:bg-emerald-600 hover:shadow-md transition-all duration-300">
                 <Plus className="w-4 h-4" />
                 New Room
@@ -1447,6 +1451,11 @@ By signing below, you acknowledge that you have read, understood, and agree to b
                   <span className="hidden sm:inline">Buy More</span>
                 </Button>
               </div>
+            </div>
+            {/* Mobile: Notification + Burger menu */}
+            <div className="flex md:hidden items-center gap-1.5 self-end">
+              <NotificationBell />
+              <MobileHeaderMenu />
             </div>
           </div>
         </header>

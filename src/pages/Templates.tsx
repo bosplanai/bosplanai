@@ -15,6 +15,8 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSepara
 import { format } from "date-fns";
 import SideNavigation from "@/components/SideNavigation";
 import BetaFooter from "@/components/BetaFooter";
+import { NotificationBell } from "@/components/NotificationBell";
+import MobileHeaderMenu from "@/components/MobileHeaderMenu";
 import ActionBar from "@/components/ActionBar";
 import CreateTemplateDialog from "@/components/templates/CreateTemplateDialog";
 import EditTemplateDialog from "@/components/templates/EditTemplateDialog";
@@ -233,9 +235,16 @@ const Templates = () => {
                 </div>
               </div>
             </div>
-            <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto">
+            {/* Desktop: All controls */}
+            <div className="hidden md:flex items-center gap-2 shrink-0">
               <OrganizationSwitcher />
+              <NotificationBell />
               <ActionBar />
+            </div>
+            {/* Mobile: Notification + Burger menu */}
+            <div className="flex md:hidden items-center gap-1.5 self-end">
+              <NotificationBell />
+              <MobileHeaderMenu />
             </div>
           </div>
         </header>

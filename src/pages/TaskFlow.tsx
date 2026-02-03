@@ -3,6 +3,7 @@ import { useOrgNavigation } from "@/hooks/useOrgNavigation";
 import { Activity, RefreshCw, ArrowLeft, Users, ListTodo, AlertTriangle, CheckCircle2, TrendingUp } from "lucide-react";
 import OrganizationSwitcher from "@/components/OrganizationSwitcher";
 import { NotificationBell } from "@/components/NotificationBell";
+import MobileHeaderMenu from "@/components/MobileHeaderMenu";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -173,7 +174,8 @@ const TaskFlow = () => {
               </div>
             </div>
 
-            <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto">
+            {/* Desktop: All controls */}
+            <div className="hidden md:flex items-center gap-2 shrink-0">
               <OrganizationSwitcher />
               <NotificationBell />
               <Button
@@ -185,6 +187,11 @@ const TaskFlow = () => {
                 <RefreshCw className={cn("w-4 h-4 mr-2", refreshing && "animate-spin")} />
                 Refresh
               </Button>
+            </div>
+            {/* Mobile: Notification + Burger menu */}
+            <div className="flex md:hidden items-center gap-1.5 self-end">
+              <NotificationBell />
+              <MobileHeaderMenu />
             </div>
           </div>
         </header>
