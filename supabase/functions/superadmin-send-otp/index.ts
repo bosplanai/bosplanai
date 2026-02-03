@@ -8,6 +8,33 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+// Rate limit configuration
+const RATE_LIMIT_MAX_REQUESTS = 5; // Max 5 requests
+const RATE_LIMIT_WINDOW_MINUTES = 1; // Per 1 minute
+
+// Get client IP from request headers
+function getClientIP(req: Request): string {
+  // Check common headers for real IP (in order of priority)
+  const forwardedFor = req.headers.get("x-forwarded-for");
+  if (forwardedFor) {
+    // x-forwarded-for can contain multiple IPs, take the first one
+    return forwardedFor.split(",")[0].trim();
+  }
+  
+  const realIP = req.headers.get("x-real-ip");
+  if (realIP) {
+    return realIP.trim();
+  }
+  
+  const cfConnectingIP = req.headers.get("cf-connecting-ip");
+  if (cfConnectingIP) {
+    return cfConnectingIP.trim();
+  }
+  
+  // Fallback to a default if no IP found
+  return "unknown";
+}
+
 // Generate a 6-digit OTP
 function generateOTP(): string {
   return Math.floor(100000 + Math.random() * 900000).toString();
@@ -19,7 +46,49 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+  const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+
+  // Create admin client for rate limiting check
+  const adminClient = createClient(supabaseUrl, supabaseServiceKey);
+
   try {
+    // Get client IP for rate limiting
+    const clientIP = getClientIP(req);
+    const endpoint = "superadmin-send-otp";
+    
+    console.log(`Rate limit check for IP: ${clientIP}, endpoint: ${endpoint}`);
+    
+    // Check rate limit using database function
+    const { data: isAllowed, error: rateLimitError } = await adminClient
+      .rpc("check_rate_limit", {
+        p_ip_address: clientIP,
+        p_endpoint: endpoint,
+        p_max_requests: RATE_LIMIT_MAX_REQUESTS,
+        p_window_minutes: RATE_LIMIT_WINDOW_MINUTES
+      });
+    
+    if (rateLimitError) {
+      console.error("Rate limit check error:", rateLimitError);
+      // Don't block on rate limit errors, just log and continue
+    } else if (!isAllowed) {
+      console.warn(`Rate limit exceeded for IP: ${clientIP}, endpoint: ${endpoint}`);
+      return new Response(
+        JSON.stringify({ 
+          error: "Too many requests. Please try again later.",
+          retryAfter: RATE_LIMIT_WINDOW_MINUTES * 60
+        }),
+        { 
+          status: 429, 
+          headers: { 
+            ...corsHeaders, 
+            "Content-Type": "application/json",
+            "Retry-After": String(RATE_LIMIT_WINDOW_MINUTES * 60)
+          } 
+        }
+      );
+    }
+
     const { user_id, email } = await req.json();
 
     if (!user_id || !email) {
@@ -30,8 +99,6 @@ serve(async (req) => {
       );
     }
 
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const resendApiKey = Deno.env.get("RESEND_API_KEY");
     const resendFromEmail = Deno.env.get("RESEND_FROM_EMAIL") || "onboarding@resend.dev";
 
@@ -42,9 +109,6 @@ serve(async (req) => {
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
-
-    // Create admin client
-    const adminClient = createClient(supabaseUrl, supabaseServiceKey);
 
     // Verify user is a super admin
     const { data: roleData, error: roleError } = await adminClient

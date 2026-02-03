@@ -1789,6 +1789,33 @@ export type Database = {
           },
         ]
       }
+      rate_limits: {
+        Row: {
+          created_at: string
+          endpoint: string
+          id: string
+          ip_address: string
+          request_count: number
+          window_start: string
+        }
+        Insert: {
+          created_at?: string
+          endpoint: string
+          id?: string
+          ip_address: string
+          request_count?: number
+          window_start?: string
+        }
+        Update: {
+          created_at?: string
+          endpoint?: string
+          id?: string
+          ip_address?: string
+          request_count?: number
+          window_start?: string
+        }
+        Relationships: []
+      }
       registration_links: {
         Row: {
           created_at: string
@@ -2768,9 +2795,19 @@ export type Database = {
       }
       can_access_task: { Args: { p_task_id: string }; Returns: boolean }
       check_ai_usage_allowed: { Args: { org_id: string }; Returns: boolean }
+      check_rate_limit: {
+        Args: {
+          p_endpoint: string
+          p_ip_address: string
+          p_max_requests?: number
+          p_window_minutes?: number
+        }
+        Returns: boolean
+      }
       cleanup_expired_notifications: { Args: never; Returns: undefined }
       cleanup_expired_otp: { Args: never; Returns: undefined }
       cleanup_guest_auth_attempts: { Args: never; Returns: undefined }
+      cleanup_rate_limits: { Args: never; Returns: undefined }
       complete_specialist_signup: {
         Args: {
           _employee_size: string
