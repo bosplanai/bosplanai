@@ -136,26 +136,26 @@ export const useSuperAdminData = () => {
 
           try {
             const { data: session } = await supabase.auth.getSession();
-            const statsResponse = await fetch(
-              `https://qiikjhvzlwzysbtzhdcd.supabase.co/functions/v1/get-superadmin-org-stats`,
-              {
-                method: "POST",
-                headers: {
-                  "Content-Type": "application/json",
-                  Authorization: `Bearer ${session?.session?.access_token}`,
-                },
-                body: JSON.stringify({ organization_id: org.id }),
+            if (!session?.session?.access_token) {
+              console.error("No access token for org stats:", org.id);
+            } else {
+              const statsResponse = await supabase.functions.invoke(
+                "get-superadmin-org-stats",
+                {
+                  body: { organization_id: org.id },
+                }
+              );
+              
+              if (statsResponse.error) {
+                console.error("Stats fetch error for org:", org.id, statsResponse.error);
+              } else if (statsResponse.data) {
+                usage = {
+                  projects_count: statsResponse.data.projects_count || 0,
+                  tasks_count: statsResponse.data.tasks_count || 0,
+                  files_count: statsResponse.data.files_count || 0,
+                  invoices_count: statsResponse.data.invoices_count || 0,
+                };
               }
-            );
-            
-            if (statsResponse.ok) {
-              const statsResult = await statsResponse.json();
-              usage = {
-                projects_count: statsResult.projects_count || 0,
-                tasks_count: statsResult.tasks_count || 0,
-                files_count: statsResult.files_count || 0,
-                invoices_count: statsResult.invoices_count || 0,
-              };
             }
           } catch (err) {
             console.error("Error fetching stats for org:", org.id, err);
