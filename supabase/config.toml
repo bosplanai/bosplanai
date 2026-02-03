@@ -101,3 +101,12 @@ verify_jwt = false
 
 [functions.set-member-password]
 verify_jwt = false
+
+[functions.superadmin-send-otp]
+verify_jwt = false
+
+[functions.superadmin-verify-otp]
+verify_jwt = false
+
+[functions.superadmin-password-reset]
+verify_jwt = false
