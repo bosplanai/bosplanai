@@ -17,11 +17,29 @@ interface GetContentRequest {
 const MAX_ATTEMPTS = 5;
 const LOCKOUT_MINUTES = 15;
 
+// Build rate limit headers
+function buildRateLimitHeaders(
+  limit: number,
+  remaining: number,
+  resetAt: Date,
+  retryAfterSeconds: number
+): Record<string, string> {
+  return {
+    "X-RateLimit-Limit": String(limit),
+    "X-RateLimit-Remaining": String(Math.max(0, remaining)),
+    "X-RateLimit-Reset": resetAt.toISOString(),
+    "Retry-After": String(retryAfterSeconds),
+  };
+}
+
 Deno.serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
+
+  // Initialize rate limit headers
+  let rateLimitHeaders: Record<string, string> = {};
 
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
@@ -49,21 +67,59 @@ Deno.serve(async (req) => {
     const normalizedEmail = email.toLowerCase().trim();
 
     // Rate limiting check - look for recent failed attempts
+    const windowStart = new Date(Date.now() - LOCKOUT_MINUTES * 60 * 1000);
     const { data: recentAttempts, error: attemptsError } = await supabaseAdmin
       .from("guest_auth_attempts")
       .select("id, created_at")
       .eq("email", normalizedEmail)
       .eq("success", false)
-      .gte("created_at", new Date(Date.now() - LOCKOUT_MINUTES * 60 * 1000).toISOString());
+      .gte("created_at", windowStart.toISOString())
+      .order("created_at", { ascending: false });
 
-    if (!attemptsError && recentAttempts && recentAttempts.length >= MAX_ATTEMPTS) {
+    const attemptCount = recentAttempts?.length || 0;
+    const resetAt = new Date(Date.now() + LOCKOUT_MINUTES * 60 * 1000);
+    const retryAfterSeconds = LOCKOUT_MINUTES * 60;
+
+    // Build rate limit headers for all responses
+    rateLimitHeaders = buildRateLimitHeaders(
+      MAX_ATTEMPTS,
+      MAX_ATTEMPTS - attemptCount - 1, // -1 for current attempt
+      resetAt,
+      retryAfterSeconds
+    );
+
+    if (!attemptsError && attemptCount >= MAX_ATTEMPTS) {
       console.log("Rate limit exceeded for email:", normalizedEmail);
+      
+      // Calculate actual retry time based on oldest attempt in window
+      const oldestAttempt = recentAttempts?.[recentAttempts.length - 1];
+      let actualRetryAfter = retryAfterSeconds;
+      if (oldestAttempt) {
+        const oldestTime = new Date(oldestAttempt.created_at).getTime();
+        const unlockTime = oldestTime + (LOCKOUT_MINUTES * 60 * 1000);
+        actualRetryAfter = Math.ceil((unlockTime - Date.now()) / 1000);
+      }
+
+      rateLimitHeaders = buildRateLimitHeaders(
+        MAX_ATTEMPTS,
+        0,
+        new Date(Date.now() + actualRetryAfter * 1000),
+        actualRetryAfter
+      );
+
       return new Response(
         JSON.stringify({ 
           error: "Too many failed attempts. Please try again later.",
-          retryAfter: LOCKOUT_MINUTES 
+          retryAfter: actualRetryAfter 
         }),
-        { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { 
+          status: 429, 
+          headers: { 
+            ...corsHeaders, 
+            ...rateLimitHeaders, 
+            "Content-Type": "application/json" 
+          } 
+        }
       );
     }
 
@@ -95,7 +151,7 @@ Deno.serve(async (req) => {
       console.error("Invite lookup error:", { inviteError, found: !!invite });
       return new Response(
         JSON.stringify({ error: "Invalid credentials or no access to any data room" }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: 401, headers: { ...corsHeaders, ...rateLimitHeaders, "Content-Type": "application/json" } }
       );
     }
 
@@ -131,18 +187,26 @@ Deno.serve(async (req) => {
       console.error("Password mismatch");
       return new Response(
         JSON.stringify({ error: "Invalid password" }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: 401, headers: { ...corsHeaders, ...rateLimitHeaders, "Content-Type": "application/json" } }
       );
     }
 
     // Log successful attempt and clear failed attempts
     await logAuthAttempt(supabaseAdmin, normalizedEmail, true);
 
+    // Update rate limit headers to show full quota after successful auth
+    rateLimitHeaders = buildRateLimitHeaders(
+      MAX_ATTEMPTS,
+      MAX_ATTEMPTS - 1,
+      resetAt,
+      0
+    );
+
     // Check if invite has expired
     if (new Date(invite.expires_at) < new Date()) {
       return new Response(
         JSON.stringify({ error: "Your access has expired" }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: 401, headers: { ...corsHeaders, ...rateLimitHeaders, "Content-Type": "application/json" } }
       );
     }
 
@@ -165,7 +229,7 @@ Deno.serve(async (req) => {
       console.error("Data room fetch error:", roomError);
       return new Response(
         JSON.stringify({ error: "Data room not found" }),
-        { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: 404, headers: { ...corsHeaders, ...rateLimitHeaders, "Content-Type": "application/json" } }
       );
     }
 
@@ -186,7 +250,7 @@ Deno.serve(async (req) => {
             error: "The NDA has been updated. Please re-sign to continue.",
             code: "NDA_UPDATED"
           }),
-          { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          { status: 403, headers: { ...corsHeaders, ...rateLimitHeaders, "Content-Type": "application/json" } }
         );
       }
     }
@@ -300,14 +364,14 @@ Deno.serve(async (req) => {
         breadcrumbs,
         currentFolderId: folderId || null,
       }),
-      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      { status: 200, headers: { ...corsHeaders, ...rateLimitHeaders, "Content-Type": "application/json" } }
     );
   } catch (error: unknown) {
     console.error("Error in get-guest-data-room-content:", error);
     const errorMessage = error instanceof Error ? error.message : "Unknown error";
     return new Response(
       JSON.stringify({ error: errorMessage }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      { status: 500, headers: { ...corsHeaders, ...rateLimitHeaders, "Content-Type": "application/json" } }
     );
   }
 });
