@@ -405,13 +405,27 @@ export function useDocumentEditor({ fileId, filePath, mimeType, onContentChange 
         return;
       }
 
+      // Update the file version in drive_files table
+      const { error: fileVersionError } = await supabase
+        .from("drive_files")
+        .update({ 
+          version: nextVersionNumber,
+          updated_at: new Date().toISOString()
+        })
+        .eq("id", fileId);
+
+      if (fileVersionError) {
+        console.error("Error updating file version:", fileVersionError);
+      }
+
       lastVersionContentRef.current = contentToSave;
-      // Refresh versions list
+      // Refresh versions list and invalidate files query
       fetchVersions();
+      queryClient.invalidateQueries({ queryKey: ["drive-files"] });
     } catch (error) {
       console.error("Error creating version:", error);
     }
-  }, [documentId, user, fileId]);
+  }, [documentId, user, fileId, queryClient]);
 
   // Fetch version history
   const fetchVersions = useCallback(async () => {
