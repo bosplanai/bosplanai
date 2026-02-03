@@ -2,7 +2,7 @@ import { useState, useRef, useCallback, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useOrgNavigation } from "@/hooks/useOrgNavigation";
 import SideNavigation from "@/components/SideNavigation";
-import { HardDrive, Upload, Folder, FolderPlus, Plus, ChevronDown, FileText, Image, Video, Music, File, Eye, Download, Trash2, GripVertical, ArrowUpDown, Check, Clock, AlertCircle, PenLine, CheckCircle2, FolderInput, X, CheckSquare, RotateCcw, ChevronUp, Settings2, Search, ArrowLeft, Lock, FileSignature, Megaphone, FileSpreadsheet, Scale, Users, Briefcase, BookOpen, BarChart3, Presentation, Tag, Edit3, LayoutTemplate, CreditCard } from "lucide-react";
+import { HardDrive, Upload, Folder, FolderPlus, Plus, ChevronDown, FileText, Image, Video, Music, File, Eye, Download, Trash2, GripVertical, ArrowUpDown, Check, Clock, AlertCircle, PenLine, CheckCircle2, FolderInput, X, CheckSquare, RotateCcw, ChevronUp, Settings2, Search, ArrowLeft, Lock, FileSignature, Megaphone, FileSpreadsheet, Scale, Users, Briefcase, BookOpen, BarChart3, Presentation, Tag, Edit3, LayoutTemplate, CreditCard, User } from "lucide-react";
 import { useAppearance } from "@/contexts/AppearanceContext";
 import bosplanLogo from "@/assets/bosplan-logo.png";
 import { Button } from "@/components/ui/button";
@@ -2090,9 +2090,15 @@ const Drive = () => {
                             </DropdownMenuContent>
                           </DropdownMenu>
                         </div>
-                        {file.assigned_to && <p className="text-xs text-muted-foreground mt-1">
-                            Assigned to {profileMap[file.assigned_to] || "Unknown"}
-                          </p>}
+                        <div className="flex items-center gap-2 mt-2">
+                          <User className="w-3.5 h-3.5 text-muted-foreground" />
+                          <span className="text-xs text-muted-foreground">
+                            {file.assigned_to 
+                              ? <span className="font-medium text-foreground">{profileMap[file.assigned_to] || "Unknown"}</span>
+                              : <span className="italic">Unassigned</span>
+                            }
+                          </span>
+                        </div>
                       </div>
                     </Card>;
                 })}
