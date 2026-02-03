@@ -1,6 +1,6 @@
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { LucideIcon, Pencil, Check, UserCircle, Calendar, CalendarCheck, FolderKanban, X as XIcon, Users, Flag, MoreVertical, CheckCircle2, Circle, CheckSquare } from "lucide-react";
+import { LucideIcon, Pencil, Check, UserCircle, Calendar, CalendarCheck, FolderKanban, X as XIcon, Users, Flag, MoreVertical, CheckCircle2, Circle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { CSSProperties, useRef, useState, memo, useCallback } from "react";
 import { TaskPriority, TaskUser, TaskProject, TaskAssignmentUser } from "@/hooks/useTasks";
@@ -279,7 +279,11 @@ const SortableTaskCard = memo(({
         {...listeners}
         className="flex-shrink-0 w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-taskIcon/90 flex items-center justify-center shadow-sm transition-transform duration-300 group-hover:scale-105 cursor-grab active:cursor-grabbing touch-none"
       >
-        <CheckSquare className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
+        {isComplete ? (
+          <CheckCircle2 className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
+        ) : (
+          <Circle className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
+        )}
       </div>
       
       {/* Mobile-only status dropdown menu */}
