@@ -274,60 +274,8 @@ const SortableTaskCard = memo(({
       )}
       style={sortableStyle}
     >
-      {/* Status dropdown + Drag handle */}
-      <div className="flex-shrink-0 flex items-center gap-1.5">
-        {/* Status dropdown - desktop */}
-        {onStatusChange && (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button
-                onClick={(e) => e.stopPropagation()}
-                onPointerDown={(e) => e.stopPropagation()}
-                className={cn(
-                  "hidden sm:flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium transition-all duration-200 hover:bg-muted",
-                  isComplete 
-                    ? "text-green-600 bg-green-500/10" 
-                    : "text-muted-foreground bg-muted/50"
-                )}
-              >
-                <span>Status</span>
-                <svg className="w-3 h-3" fill="none" viewBox="0 0 10 6" xmlns="http://www.w3.org/2000/svg">
-                  <path stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="m1 1 4 4 4-4"/>
-                </svg>
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="w-36 bg-popover z-50">
-              <DropdownMenuItem
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onStatusChange("todo");
-                }}
-                className={cn(
-                  "flex items-center gap-2 cursor-pointer",
-                  status === "todo" && !isComplete && "bg-accent"
-                )}
-              >
-                <Circle className="h-4 w-4 text-muted-foreground" />
-                <span>To Do</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onStatusChange("complete");
-                }}
-                className={cn(
-                  "flex items-center gap-2 cursor-pointer",
-                  isComplete && "bg-accent"
-                )}
-              >
-                <CheckCircle2 className="h-4 w-4 text-green-600" />
-                <span>Complete</span>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        )}
-        
-        {/* Drag handle */}
+      {/* Drag handle */}
+      <div className="flex-shrink-0">
         <div 
           {...listeners}
           className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-taskIcon/90 flex items-center justify-center shadow-sm transition-transform duration-300 group-hover:scale-105 cursor-grab active:cursor-grabbing touch-none"
@@ -426,6 +374,56 @@ const SortableTaskCard = memo(({
               >
                 <Pencil className="w-3 h-3" />
               </button>
+              {/* Status dropdown - desktop, next to title */}
+              {onStatusChange && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button
+                      onClick={(e) => e.stopPropagation()}
+                      onPointerDown={(e) => e.stopPropagation()}
+                      className={cn(
+                        "hidden sm:flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-medium transition-all duration-200 hover:bg-muted flex-shrink-0",
+                        isComplete 
+                          ? "text-green-600 bg-green-500/10" 
+                          : "text-muted-foreground bg-muted/50"
+                      )}
+                    >
+                      <span>Status</span>
+                      <svg className="w-3 h-3" fill="none" viewBox="0 0 10 6" xmlns="http://www.w3.org/2000/svg">
+                        <path stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="m1 1 4 4 4-4"/>
+                      </svg>
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-36 bg-popover z-50">
+                    <DropdownMenuItem
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onStatusChange("todo");
+                      }}
+                      className={cn(
+                        "flex items-center gap-2 cursor-pointer",
+                        status === "todo" && !isComplete && "bg-accent"
+                      )}
+                    >
+                      <Circle className="h-4 w-4 text-muted-foreground" />
+                      <span>To Do</span>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onStatusChange("complete");
+                      }}
+                      className={cn(
+                        "flex items-center gap-2 cursor-pointer",
+                        isComplete && "bg-accent"
+                      )}
+                    >
+                      <CheckCircle2 className="h-4 w-4 text-green-600" />
+                      <span>Complete</span>
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
             </>
           )}
           {/* Priority badge - desktop only inline */}
