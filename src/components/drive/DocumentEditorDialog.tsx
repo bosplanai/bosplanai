@@ -118,7 +118,7 @@ export function DocumentEditorDialog({
       }
 
       const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/export-document`,
+        `https://qiikjhvzlwzysbtzhdcd.supabase.co/functions/v1/export-document`,
         {
           method: 'POST',
           headers: {

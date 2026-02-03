@@ -91,7 +91,7 @@ export function useDocumentEditor({ fileId, filePath, mimeType, onContentChange 
       }
 
       const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/parse-document`,
+        `https://qiikjhvzlwzysbtzhdcd.supabase.co/functions/v1/parse-document`,
         {
           method: 'POST',
           headers: {
