@@ -2095,43 +2095,49 @@ const Drive = () => {
                         </div>
                       </div>
 
-                      {/* Status badge and shared users */}
+                      {/* Status badge and assigned user */}
                       <div className="px-4 pb-4">
-                        <div className="flex items-center justify-between">
-                          <div className="flex flex-col gap-1">
-                            <span className="text-xs text-muted-foreground">Current Status</span>
+                        <div className="grid grid-cols-2 gap-3 p-3 rounded-lg bg-muted/30 border border-border/40">
+                          {/* Current Status */}
+                          <div className="flex flex-col gap-1.5">
+                            <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Status</span>
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
                                 <button className={`flex items-center gap-2 ${statusDisplay.color} hover:opacity-80 transition-opacity cursor-pointer`}>
-                                <div className={`w-2.5 h-2.5 rounded-full ${file.status === "completed" ? "bg-[#8CC646]" : file.status === "review_failed" ? "bg-[#DF4C33]" : file.status === "in_review" ? "bg-[#176884]" : "bg-[#F5B536]"}`} />
-                                <span className="text-sm font-medium">{statusDisplay.label}</span>
-                                <ChevronDown className="w-3 h-3 ml-1" />
-                              </button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="start" className="bg-popover">
-                              {STATUS_OPTIONS.filter(opt => opt.value !== "binned").map(option => {
-                              const Icon = option.icon;
-                              return <DropdownMenuItem key={option.value} onClick={() => updateStatusMutation.mutate({
-                                fileId: file.id,
-                                status: option.value
-                              })} className={`gap-2 ${file.status === option.value ? "bg-accent" : ""}`}>
+                                  <div className={`w-2 h-2 rounded-full ${file.status === "completed" ? "bg-brand-green" : file.status === "review_failed" ? "bg-brand-coral" : file.status === "in_review" ? "bg-brand-teal" : "bg-brand-orange"}`} />
+                                  <span className="text-xs font-medium">{statusDisplay.label}</span>
+                                  <ChevronDown className="w-3 h-3" />
+                                </button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="start" className="bg-popover">
+                                {STATUS_OPTIONS.filter(opt => opt.value !== "binned").map(option => {
+                                  const Icon = option.icon;
+                                  return <DropdownMenuItem key={option.value} onClick={() => updateStatusMutation.mutate({
+                                    fileId: file.id,
+                                    status: option.value
+                                  })} className={`gap-2 ${file.status === option.value ? "bg-accent" : ""}`}>
                                     <Icon className={`w-4 h-4 ${option.color}`} />
                                     {option.label}
                                     {file.status === option.value && <Check className="w-4 h-4 ml-auto" />}
                                   </DropdownMenuItem>;
-                            })}
-                            </DropdownMenuContent>
+                                })}
+                              </DropdownMenuContent>
                             </DropdownMenu>
                           </div>
-                        </div>
-                        <div className="flex items-center gap-2 mt-2">
-                          <User className="w-3.5 h-3.5 text-muted-foreground" />
-                          <span className="text-xs text-muted-foreground">
-                            {file.assigned_to 
-                              ? <span className="font-medium text-foreground">{profileMap[file.assigned_to] || "Unknown"}</span>
-                              : <span className="italic">Unassigned</span>
-                            }
-                          </span>
+                          
+                          {/* Assigned To */}
+                          <div className="flex flex-col gap-1.5">
+                            <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Assigned To</span>
+                            <div className="flex items-center gap-1.5">
+                              <User className="w-3 h-3 text-muted-foreground" />
+                              <span className="text-xs">
+                                {file.assigned_to 
+                                  ? <span className="font-medium text-foreground">{profileMap[file.assigned_to] || "Unknown"}</span>
+                                  : <span className="italic text-muted-foreground">Unassigned</span>
+                                }
+                              </span>
+                            </div>
+                          </div>
                         </div>
                       </div>
                     </Card>;
