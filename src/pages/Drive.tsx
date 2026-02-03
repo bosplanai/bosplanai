@@ -1540,7 +1540,31 @@ const Drive = () => {
   // Check if file type is previewable inline
   const isPreviewable = (mimeType: string | null): boolean => {
     if (!mimeType) return false;
-    return mimeType.startsWith("image/") || mimeType.startsWith("video/") || mimeType.startsWith("audio/") || mimeType === "application/pdf";
+    return (
+      mimeType.startsWith("image/") || 
+      mimeType.startsWith("video/") || 
+      mimeType.startsWith("audio/") || 
+      mimeType === "application/pdf" ||
+      mimeType.includes("wordprocessingml") ||
+      mimeType.includes("msword") ||
+      mimeType.includes("spreadsheetml") ||
+      mimeType.includes("ms-excel") ||
+      mimeType.includes("presentationml") ||
+      mimeType.includes("ms-powerpoint")
+    );
+  };
+  
+  // Check if file is an Office document (needs Google Docs Viewer)
+  const isOfficeDocument = (mimeType: string | null): boolean => {
+    if (!mimeType) return false;
+    return (
+      mimeType.includes("wordprocessingml") ||
+      mimeType.includes("msword") ||
+      mimeType.includes("spreadsheetml") ||
+      mimeType.includes("ms-excel") ||
+      mimeType.includes("presentationml") ||
+      mimeType.includes("ms-powerpoint")
+    );
   };
 
   // Get the most recent activity timestamp for sorting
@@ -2656,6 +2680,13 @@ const Drive = () => {
                   </div>}
                 {previewFile.mime_type === "application/pdf" && <div className="w-full h-[60vh] rounded-lg border overflow-hidden bg-background">
                     <iframe src={previewUrl} className="w-full h-full" title={previewFile.name} />
+                  </div>}
+                {isOfficeDocument(previewFile.mime_type) && <div className="w-full h-[60vh] rounded-lg border overflow-hidden bg-background">
+                    <iframe 
+                      src={`https://docs.google.com/gview?url=${encodeURIComponent(previewUrl)}&embedded=true`} 
+                      className="w-full h-full" 
+                      title={previewFile.name} 
+                    />
                   </div>}
                 {!isPreviewable(previewFile.mime_type) && <div className="flex flex-col items-center justify-center h-64 gap-4 text-center">
                     <File className="w-16 h-16 text-muted-foreground" />
