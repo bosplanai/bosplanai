@@ -274,16 +274,43 @@ const SortableTaskCard = memo(({
       )}
       style={sortableStyle}
     >
-      {/* Drag handle - only this area triggers drag */}
-      <div 
-        {...listeners}
-        className="flex-shrink-0 w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-taskIcon/90 flex items-center justify-center shadow-sm transition-transform duration-300 group-hover:scale-105 cursor-grab active:cursor-grabbing touch-none"
-      >
-        {isComplete ? (
-          <CheckCircle2 className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
-        ) : (
-          <Circle className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
+      {/* Status toggle + Drag handle */}
+      <div className="flex-shrink-0 flex items-center gap-1.5">
+        {/* Clickable status toggle */}
+        {onStatusChange && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onStatusChange(isComplete ? "todo" : "complete");
+            }}
+            onPointerDown={(e) => e.stopPropagation()}
+            className={cn(
+              "hidden sm:flex w-6 h-6 rounded-md items-center justify-center transition-all duration-200 hover:scale-110",
+              isComplete 
+                ? "bg-green-500/20 hover:bg-green-500/30" 
+                : "bg-muted hover:bg-muted/80"
+            )}
+            title={isComplete ? "Mark as To Do" : "Mark as Complete"}
+          >
+            {isComplete ? (
+              <CheckCircle2 className="w-4 h-4 text-green-600" />
+            ) : (
+              <Circle className="w-4 h-4 text-muted-foreground" />
+            )}
+          </button>
         )}
+        
+        {/* Drag handle */}
+        <div 
+          {...listeners}
+          className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-taskIcon/90 flex items-center justify-center shadow-sm transition-transform duration-300 group-hover:scale-105 cursor-grab active:cursor-grabbing touch-none"
+        >
+          {isComplete ? (
+            <CheckCircle2 className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
+          ) : (
+            <Circle className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
+          )}
+        </div>
       </div>
       
       {/* Mobile-only status dropdown menu */}
