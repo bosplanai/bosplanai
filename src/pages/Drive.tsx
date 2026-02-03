@@ -215,7 +215,7 @@ const STATUS_OPTIONS = [{
   color: "text-brand-coral"
 }, {
   value: "being_amended",
-  label: "Being Amended",
+  label: "Amending",
   icon: PenLine,
   color: "text-brand-orange"
 }, {
