@@ -157,9 +157,11 @@ const VirtualAssistants = () => {
                 <Badge className="mb-3 bg-[#176884] text-white border-0 hover:bg-[#176884]/90 text-xs">
                   Virtual Assistants
                 </Badge>
-                <p className="text-muted-foreground leading-relaxed">
-                  Need affordable assistance for your business? Our Virtual Assistants offer a low-cost and highly-skilled solution. Choose the role and number of hours, then purchase directly through the platform. Once completed, your Virtual Assistant will be added to your organisation and you can allocate work as you wish.
-                </p>
+                <p className="text-muted-foreground leading-relaxed">Need affordable assistance for your business? Our Virtual Assistants offer a low-cost and highly-skilled solution. Choose the role and number of hours, then purchase directly through the platform. Once completed, your Virtual Assistant will be added to your organisation and you can allocate work as you wish.
+
+
+ Important Notice
+Please note that 30 days’ notice is required for the virtual assistant service to start, and 30 days’ notice is also required for cancellation of the service.</p>
               </div>
             </div>
           </div>
@@ -174,8 +176,8 @@ const VirtualAssistants = () => {
         <div className="flex-1 p-4 sm:p-6 md:p-8">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {virtualAssistants.map(assistant => {
-            const Icon = assistant.icon;
-            return <Card key={assistant.id} className="relative flex flex-col hover:shadow-lg transition-shadow duration-200">
+              const Icon = assistant.icon;
+              return <Card key={assistant.id} className="relative flex flex-col hover:shadow-lg transition-shadow duration-200">
                   {assistant.popular && <Badge className="absolute -top-2 -right-2 bg-[#176884] text-white border-0">
                       Popular
                     </Badge>}
@@ -200,17 +202,17 @@ const VirtualAssistants = () => {
                     {pricingLoading ? <div className="flex items-center justify-center w-full py-2">
                         <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
                       </div> : pricing.map(pkg => {
-                  const price = pkg.price_cents / 100;
-                  const checkoutKey = `${assistant.id}-${pkg.hours_package}`;
-                  const isLoading = loadingCheckout === checkoutKey;
-                  return <Button key={pkg.hours_package} onClick={() => handleCheckout(assistant.id, pkg.hours_package)} disabled={isLoading || loadingCheckout !== null} className="w-full justify-between bg-[#176884] hover:bg-[#176884]/90 text-white" size="sm">
+                    const price = pkg.price_cents / 100;
+                    const checkoutKey = `${assistant.id}-${pkg.hours_package}`;
+                    const isLoading = loadingCheckout === checkoutKey;
+                    return <Button key={pkg.hours_package} onClick={() => handleCheckout(assistant.id, pkg.hours_package)} disabled={isLoading || loadingCheckout !== null} className="w-full justify-between bg-[#176884] hover:bg-[#176884]/90 text-white" size="sm">
                             <span>{pkg.hours_package} hours/month</span>
                             {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <span className="font-semibold">${price}</span>}
                           </Button>;
-                })}
+                  })}
                   </CardFooter>
                 </Card>;
-          })}
+            })}
           </div>
         </div>
         </div>
