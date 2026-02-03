@@ -1469,6 +1469,66 @@ const Drive = () => {
     if (pathExtMatch && !nameExtMatch) {
       downloadName = `${file.name}.${pathExtMatch[1]}`;
     }
+
+    // For office documents, check if there's edited content to download
+    if (isOfficeDocument(file.mime_type)) {
+      const { data: docContent } = await supabase
+        .from("drive_document_content")
+        .select("content")
+        .eq("file_id", file.id)
+        .maybeSingle();
+      
+      if (docContent?.content && docContent.content !== "" && docContent.content !== "<p></p>") {
+        // Export edited content as DOCX using the export edge function
+        try {
+          const { data: sessionData } = await supabase.auth.getSession();
+          const token = sessionData.session?.access_token;
+          
+          if (token) {
+            const response = await fetch(
+              `https://qiikjhvzlwzysbtzhdcd.supabase.co/functions/v1/export-document`,
+              {
+                method: 'POST',
+                headers: {
+                  'Authorization': `Bearer ${token}`,
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                  content: docContent.content,
+                  format: 'docx',
+                  fileName: file.name,
+                }),
+              }
+            );
+
+            const result = await response.json();
+            
+            if (!result.error && result.data) {
+              // Download the exported file
+              const byteCharacters = atob(result.data);
+              const byteNumbers = new Array(byteCharacters.length);
+              for (let i = 0; i < byteCharacters.length; i++) {
+                byteNumbers[i] = byteCharacters.charCodeAt(i);
+              }
+              const byteArray = new Uint8Array(byteNumbers);
+              const blob = new Blob([byteArray], { type: result.mimeType });
+              
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.href = url;
+              a.download = result.filename;
+              a.click();
+              URL.revokeObjectURL(url);
+              return;
+            }
+          }
+        } catch (error) {
+          console.error('Export error, falling back to original file:', error);
+        }
+      }
+    }
+
+    // Fall back to original file from storage
     const {
       data
     } = await supabase.storage.from("drive-files").createSignedUrl(file.file_path, 60, {
