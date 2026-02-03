@@ -1011,6 +1011,62 @@ const Drive = () => {
     }
   });
 
+  // Restore file version mutation
+  const restoreVersionMutation = useMutation({
+    mutationFn: async (versionToRestore: DriveFile) => {
+      if (!organization?.id || !user?.id) throw new Error("Not authenticated");
+      
+      // Get the parent file ID (original file)
+      const parentId = versionToRestore.parent_file_id || versionToRestore.id;
+      
+      // Find the latest version number
+      const { data: latestVersions, error: fetchError } = await supabase
+        .from("drive_files")
+        .select("version")
+        .or(`id.eq.${parentId},parent_file_id.eq.${parentId}`)
+        .is("deleted_at", null)
+        .order("version", { ascending: false })
+        .limit(1);
+      
+      if (fetchError) throw fetchError;
+      
+      const latestVersion = latestVersions?.[0]?.version || 1;
+      const newVersion = latestVersion + 1;
+      
+      // Create a new version entry that references the restored file's file_path
+      const { error: insertError } = await supabase
+        .from("drive_files")
+        .insert({
+          organization_id: organization.id,
+          folder_id: versionToRestore.folder_id,
+          name: versionToRestore.name,
+          file_path: versionToRestore.file_path,
+          file_size: versionToRestore.file_size,
+          mime_type: versionToRestore.mime_type,
+          uploaded_by: user.id,
+          version: newVersion,
+          parent_file_id: parentId,
+          status: "not_opened",
+          file_category: versionToRestore.file_category,
+          is_restricted: versionToRestore.is_restricted,
+          requires_signature: versionToRestore.requires_signature,
+          assigned_to: versionToRestore.assigned_to,
+          description: versionToRestore.description
+        });
+      
+      if (insertError) throw insertError;
+      
+      return { restoredFromVersion: versionToRestore.version, newVersion };
+    },
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: ["drive-files"], refetchType: 'all' });
+      queryClient.invalidateQueries({ queryKey: ["file-versions"], refetchType: 'all' });
+      queryClient.invalidateQueries({ queryKey: ["drive-folder-counts"], refetchType: 'all' });
+      toast.success(`Version ${result.restoredFromVersion} restored as version ${result.newVersion}`);
+    },
+    onError: () => toast.error("Failed to restore version")
+  });
+
   // Handle buy more storage - open purchase dialog
   const handleBuyMoreStorage = () => {
     setStoragePurchaseDialogOpen(true);
@@ -2373,6 +2429,16 @@ const Drive = () => {
                     <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => downloadFile(version)} title="Download">
                       <Download className="w-4 h-4" />
                     </Button>
+                    {!isLatestVersion && <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className="h-8 w-8 text-primary hover:text-primary" 
+                      onClick={() => restoreVersionMutation.mutate(version)}
+                      disabled={restoreVersionMutation.isPending}
+                      title="Restore this version"
+                    >
+                      <RotateCcw className="w-4 h-4" />
+                    </Button>}
                     {!isLatestVersion && fileVersions.length > 1 && <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => {
                     deleteFileMutation.mutate(version.id);
                     queryClient.invalidateQueries({
