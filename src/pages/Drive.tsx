@@ -2098,9 +2098,11 @@ const Drive = () => {
                       {/* Status badge and shared users */}
                       <div className="px-4 pb-4">
                         <div className="flex items-center justify-between">
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <button className={`flex items-center gap-2 ${statusDisplay.color} hover:opacity-80 transition-opacity cursor-pointer`}>
+                          <div className="flex flex-col gap-1">
+                            <span className="text-xs text-muted-foreground">Current Status</span>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <button className={`flex items-center gap-2 ${statusDisplay.color} hover:opacity-80 transition-opacity cursor-pointer`}>
                                 <div className={`w-2.5 h-2.5 rounded-full ${file.status === "completed" ? "bg-[#8CC646]" : file.status === "review_failed" ? "bg-[#DF4C33]" : file.status === "in_review" ? "bg-[#176884]" : "bg-[#F5B536]"}`} />
                                 <span className="text-sm font-medium">{statusDisplay.label}</span>
                                 <ChevronDown className="w-3 h-3 ml-1" />
@@ -2119,7 +2121,8 @@ const Drive = () => {
                                   </DropdownMenuItem>;
                             })}
                             </DropdownMenuContent>
-                          </DropdownMenu>
+                            </DropdownMenu>
+                          </div>
                         </div>
                         <div className="flex items-center gap-2 mt-2">
                           <User className="w-3.5 h-3.5 text-muted-foreground" />
