@@ -279,7 +279,7 @@ const SortableTaskCard = memo(({
         {...listeners}
         className="flex-shrink-0 w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-taskIcon/90 flex items-center justify-center shadow-sm transition-transform duration-300 group-hover:scale-105 cursor-grab active:cursor-grabbing touch-none"
       >
-        <Icon className="w-4 h-4 sm:w-5 sm:h-5 text-taskIcon-foreground" />
+        <Icon className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
       </div>
       
       {/* Mobile-only status dropdown menu */}
@@ -353,7 +353,7 @@ const SortableTaskCard = memo(({
           ) : (
             <>
               <p 
-                className="font-medium leading-snug group-hover:text-primary transition-colors duration-200 cursor-text text-[#676f7e] dark:text-white flex-1 line-clamp-2 sm:truncate sm:line-clamp-none"
+                className="font-medium text-foreground leading-snug group-hover:text-primary transition-colors duration-200 cursor-text flex-1 line-clamp-2 sm:truncate sm:line-clamp-none"
                 style={{ fontSize: `${0.875 * textSizeMultiplier}rem` }}
                 onClick={handleStartEditingTitle}
                 onPointerDown={(e) => e.stopPropagation()}
