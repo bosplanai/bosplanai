@@ -6,7 +6,7 @@ import { useOrganization } from "./useOrganization";
 import { useToast } from "./use-toast";
 
 export type TaskPriority = "high" | "medium" | "low";
-export type TaskSubcategory = "weekly" | "monthly" | "quarterly" | "yearly" | "misc";
+export type TaskSubcategory = "daily" | "weekly" | "monthly" | "quarterly" | "yearly";
 
 export interface TaskUser {
   id: string;
