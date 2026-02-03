@@ -6,39 +6,360 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-// Simple XML parser for DOCX files
-function parseDocxXml(xmlContent: string): string {
-  // Extract text from w:t tags (Word text elements)
-  const textMatches = xmlContent.match(/<w:t[^>]*>([^<]*)<\/w:t>/g) || [];
-  const paragraphs: string[] = [];
-  let currentParagraph = '';
+// Enhanced DOCX parser that preserves formatting
+function parseDocxXml(documentXml: string, relationshipsXml: string | null, numberingXml: string | null): string {
+  const html: string[] = [];
   
-  // Track paragraph breaks
-  const paragraphMatches = xmlContent.split(/<w:p[^\/]*>/);
-  
-  for (const para of paragraphMatches) {
-    if (!para.trim()) continue;
-    
-    const texts: string[] = [];
-    const textTags = para.match(/<w:t[^>]*>([^<]*)<\/w:t>/g) || [];
-    
-    for (const tag of textTags) {
-      const textMatch = tag.match(/<w:t[^>]*>([^<]*)<\/w:t>/);
-      if (textMatch && textMatch[1]) {
-        texts.push(textMatch[1]);
+  // Parse relationships for hyperlinks
+  const relationships = new Map<string, string>();
+  if (relationshipsXml) {
+    const relMatches = relationshipsXml.match(/<Relationship[^>]*>/g) || [];
+    for (const rel of relMatches) {
+      const idMatch = rel.match(/Id="([^"]*)"/);
+      const targetMatch = rel.match(/Target="([^"]*)"/);
+      const typeMatch = rel.match(/Type="[^"]*\/([^"\/]*)"/);
+      if (idMatch && targetMatch) {
+        relationships.set(idMatch[1], targetMatch[1]);
       }
     }
-    
-    if (texts.length > 0) {
-      paragraphs.push(texts.join(''));
+  }
+
+  // Parse numbering definitions for lists
+  const numberingFormats = new Map<string, { type: string; level: number }>();
+  if (numberingXml) {
+    const abstractNums = numberingXml.match(/<w:abstractNum[^>]*>[\s\S]*?<\/w:abstractNum>/g) || [];
+    for (const abstractNum of abstractNums) {
+      const abstractIdMatch = abstractNum.match(/w:abstractNumId="(\d+)"/);
+      if (abstractIdMatch) {
+        const lvlMatches = abstractNum.match(/<w:lvl[^>]*>[\s\S]*?<\/w:lvl>/g) || [];
+        for (const lvl of lvlMatches) {
+          const lvlIdMatch = lvl.match(/w:ilvl="(\d+)"/);
+          const numFmtMatch = lvl.match(/<w:numFmt[^>]*w:val="([^"]*)"/);
+          if (lvlIdMatch) {
+            const isBullet = numFmtMatch && numFmtMatch[1] === 'bullet';
+            numberingFormats.set(`${abstractIdMatch[1]}-${lvlIdMatch[1]}`, {
+              type: isBullet ? 'ul' : 'ol',
+              level: parseInt(lvlIdMatch[1])
+            });
+          }
+        }
+      }
+    }
+  }
+
+  // Split by paragraphs and tables
+  const bodyMatch = documentXml.match(/<w:body[^>]*>([\s\S]*)<\/w:body>/);
+  if (!bodyMatch) return '<p>Could not extract document content</p>';
+  
+  const bodyContent = bodyMatch[1];
+  
+  // Process elements in order (paragraphs and tables)
+  let currentListType: string | null = null;
+  let currentListLevel = 0;
+  
+  // Find all top-level elements
+  const elements: { type: string; content: string; index: number }[] = [];
+  
+  // Find paragraphs
+  const paraRegex = /<w:p[^\/]*>[\s\S]*?<\/w:p>|<w:p[^\/]*\/>/g;
+  let match;
+  while ((match = paraRegex.exec(bodyContent)) !== null) {
+    elements.push({ type: 'paragraph', content: match[0], index: match.index });
+  }
+  
+  // Find tables
+  const tableRegex = /<w:tbl[^>]*>[\s\S]*?<\/w:tbl>/g;
+  while ((match = tableRegex.exec(bodyContent)) !== null) {
+    elements.push({ type: 'table', content: match[0], index: match.index });
+  }
+  
+  // Sort by index to maintain document order
+  elements.sort((a, b) => a.index - b.index);
+  
+  for (const element of elements) {
+    if (element.type === 'table') {
+      // Close any open list
+      if (currentListType) {
+        html.push(`</${currentListType}>`);
+        currentListType = null;
+      }
+      html.push(parseTable(element.content));
+    } else {
+      const paraResult = parseParagraph(element.content, relationships, numberingFormats);
+      
+      // Handle list transitions
+      if (paraResult.listType) {
+        if (currentListType !== paraResult.listType) {
+          if (currentListType) {
+            html.push(`</${currentListType}>`);
+          }
+          html.push(`<${paraResult.listType}>`);
+          currentListType = paraResult.listType;
+        }
+        html.push(`<li>${paraResult.html}</li>`);
+      } else {
+        if (currentListType) {
+          html.push(`</${currentListType}>`);
+          currentListType = null;
+        }
+        if (paraResult.html.trim()) {
+          html.push(paraResult.html);
+        }
+      }
     }
   }
   
-  // Convert to HTML paragraphs
-  return paragraphs
-    .filter(p => p.trim())
-    .map(p => `<p>${escapeHtml(p)}</p>`)
-    .join('\n');
+  // Close any remaining list
+  if (currentListType) {
+    html.push(`</${currentListType}>`);
+  }
+  
+  return html.join('\n');
+}
+
+function parseParagraph(
+  paraXml: string, 
+  relationships: Map<string, string>,
+  numberingFormats: Map<string, { type: string; level: number }>
+): { html: string; listType: string | null } {
+  // Check for heading style
+  const styleMatch = paraXml.match(/<w:pStyle[^>]*w:val="([^"]*)"/);
+  const style = styleMatch ? styleMatch[1] : null;
+  
+  // Check for numbering (list)
+  const numIdMatch = paraXml.match(/<w:numId[^>]*w:val="(\d+)"/);
+  const ilvlMatch = paraXml.match(/<w:ilvl[^>]*w:val="(\d+)"/);
+  let listType: string | null = null;
+  
+  if (numIdMatch) {
+    // Determine if bullet or numbered
+    const numFmtKey = `${numIdMatch[1]}-${ilvlMatch ? ilvlMatch[1] : '0'}`;
+    const fmt = numberingFormats.get(numFmtKey);
+    listType = fmt?.type || 'ul';
+  }
+  
+  // Check for alignment
+  const alignMatch = paraXml.match(/<w:jc[^>]*w:val="([^"]*)"/);
+  let alignment = '';
+  if (alignMatch) {
+    const alignMap: Record<string, string> = {
+      'left': 'left',
+      'center': 'center',
+      'right': 'right',
+      'both': 'justify',
+      'distribute': 'justify'
+    };
+    alignment = alignMap[alignMatch[1]] || '';
+  }
+  
+  // Check for indentation
+  const indentMatch = paraXml.match(/<w:ind[^>]*>/);
+  let indent = '';
+  if (indentMatch) {
+    const leftMatch = indentMatch[0].match(/w:left="(\d+)"/);
+    const firstLineMatch = indentMatch[0].match(/w:firstLine="(\d+)"/);
+    if (leftMatch) {
+      const twips = parseInt(leftMatch[1]);
+      const px = Math.round(twips / 20); // Convert twips to pixels (rough)
+      indent = `margin-left: ${px}px;`;
+    }
+    if (firstLineMatch) {
+      const twips = parseInt(firstLineMatch[1]);
+      const px = Math.round(twips / 20);
+      indent += ` text-indent: ${px}px;`;
+    }
+  }
+  
+  // Build inline styles
+  let styleAttr = '';
+  if (alignment || indent) {
+    const styles: string[] = [];
+    if (alignment) styles.push(`text-align: ${alignment}`);
+    if (indent) styles.push(indent);
+    styleAttr = ` style="${styles.join('; ')}"`;
+  }
+  
+  // Extract runs (text with formatting)
+  const content = parseRuns(paraXml, relationships);
+  
+  // Determine element type based on style
+  let tag = 'p';
+  if (style) {
+    if (style.match(/^Heading1|^Title/i)) tag = 'h1';
+    else if (style.match(/^Heading2|^Subtitle/i)) tag = 'h2';
+    else if (style.match(/^Heading3/i)) tag = 'h3';
+    else if (style.match(/^Heading4/i)) tag = 'h4';
+    else if (style.match(/^Heading5/i)) tag = 'h5';
+    else if (style.match(/^Heading6/i)) tag = 'h6';
+  }
+  
+  if (listType) {
+    return { html: content, listType };
+  }
+  
+  return { html: content ? `<${tag}${styleAttr}>${content}</${tag}>` : '', listType: null };
+}
+
+function parseRuns(paraXml: string, relationships: Map<string, string>): string {
+  const parts: string[] = [];
+  
+  // Find hyperlinks and regular runs
+  const hyperlinkRegex = /<w:hyperlink[^>]*>[\s\S]*?<\/w:hyperlink>/g;
+  const runRegex = /<w:r[^\/]*>[\s\S]*?<\/w:r>/g;
+  
+  // Process hyperlinks
+  let lastIndex = 0;
+  let match;
+  
+  // Get all content between hyperlinks
+  const processedRanges: { start: number; end: number; content: string }[] = [];
+  
+  while ((match = hyperlinkRegex.exec(paraXml)) !== null) {
+    // Process runs before this hyperlink
+    const beforeContent = paraXml.slice(lastIndex, match.index);
+    const runsInBefore = beforeContent.match(runRegex) || [];
+    for (const run of runsInBefore) {
+      const runContent = parseRun(run);
+      if (runContent) parts.push(runContent);
+    }
+    
+    // Process hyperlink
+    const rIdMatch = match[0].match(/r:id="([^"]*)"/);
+    const href = rIdMatch ? relationships.get(rIdMatch[1]) : null;
+    const linkRuns = match[0].match(runRegex) || [];
+    const linkText = linkRuns.map(r => parseRun(r)).join('');
+    
+    if (href && linkText) {
+      parts.push(`<a href="${escapeHtml(href)}" target="_blank" rel="noopener noreferrer">${linkText}</a>`);
+    } else if (linkText) {
+      parts.push(linkText);
+    }
+    
+    lastIndex = match.index + match[0].length;
+  }
+  
+  // Process remaining runs after last hyperlink
+  const afterContent = paraXml.slice(lastIndex);
+  const runsAfter = afterContent.match(runRegex) || [];
+  for (const run of runsAfter) {
+    // Skip runs that are inside hyperlinks (already processed)
+    const runContent = parseRun(run);
+    if (runContent) parts.push(runContent);
+  }
+  
+  return parts.join('');
+}
+
+function parseRun(runXml: string): string {
+  // Extract text
+  const textMatches = runXml.match(/<w:t[^>]*>([^<]*)<\/w:t>/g) || [];
+  const text = textMatches.map(t => {
+    const m = t.match(/<w:t[^>]*>([^<]*)<\/w:t>/);
+    return m ? m[1] : '';
+  }).join('');
+  
+  if (!text) return '';
+  
+  // Check for formatting
+  const isBold = /<w:b[^>]*\/>|<w:b[^>]*>/.test(runXml) && !/<w:b[^>]*w:val="(false|0)"/.test(runXml);
+  const isItalic = /<w:i[^>]*\/>|<w:i[^>]*>/.test(runXml) && !/<w:i[^>]*w:val="(false|0)"/.test(runXml);
+  const isUnderline = /<w:u[^>]*\/>|<w:u[^>]*>/.test(runXml) && !/<w:u[^>]*w:val="none"/.test(runXml);
+  const isStrike = /<w:strike[^>]*\/>|<w:strike[^>]*>/.test(runXml) && !/<w:strike[^>]*w:val="(false|0)"/.test(runXml);
+  
+  // Check for highlight
+  const highlightMatch = runXml.match(/<w:highlight[^>]*w:val="([^"]*)"/);
+  const highlight = highlightMatch ? highlightMatch[1] : null;
+  
+  // Check for color
+  const colorMatch = runXml.match(/<w:color[^>]*w:val="([^"]*)"/);
+  const color = colorMatch && colorMatch[1] !== 'auto' ? colorMatch[1] : null;
+  
+  // Check for font size
+  const sizeMatch = runXml.match(/<w:sz[^>]*w:val="(\d+)"/);
+  const size = sizeMatch ? parseInt(sizeMatch[1]) / 2 : null; // Half-points to points
+  
+  // Check for font family
+  const fontMatch = runXml.match(/<w:rFonts[^>]*w:ascii="([^"]*)"/);
+  const font = fontMatch ? fontMatch[1] : null;
+  
+  // Build inline styles
+  const styles: string[] = [];
+  if (color) styles.push(`color: #${color}`);
+  if (size && size !== 11 && size !== 12) styles.push(`font-size: ${size}pt`);
+  if (font) styles.push(`font-family: "${font}"`);
+  
+  // Map Word highlight colors to CSS
+  const highlightColors: Record<string, string> = {
+    'yellow': '#ffff00',
+    'green': '#00ff00',
+    'cyan': '#00ffff',
+    'magenta': '#ff00ff',
+    'blue': '#0000ff',
+    'red': '#ff0000',
+    'darkBlue': '#000080',
+    'darkCyan': '#008080',
+    'darkGreen': '#008000',
+    'darkMagenta': '#800080',
+    'darkRed': '#800000',
+    'darkYellow': '#808000',
+    'darkGray': '#808080',
+    'lightGray': '#c0c0c0',
+    'black': '#000000'
+  };
+  
+  if (highlight && highlightColors[highlight]) {
+    styles.push(`background-color: ${highlightColors[highlight]}`);
+  }
+  
+  let result = escapeHtml(text);
+  
+  // Apply inline style if any
+  if (styles.length > 0) {
+    result = `<span style="${styles.join('; ')}">${result}</span>`;
+  }
+  
+  // Apply formatting tags
+  if (isStrike) result = `<s>${result}</s>`;
+  if (isUnderline) result = `<u>${result}</u>`;
+  if (isItalic) result = `<em>${result}</em>`;
+  if (isBold) result = `<strong>${result}</strong>`;
+  
+  return result;
+}
+
+function parseTable(tableXml: string): string {
+  const rows: string[] = [];
+  const rowMatches = tableXml.match(/<w:tr[^>]*>[\s\S]*?<\/w:tr>/g) || [];
+  
+  let isFirstRow = true;
+  
+  for (const rowXml of rowMatches) {
+    const cells: string[] = [];
+    const cellMatches = rowXml.match(/<w:tc[^>]*>[\s\S]*?<\/w:tc>/g) || [];
+    
+    for (const cellXml of cellMatches) {
+      // Get cell properties
+      const colspanMatch = cellXml.match(/<w:gridSpan[^>]*w:val="(\d+)"/);
+      const colspan = colspanMatch ? ` colspan="${colspanMatch[1]}"` : '';
+      
+      // Parse cell content (paragraphs)
+      const cellParas = cellXml.match(/<w:p[^\/]*>[\s\S]*?<\/w:p>|<w:p[^\/]*\/>/g) || [];
+      const cellContent = cellParas.map(p => {
+        const result = parseParagraph(p, new Map(), new Map());
+        // Strip outer p tag for table cells
+        const match = result.html.match(/<p[^>]*>([\s\S]*)<\/p>/);
+        return match ? match[1] : result.html;
+      }).join('<br>');
+      
+      const tag = isFirstRow ? 'th' : 'td';
+      cells.push(`<${tag}${colspan}>${cellContent || '&nbsp;'}</${tag}>`);
+    }
+    
+    rows.push(`<tr>${cells.join('')}</tr>`);
+    isFirstRow = false;
+  }
+  
+  return `<table class="document-table">${rows.join('')}</table>`;
 }
 
 // Simple XML parser for XLSX files
@@ -272,9 +593,14 @@ serve(async (req) => {
         const files = await unzipFile(arrayBuffer);
         
         const documentXml = files.get('word/document.xml');
+        const relationshipsXml = files.get('word/_rels/document.xml.rels');
+        const numberingXml = files.get('word/numbering.xml');
+        
         if (documentXml) {
-          const xmlContent = new TextDecoder().decode(documentXml);
-          content = parseDocxXml(xmlContent);
+          const docContent = new TextDecoder().decode(documentXml);
+          const relsContent = relationshipsXml ? new TextDecoder().decode(relationshipsXml) : null;
+          const numContent = numberingXml ? new TextDecoder().decode(numberingXml) : null;
+          content = parseDocxXml(docContent, relsContent, numContent);
         } else {
           content = '<p>Could not extract document content</p>';
         }
@@ -308,8 +634,6 @@ serve(async (req) => {
     }
     // Handle DOC files (older format) - limited support
     else if (lowerMimeType.includes('msword') || lowerPath.endsWith('.doc')) {
-      // DOC files are binary format and harder to parse
-      // Return a message indicating limited support
       content = '<p>Legacy .doc format detected. For best editing experience, please convert to .docx format.</p>';
     }
     // Handle XLS files (older format) - limited support
