@@ -33,7 +33,7 @@ serve(async (req) => {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const resendApiKey = Deno.env.get("RESEND_API_KEY");
-    const resendFromEmail = Deno.env.get("RESEND_FROM_EMAIL") || "noreply@bosplan.co.uk";
+    const resendFromEmail = Deno.env.get("RESEND_FROM_EMAIL") || "onboarding@resend.dev";
 
     if (!resendApiKey) {
       console.error("RESEND_API_KEY not configured");
@@ -95,7 +95,7 @@ serve(async (req) => {
     const resend = new Resend(resendApiKey);
 
     const { error: emailError } = await resend.emails.send({
-      from: `BosPlan Security <${resendFromEmail}>`,
+      from: resendFromEmail.includes("<") ? resendFromEmail : `BosPlan Security <${resendFromEmail}>`,
       to: [email],
       subject: "Your Super Admin Verification Code",
       html: `
