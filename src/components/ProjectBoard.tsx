@@ -523,8 +523,7 @@ const ProjectBoard = () => {
             <div className="flex flex-col gap-2 sm:gap-4 mb-4 sm:mb-6">
               <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
                 <h2 className="text-sm sm:text-lg font-semibold text-foreground mr-1 sm:mr-2">
-                  {activeTab === "product" ? "Product" : activeTab === "operational" ? "Operational" : "Strategic"}
-                  <span className="hidden sm:inline"> Management</span>
+                  {activeTab === "product" ? "Product Management" : activeTab === "operational" ? "Operations Management" : "Strategic Management"}
                 </h2>
                 <ActionBar />
               </div>
