@@ -2099,14 +2099,14 @@ const Drive = () => {
                       <div className="px-4 pb-4">
                         <div className="grid grid-cols-2 gap-3 p-3 rounded-lg bg-muted/30 border border-border/40">
                           {/* Current Status */}
-                          <div className="flex flex-col gap-1.5">
+                          <div className="flex flex-col gap-1.5 min-w-0">
                             <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Status</span>
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
-                                <button className={`flex items-center gap-2 ${statusDisplay.color} hover:opacity-80 transition-opacity cursor-pointer`}>
-                                  <div className={`w-2 h-2 rounded-full ${file.status === "completed" ? "bg-brand-green" : file.status === "review_failed" ? "bg-brand-coral" : file.status === "in_review" ? "bg-brand-teal" : "bg-brand-orange"}`} />
-                                  <span className="text-xs font-medium">{statusDisplay.label}</span>
-                                  <ChevronDown className="w-3 h-3" />
+                                <button className={`flex items-center gap-1.5 ${statusDisplay.color} hover:opacity-80 transition-opacity cursor-pointer min-w-0`}>
+                                  <div className={`w-2 h-2 rounded-full flex-shrink-0 ${file.status === "completed" ? "bg-brand-green" : file.status === "review_failed" ? "bg-brand-coral" : file.status === "in_review" ? "bg-brand-teal" : "bg-brand-orange"}`} />
+                                  <span className="text-xs font-medium truncate whitespace-nowrap">{statusDisplay.label}</span>
+                                  <ChevronDown className="w-3 h-3 flex-shrink-0" />
                                 </button>
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="start" className="bg-popover">
