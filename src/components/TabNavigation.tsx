@@ -56,12 +56,15 @@ const TabNavigation = ({ activeTab, onTabChange }: TabNavigationProps) => {
             : ""
           : "";
 
+        // Short labels for mobile
+        const mobileLabel = tab.id === "product" ? "Product" : tab.id === "operational" ? "Ops" : "Strategic";
+
         return (
           <Button
             key={tab.id}
             variant={variant}
             className={cn(
-              "px-2 py-1.5 sm:px-5 sm:py-2.5 h-auto rounded-full transition-all duration-300 ease-out btn-smooth text-[10px] sm:text-sm whitespace-nowrap",
+              "px-3 py-1.5 sm:px-5 sm:py-2.5 h-auto rounded-full transition-all duration-300 ease-out btn-smooth text-xs sm:text-sm whitespace-nowrap",
               isActive && "shadow-md ring-2 ring-brand-coral ring-offset-1 sm:ring-offset-2",
               inactiveColorClass
             )}
@@ -69,10 +72,11 @@ const TabNavigation = ({ activeTab, onTabChange }: TabNavigationProps) => {
           >
             <Icon
               className={cn(
-                "w-3.5 h-3.5 sm:w-4 sm:h-4 sm:mr-2 transition-transform duration-200",
+                "w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1.5 sm:mr-2 transition-transform duration-200",
                 isActive && "scale-110"
               )}
             />
+            <span className="sm:hidden">{mobileLabel}</span>
             <span className="hidden sm:inline">{tab.label}</span>
           </Button>
         );
