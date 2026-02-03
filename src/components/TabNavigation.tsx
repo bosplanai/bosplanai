@@ -57,7 +57,7 @@ const TabNavigation = ({ activeTab, onTabChange }: TabNavigationProps) => {
           : "";
 
         // Short labels for mobile
-        const mobileLabel = tab.id === "product" ? "Product" : tab.id === "operational" ? "Ops" : "Strategic";
+        const mobileLabel = tab.id === "product" ? "Product" : tab.id === "operational" ? "Operations" : "Strategic";
 
         return (
           <Button
