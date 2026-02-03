@@ -629,10 +629,9 @@ const AddTaskDialog = ({
             </Select>
           </div>
 
-          {/* Assignees - multi-select (hidden for operational and strategic dashboards) */}
-          {activeTab !== "operational" && activeTab !== "strategic" && (
-            <div className="space-y-2">
-              <Label>Assign To (select multiple)</Label>
+          {/* Assignees - multi-select */}
+          <div className="space-y-2">
+            <Label>Assign To (select multiple)</Label>
               <div className="border rounded-md p-2 space-y-1 max-h-40 overflow-y-auto">
                 {teamMembers.length === 0 ? (
                   <p className="text-xs text-muted-foreground py-2 text-center">No team members available</p>
@@ -669,8 +668,7 @@ const AddTaskDialog = ({
                   {assignedUserIds.length} user{assignedUserIds.length !== 1 ? 's' : ''} selected
                 </p>
               )}
-            </div>
-          )}
+          </div>
 
           {/* Icon - hidden for Product Management dashboard */}
           {activeTab !== "product" && (

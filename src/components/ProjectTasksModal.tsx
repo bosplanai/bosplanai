@@ -936,9 +936,8 @@ const ProjectTasksModal = ({ isOpen, onClose, projectId, projectTitle }: Project
                           </SelectContent>
                         </Select>
 
-                        {/* Assignees - Multi-select (hidden for operational/strategic tasks) */}
-                        {task.category !== "operational" && task.category !== "strategic" && (
-                          <Popover>
+                        {/* Assignees - Multi-select */}
+                        <Popover>
                             <PopoverTrigger asChild>
                               <Button
                                 variant="outline"
@@ -1010,7 +1009,6 @@ const ProjectTasksModal = ({ isOpen, onClose, projectId, projectTitle }: Project
                               </div>
                             </PopoverContent>
                           </Popover>
-                        )}
 
                         {/* Project */}
                         <Select
