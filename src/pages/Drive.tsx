@@ -355,6 +355,7 @@ const Drive = () => {
   const [previewFile, setPreviewFile] = useState<DriveFile | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
+  const [previewDocumentContent, setPreviewDocumentContent] = useState<string | null>(null);
 
   // Document editor state
   const [documentEditorOpen, setDocumentEditorOpen] = useState(false);
@@ -1485,6 +1486,7 @@ const Drive = () => {
   const viewFile = async (file: DriveFile) => {
     setPreviewFile(file);
     setPreviewLoading(true);
+    setPreviewDocumentContent(null);
     setPreviewUrl(prev => {
       if (prev?.startsWith("blob:")) {
         URL.revokeObjectURL(prev);
@@ -1499,6 +1501,21 @@ const Drive = () => {
       queryClient.invalidateQueries({
         queryKey: ["drive-files"]
       });
+
+      // For office documents, check if there's edited content in drive_document_content
+      if (isOfficeDocument(file.mime_type)) {
+        const { data: docContent } = await supabase
+          .from("drive_document_content")
+          .select("content")
+          .eq("file_id", file.id)
+          .maybeSingle();
+        
+        if (docContent?.content && docContent.content !== "" && docContent.content !== "<p></p>") {
+          setPreviewDocumentContent(docContent.content);
+          setPreviewLoading(false);
+          return;
+        }
+      }
 
       // PDFs can be blocked by browsers when embedded from signed URLs.
       // Download to a blob URL first to ensure reliable previews.
@@ -1528,6 +1545,7 @@ const Drive = () => {
   // Close preview dialog
   const closePreview = () => {
     setPreviewFile(null);
+    setPreviewDocumentContent(null);
     setPreviewUrl(prev => {
       if (prev?.startsWith("blob:")) {
         URL.revokeObjectURL(prev);
@@ -2668,7 +2686,15 @@ const Drive = () => {
           <div className="flex-1 overflow-auto min-h-0">
             {previewLoading ? <div className="flex items-center justify-center h-64">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
-              </div> : previewUrl && previewFile ? <>
+              </div> : previewDocumentContent && previewFile ? (
+                // Show edited document content
+                <div className="w-full h-[60vh] rounded-lg border overflow-hidden bg-white dark:bg-card p-6">
+                  <div 
+                    className="prose prose-sm max-w-none dark:prose-invert h-full overflow-auto"
+                    dangerouslySetInnerHTML={{ __html: previewDocumentContent }}
+                  />
+                </div>
+              ) : previewUrl && previewFile ? <>
                 {previewFile.mime_type?.startsWith("image/") && <div className="flex items-center justify-center p-4">
                     <img src={previewUrl} alt={previewFile.name} className="max-w-full max-h-[60vh] object-contain rounded-lg" />
                   </div>}
