@@ -870,7 +870,8 @@ const Drive = () => {
               status: "not_opened",
               file_category: fileCategory,
               is_restricted: isRestricted,
-              requires_signature: fileCategory === "contract" && requiresSignature
+              requires_signature: fileCategory === "contract" && requiresSignature,
+              assigned_to: assignedUsers.length > 0 ? assignedUsers[0] : null
             }).select("id").single();
             if (dbError) throw dbError;
             newFileId = insertedFile?.id;
@@ -897,7 +898,8 @@ const Drive = () => {
               status: "not_opened",
               file_category: fileCategory,
               is_restricted: isRestricted,
-              requires_signature: fileCategory === "contract" && requiresSignature
+              requires_signature: fileCategory === "contract" && requiresSignature,
+              assigned_to: assignedUsers.length > 0 ? assignedUsers[0] : null
             }).select("id").single();
             if (dbError) throw dbError;
             newFileId = insertedFile?.id;
