@@ -79,18 +79,21 @@ const priorityOptions = [{
   label: "Low",
   className: "text-priority-low"
 }];
-const taskTypeOptions = [{
+const subcategoryOptions = [{
   value: "weekly",
-  label: "Recurring Weekly"
+  label: "Weekly"
 }, {
   value: "monthly",
-  label: "Recurring Monthly"
+  label: "Monthly"
 }, {
   value: "quarterly",
-  label: "Recurring Quarterly"
+  label: "Quarterly"
 }, {
   value: "yearly",
-  label: "Recurring Yearly"
+  label: "Yearly"
+}, {
+  value: "misc",
+  label: "MISC"
 }];
 interface TeamMember {
   id: string;
@@ -340,12 +343,12 @@ const AddTaskDialog = ({
         category: activeTab,
         priority,
         description,
-        subcategory,
+        subcategory: showSubcategoryFilter ? subcategory : "weekly",
         projectId: finalProjectId,
         dueDate: dueDate ? dueDate.toISOString().split('T')[0] : null,
         assignedUserId: assignedUserIds.length > 0 ? assignedUserIds[0] : null,
         assignedUserIds,
-        isRecurring: true,
+        isRecurring: showSubcategoryFilter ? isRecurring : false,
         isDraft: false
       });
 
@@ -418,12 +421,12 @@ const AddTaskDialog = ({
         category: activeTab,
         priority,
         description,
-        subcategory,
+        subcategory: showSubcategoryFilter ? subcategory : "weekly",
         projectId: finalProjectId,
         dueDate: dueDate ? dueDate.toISOString().split('T')[0] : null,
         assignedUserId: assignedUserIds.length > 0 ? assignedUserIds[0] : null,
         assignedUserIds,
-        isRecurring: true,
+        isRecurring: showSubcategoryFilter ? isRecurring : false,
         isDraft: true
       });
       if (taskId && attachments.length > 0) {
@@ -611,20 +614,28 @@ const AddTaskDialog = ({
           {/* Icon - hidden for Product Management dashboard */}
           {activeTab !== "product"}
 
-          {/* Task Type */}
-          <div className="space-y-2">
-            <Label>Task Type</Label>
-            <Select value={subcategory} onValueChange={v => setSubcategory(v as TaskSubcategory)}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {taskTypeOptions.map(option => <SelectItem key={option.value} value={option.value}>
-                    {option.label}
-                  </SelectItem>)}
-              </SelectContent>
-            </Select>
-          </div>
+          {/* Task Type (Subcategory) */}
+          {showSubcategoryFilter && <div className="space-y-2">
+              <Label>Task Type</Label>
+              <Select value={subcategory} onValueChange={v => setSubcategory(v as TaskSubcategory)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {subcategoryOptions.map(option => <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>}
+
+          {/* Recurring Task Checkbox - only for Operations & Strategic dashboards */}
+          {showSubcategoryFilter && <div className="flex items-center space-x-2">
+              <Checkbox id="isRecurring" checked={isRecurring} onCheckedChange={checked => setIsRecurring(checked === true)} />
+              <Label htmlFor="isRecurring" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer">
+                Recurring Task (repeats based on Task Type)
+              </Label>
+            </div>}
 
           {/* Attachments */}
           <div className="space-y-2">
