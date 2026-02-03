@@ -159,7 +159,12 @@ export function useDocumentEditor({ fileId, filePath, mimeType, onContentChange 
           if (isEmptyOrPlaceholder && filePath && mimeType) {
             // Try to re-parse the document since we only have placeholder content
             const parsedContent = await parseUploadedDocument();
-            if (parsedContent) {
+            // Only use parsed content if it's valid and meaningful
+            const isValidParsedContent = parsedContent && 
+              parsedContent.length > 50 &&
+              !parsedContent.includes("Could not extract document content");
+            
+            if (isValidParsedContent) {
               // Update the document with parsed content
               await supabase
                 .from("drive_document_content")
@@ -196,7 +201,7 @@ export function useDocumentEditor({ fileId, filePath, mimeType, onContentChange 
                   });
               }
             } else {
-              // Fall back to existing content if parsing fails
+              // Fall back to existing content if parsing fails or returns error
               setContent(existingDoc.content);
               lastVersionContentRef.current = existingDoc.content;
               onContentChange?.(existingDoc.content);
@@ -215,7 +220,12 @@ export function useDocumentEditor({ fileId, filePath, mimeType, onContentChange 
           
           if (filePath && mimeType) {
             const parsedContent = await parseUploadedDocument();
-            if (parsedContent) {
+            // Only use parsed content if it's valid and meaningful
+            const isValidParsedContent = parsedContent && 
+              parsedContent.length > 50 &&
+              !parsedContent.includes("Could not extract document content");
+            
+            if (isValidParsedContent) {
               initialContent = parsedContent;
               toast.success("Document content loaded from uploaded file");
             }

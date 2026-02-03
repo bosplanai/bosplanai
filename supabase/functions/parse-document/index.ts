@@ -49,7 +49,7 @@ function parseDocxXml(documentXml: string, relationshipsXml: string | null, numb
 
   // Split by paragraphs and tables
   const bodyMatch = documentXml.match(/<w:body[^>]*>([\s\S]*)<\/w:body>/);
-  if (!bodyMatch) return '<p>Could not extract document content</p>';
+  if (!bodyMatch) return ''; // Return empty string to signal parsing failure
   
   const bodyContent = bodyMatch[1];
   
@@ -601,12 +601,16 @@ serve(async (req) => {
           const relsContent = relationshipsXml ? new TextDecoder().decode(relationshipsXml) : null;
           const numContent = numberingXml ? new TextDecoder().decode(numberingXml) : null;
           content = parseDocxXml(docContent, relsContent, numContent);
+          // Check if parsing returned empty/failed
+          if (!content || content.trim() === '') {
+            content = ''; // Ensure it's empty string for detection
+          }
         } else {
-          content = '<p>Could not extract document content</p>';
+          content = ''; // Return empty for detection
         }
       } catch (e) {
         console.error("DOCX parsing error:", e);
-        content = `<p>Error parsing document: ${e instanceof Error ? e.message : 'Unknown error'}</p>`;
+        content = ''; // Return empty on error
       }
     }
     // Handle XLSX files
@@ -625,11 +629,11 @@ serve(async (req) => {
           const sheetXml = new TextDecoder().decode(sheet1Data);
           content = parseXlsxXml(sharedStringsXml, sheetXml);
         } else {
-          content = '<p>Could not extract spreadsheet content</p>';
+          content = ''; // Return empty for detection
         }
       } catch (e) {
         console.error("XLSX parsing error:", e);
-        content = `<p>Error parsing spreadsheet: ${e instanceof Error ? e.message : 'Unknown error'}</p>`;
+        content = ''; // Return empty on error
       }
     }
     // Handle DOC files (older format) - limited support

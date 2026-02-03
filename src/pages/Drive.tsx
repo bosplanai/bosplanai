@@ -1485,12 +1485,13 @@ const Drive = () => {
       
       console.log('Document content found:', !!docContent?.content, 'length:', docContent?.content?.length);
       
-      // Check if there's meaningful edited content
+      // Check if there's meaningful edited content (not error messages or placeholders)
       const hasEditedContent = docContent?.content && 
         docContent.content !== "" && 
         docContent.content !== "<p></p>" &&
         docContent.content !== "<p>Start editing this document...</p>" &&
-        docContent.content.length > 20;
+        !docContent.content.includes("Could not extract document content") &&
+        docContent.content.length > 50;
       
       if (hasEditedContent) {
         console.log('Exporting edited content...');
@@ -1589,7 +1590,15 @@ const Drive = () => {
           .eq("file_id", file.id)
           .maybeSingle();
         
-        if (docContent?.content && docContent.content !== "" && docContent.content !== "<p></p>") {
+        // Check for valid content - must be non-empty, not placeholder, and not an error message
+        const hasValidContent = docContent?.content && 
+          docContent.content !== "" && 
+          docContent.content !== "<p></p>" &&
+          docContent.content !== "<p>Start editing this document...</p>" &&
+          !docContent.content.includes("Could not extract document content") &&
+          docContent.content.length > 50; // Meaningful content should have substantial length
+        
+        if (hasValidContent) {
           setPreviewDocumentContent(docContent.content);
           setPreviewLoading(false);
           return;
