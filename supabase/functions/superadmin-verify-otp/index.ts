@@ -7,53 +7,68 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-// Rate limit configuration - stricter for OTP verification to prevent brute force
-const RATE_LIMIT_MAX_REQUESTS = 5; // Max 5 attempts
-const RATE_LIMIT_WINDOW_MINUTES = 5; // Per 5 minutes (stricter window for verification)
+// Rate limit configuration - stricter for OTP verification
+const RATE_LIMIT_MAX_REQUESTS = 5;
+const RATE_LIMIT_WINDOW_MINUTES = 5;
 
 // Get client IP from request headers
 function getClientIP(req: Request): string {
-  // Check common headers for real IP (in order of priority)
   const forwardedFor = req.headers.get("x-forwarded-for");
   if (forwardedFor) {
-    // x-forwarded-for can contain multiple IPs, take the first one
     return forwardedFor.split(",")[0].trim();
   }
-  
   const realIP = req.headers.get("x-real-ip");
-  if (realIP) {
-    return realIP.trim();
-  }
-  
+  if (realIP) return realIP.trim();
   const cfConnectingIP = req.headers.get("cf-connecting-ip");
-  if (cfConnectingIP) {
-    return cfConnectingIP.trim();
-  }
-  
-  // Fallback to a default if no IP found
+  if (cfConnectingIP) return cfConnectingIP.trim();
   return "unknown";
 }
 
+// Log audit event
+async function logAuditEvent(
+  adminClient: any,
+  userId: string | null,
+  userEmail: string,
+  action: string,
+  resourceType: string | null,
+  resourceId: string | null,
+  details: object | null,
+  ipAddress: string,
+  userAgent: string | null
+) {
+  try {
+    await adminClient.from("super_admin_audit_logs").insert({
+      user_id: userId,
+      user_email: userEmail,
+      action,
+      resource_type: resourceType,
+      resource_id: resourceId,
+      details,
+      ip_address: ipAddress,
+      user_agent: userAgent,
+    });
+    console.log(`Audit log: ${action} by ${userEmail} from ${ipAddress}`);
+  } catch (error) {
+    console.error("Failed to write audit log:", error);
+  }
+}
+
 serve(async (req) => {
-  // Handle CORS preflight
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
   const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-
-  // Create admin client
   const adminClient = createClient(supabaseUrl, supabaseServiceKey);
 
+  const clientIP = getClientIP(req);
+  const userAgent = req.headers.get("user-agent");
+  const endpoint = "superadmin-verify-otp";
+
   try {
-    // Get client IP for rate limiting
-    const clientIP = getClientIP(req);
-    const endpoint = "superadmin-verify-otp";
-    
     console.log(`Rate limit check for IP: ${clientIP}, endpoint: ${endpoint}`);
     
-    // Check rate limit using database function
     const { data: isAllowed, error: rateLimitError } = await adminClient
       .rpc("check_rate_limit", {
         p_ip_address: clientIP,
@@ -64,9 +79,22 @@ serve(async (req) => {
     
     if (rateLimitError) {
       console.error("Rate limit check error:", rateLimitError);
-      // Don't block on rate limit errors, just log and continue
     } else if (!isAllowed) {
       console.warn(`Rate limit exceeded for IP: ${clientIP}, endpoint: ${endpoint}`);
+      
+      // Log rate limit hit
+      await logAuditEvent(
+        adminClient,
+        null,
+        "unknown",
+        "rate_limit_exceeded",
+        "auth",
+        null,
+        { endpoint, reason: "Too many verification attempts" },
+        clientIP,
+        userAgent
+      );
+      
       return new Response(
         JSON.stringify({ 
           error: "Too many verification attempts. Please try again later.",
@@ -93,6 +121,10 @@ serve(async (req) => {
       );
     }
 
+    // Get user email for audit logging
+    const { data: userData } = await adminClient.auth.admin.getUserById(user_id);
+    const userEmail = userData?.user?.email || "unknown";
+
     // Find valid OTP
     const { data: otpData, error: otpError } = await adminClient
       .from("super_admin_otp")
@@ -113,6 +145,20 @@ serve(async (req) => {
 
     if (!otpData) {
       console.log(`Invalid or expired OTP for user ${user_id}`);
+      
+      // Log failed verification attempt
+      await logAuditEvent(
+        adminClient,
+        user_id,
+        userEmail,
+        "otp_verification_failed",
+        "auth",
+        null,
+        { reason: "Invalid or expired OTP" },
+        clientIP,
+        userAgent
+      );
+      
       return new Response(
         JSON.stringify({ error: "Invalid or expired verification code" }),
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -135,6 +181,19 @@ serve(async (req) => {
       .delete()
       .eq("user_id", user_id)
       .neq("id", otpData.id);
+
+    // Log successful login
+    await logAuditEvent(
+      adminClient,
+      user_id,
+      userEmail,
+      "superadmin_login_success",
+      "auth",
+      null,
+      { method: "otp" },
+      clientIP,
+      userAgent
+    );
 
     console.log(`OTP verified successfully for user ${user_id}`);
 
