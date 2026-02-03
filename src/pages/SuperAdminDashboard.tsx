@@ -2,11 +2,12 @@ import { useOrgNavigation } from "@/hooks/useOrgNavigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Shield, Building2, Users, UserX, Gift, Link, ArrowRight, Sparkles, Activity, Bot, UserPlus } from "lucide-react";
+import { Shield, Building2, Users, UserX, Gift, Link, ArrowRight, Sparkles, Activity, Bot, UserPlus, LogOut } from "lucide-react";
 import { useSuperAdmin } from "@/hooks/useSuperAdmin";
 import { useAuth } from "@/hooks/useAuth";
 import { useSuperAdminData } from "@/hooks/useSuperAdminData";
 import { useSpecialistPlans } from "@/hooks/useSpecialistPlans";
+import { useSuperAdminSession } from "@/hooks/useSuperAdminSession";
 import bosplanLogo from "@/assets/bosplan-logo.png";
 import SuperAdminSettingsDialog from "@/components/superadmin/SuperAdminSettingsDialog";
 const SuperAdminDashboard = () => {
@@ -27,6 +28,9 @@ const SuperAdminDashboard = () => {
     plans,
     loading: plansLoading
   } = useSpecialistPlans();
+  
+  // Super admin session management with 15-minute inactivity timeout
+  const { signOutSuperAdmin } = useSuperAdminSession();
   if (authLoading || superAdminLoading) {
     return <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
         <div className="text-white">Loading...</div>
@@ -159,7 +163,19 @@ const SuperAdminDashboard = () => {
                 <Shield className="w-3 h-3 mr-1" />
                 Super Admin
               </Badge>
+              <Badge variant="outline" className="border-slate-500/50 text-slate-400 bg-slate-500/10 text-xs">
+                15 min session
+              </Badge>
               <SuperAdminSettingsDialog currentEmail={user?.email || ""} />
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="text-slate-400 hover:text-white hover:bg-slate-700" 
+                onClick={() => signOutSuperAdmin(false)}
+              >
+                <LogOut className="w-4 h-4 mr-1" />
+                Sign Out
+              </Button>
               <Button variant="ghost" size="sm" className="text-slate-400 hover:text-white hover:bg-slate-700" onClick={() => navigate("/")}>
                 Exit to Main App
               </Button>
