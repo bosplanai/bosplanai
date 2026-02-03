@@ -47,19 +47,20 @@ const SortableColumn = forwardRef<HTMLDivElement, SortableColumnProps>(({
       ref={setRefs}
       style={getCustomBgStyle()}
       className={cn(
-        "flex-1 basis-0 min-w-0 max-w-[50%] rounded-2xl p-4 sm:p-6 min-h-[300px] sm:min-h-[500px] transition-all duration-300 ease-out backdrop-blur-sm relative overflow-hidden",
+        "flex-1 basis-0 min-w-0 rounded-2xl p-3 sm:p-4 md:p-6 min-h-[250px] sm:min-h-[350px] md:min-h-[500px] transition-all duration-300 ease-out backdrop-blur-sm relative overflow-hidden",
+        "max-w-full md:max-w-[50%]",
         variant === "todo" ? "bg-todo/80" : "bg-complete/80",
         isOver && "ring-2 ring-primary/30 ring-inset scale-[1.01]"
       )}
     >
-      <div className="flex items-center gap-2 mb-4 sm:mb-6">
-        <h3 className="text-xs font-semibold tracking-wider text-white uppercase">
+      <div className="flex items-center gap-2 mb-3 sm:mb-4 md:mb-6">
+        <h3 className="text-[10px] sm:text-xs font-semibold tracking-wider text-white uppercase">
           {title}
         </h3>
-        <span className="text-xs text-white/70 ml-auto">{items.length}</span>
+        <span className="text-[10px] sm:text-xs text-white/70 ml-auto">{items.length}</span>
       </div>
       <SortableContext items={items} strategy={verticalListSortingStrategy}>
-        <div className="flex flex-col gap-3 sm:gap-4 overflow-hidden">{children}</div>
+        <div className="flex flex-col gap-2 sm:gap-3 md:gap-4 overflow-hidden">{children}</div>
       </SortableContext>
     </div>
   );

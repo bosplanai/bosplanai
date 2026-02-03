@@ -474,61 +474,68 @@ const ProjectBoard = () => {
         <div className="flex flex-1 overflow-hidden">
         <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
           {/* Header */}
-          <header className="bg-card border-b border-border px-4 sm:px-6 py-4 sm:py-5">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
-              <div className="flex items-center gap-3 sm:gap-4">
-                <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-xl bg-gradient-to-br from-brand-green to-brand-green/70 flex items-center justify-center shadow-sm cursor-pointer transition-transform duration-200 hover:scale-105" onClick={() => navigate("/")}>
-                  <ListTodo className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
+          <header className="bg-card border-b border-border px-3 sm:px-6 py-3 sm:py-5">
+            <div className="flex flex-col gap-3 sm:gap-4">
+              {/* Top row: Logo, Title, and User Actions */}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 sm:gap-4">
+                  <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-xl bg-gradient-to-br from-brand-green to-brand-green/70 flex items-center justify-center shadow-sm cursor-pointer transition-transform duration-200 hover:scale-105" onClick={() => navigate("/")}>
+                    <ListTodo className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
+                  </div>
+                  <div>
+                    <h1 className="text-base sm:text-xl font-semibold text-foreground">Task Management</h1>
+                    <p className="text-xs sm:text-sm text-muted-foreground hidden sm:block">Manage your team's tasks and deadlines</p>
+                  </div>
                 </div>
-                <div>
-                  <h1 className="text-lg sm:text-xl font-semibold text-foreground">Task Management</h1>
-                  <p className="text-xs sm:text-sm text-muted-foreground hidden sm:block">Manage your team's tasks and deadlines</p>
-                </div>
+                {user && <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+                    <OrganizationSwitcher />
+                    <span className="hidden lg:inline text-sm text-muted-foreground font-medium truncate max-w-[150px]">{profile?.full_name || user.email}</span>
+                    <NotificationBell />
+                    <Button variant="ghost" size="icon" className="rounded-xl hover:bg-secondary/80 transition-all duration-200 btn-smooth h-8 w-8 sm:h-10 sm:w-10" onClick={() => navigate("/settings")} title="Settings">
+                      <Settings className="w-4 h-4" />
+                    </Button>
+                    <Button variant="ghost" size="sm" className="rounded-xl hover:bg-secondary/80 transition-all duration-200 btn-smooth text-xs sm:text-sm hidden sm:flex" onClick={signOut}>
+                      <LogOut className="w-4 h-4 sm:mr-2" />
+                      <span className="hidden sm:inline">Sign Out</span>
+                    </Button>
+                  </div>}
+              </div>
+              
+              {/* Tab Navigation - separate row on mobile */}
+              <div className="flex justify-start sm:justify-center -mx-1 sm:mx-0 overflow-x-auto scrollbar-hide">
                 <TabNavigation activeTab={activeTab} onTabChange={setActiveTab} />
               </div>
-              {user && <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto">
-                  <OrganizationSwitcher />
-                  <span className="hidden lg:inline text-sm text-muted-foreground font-medium truncate max-w-[150px]">{profile?.full_name || user.email}</span>
-                  <NotificationBell />
-                  <Button variant="ghost" size="icon" className="rounded-xl hover:bg-secondary/80 transition-all duration-200 btn-smooth h-9 w-9 sm:h-10 sm:w-10" onClick={() => navigate("/settings")} title="Settings">
-                    <Settings className="w-4 h-4" />
-                  </Button>
-                  <Button variant="ghost" size="sm" className="rounded-xl hover:bg-secondary/80 transition-all duration-200 btn-smooth text-xs sm:text-sm" onClick={signOut}>
-                    <LogOut className="w-4 h-4 sm:mr-2" />
-                    <span className="hidden sm:inline">Sign Out</span>
-                  </Button>
-                </div>}
             </div>
           </header>
           
           {/* Main Content */}
-          <main className="flex-1 p-3 sm:p-6 md:p-8 overflow-auto">
+          <main className="flex-1 p-2 sm:p-4 md:p-8 overflow-auto">
           {/* Filters and actions - responsive layout */}
-            <div className="flex flex-col gap-3 sm:gap-4 mb-6">
+            <div className="flex flex-col gap-2 sm:gap-4 mb-4 sm:mb-6">
               <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
-                <h2 className="text-base sm:text-lg font-semibold text-foreground mr-1 sm:mr-2">
+                <h2 className="text-sm sm:text-lg font-semibold text-foreground mr-1 sm:mr-2">
                   {activeTab === "product" ? "Product" : activeTab === "operational" ? "Operational" : "Strategic"}
                   <span className="hidden sm:inline"> Management</span>
                 </h2>
                 <ActionBar />
               </div>
-              <div className="flex items-center gap-2 sm:gap-3 flex-wrap w-full">
-                <div className="relative group flex-1 min-w-[120px] max-w-[200px] sm:max-w-[280px]">
-                  <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground transition-colors duration-200 group-focus-within:text-primary" />
-                  <Input placeholder="Search..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="pl-9 w-full rounded-full bg-background/80 backdrop-blur-sm shadow-sm hover:shadow-md focus:shadow-md transition-all duration-300 border-brand-green text-sm h-9" />
-                  {searchQuery && <button onClick={() => setSearchQuery("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors duration-200 p-0.5 rounded-full hover:bg-muted">
-                      <X className="w-4 h-4" />
+              <div className="flex items-center gap-1.5 sm:gap-3 flex-wrap w-full">
+                <div className="relative group flex-1 min-w-[100px] max-w-[160px] sm:max-w-[280px]">
+                  <SearchIcon className="absolute left-2.5 sm:left-3 top-1/2 -translate-y-1/2 w-3.5 sm:w-4 h-3.5 sm:h-4 text-muted-foreground transition-colors duration-200 group-focus-within:text-primary" />
+                  <Input placeholder="Search..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="pl-7 sm:pl-9 w-full rounded-full bg-background/80 backdrop-blur-sm shadow-sm hover:shadow-md focus:shadow-md transition-all duration-300 border-brand-green text-xs sm:text-sm h-8 sm:h-9" />
+                  {searchQuery && <button onClick={() => setSearchQuery("")} className="absolute right-2.5 sm:right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors duration-200 p-0.5 rounded-full hover:bg-muted">
+                      <X className="w-3.5 sm:w-4 h-3.5 sm:h-4" />
                     </button>}
                 </div>
                 <Popover>
                   <PopoverTrigger asChild>
-                    <Button variant="outline" className={`w-auto sm:w-[160px] justify-between rounded-full bg-card shadow-sm hover:shadow-md transition-all duration-300 border-brand-green text-sm gap-2 ${priorityFilter !== "all" || dueDateFilter !== "all" || assignmentFilter !== "all" ? "border-primary/50 bg-primary/5" : ""}`}>
-                      <Filter className="w-4 h-4 text-muted-foreground shrink-0" />
+                    <Button variant="outline" className={`h-8 sm:h-9 px-2.5 sm:px-4 w-auto sm:w-[160px] justify-between rounded-full bg-card shadow-sm hover:shadow-md transition-all duration-300 border-brand-green text-xs sm:text-sm gap-1.5 sm:gap-2 ${priorityFilter !== "all" || dueDateFilter !== "all" || assignmentFilter !== "all" ? "border-primary/50 bg-primary/5" : ""}`}>
+                      <Filter className="w-3.5 sm:w-4 h-3.5 sm:h-4 text-muted-foreground shrink-0" />
                       <span className="hidden sm:inline">Filter Tasks</span>
-                      {(priorityFilter !== "all" || dueDateFilter !== "all" || assignmentFilter !== "all") && <span className="flex items-center justify-center w-5 h-5 rounded-full bg-primary text-primary-foreground text-xs font-medium">
+                      {(priorityFilter !== "all" || dueDateFilter !== "all" || assignmentFilter !== "all") && <span className="flex items-center justify-center w-4 sm:w-5 h-4 sm:h-5 rounded-full bg-primary text-primary-foreground text-[10px] sm:text-xs font-medium">
                           {[priorityFilter !== "all", dueDateFilter !== "all", assignmentFilter !== "all"].filter(Boolean).length}
                         </span>}
-                      <ChevronDown className="h-4 w-4 shrink-0 opacity-50" />
+                      <ChevronDown className="h-3.5 sm:h-4 w-3.5 sm:w-4 shrink-0 opacity-50" />
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-[280px] p-0 bg-popover" align="start">
@@ -626,12 +633,12 @@ const ProjectBoard = () => {
           
           {loading ? <div className="flex items-center justify-center h-64">
               <div className="text-muted-foreground animate-pulse">Loading tasks...</div>
-            </div> : <div className="space-y-6 w-full overflow-hidden">
+            </div> : <div className="space-y-4 sm:space-y-6 w-full overflow-hidden">
               {/* Pending Task Requests Section */}
               <PendingTaskRequests teamMembers={allTeamMembers} currentUserId={user?.id} onTaskAccepted={refetch} />
               
               {/* Task Columns */}
-              <div className="flex flex-col md:flex-row gap-4 sm:gap-6 w-full overflow-hidden">
+              <div className="flex flex-col md:flex-row gap-3 sm:gap-4 md:gap-6 w-full overflow-hidden">
               <SortableColumn id="todo" title="TO DO" variant="todo" items={todoTasks.map(t => t.id)}>
               {todoTasks.map(task => {
                   const IconComponent = iconMap[task.icon] || ListTodo;
@@ -662,12 +669,12 @@ const ProjectBoard = () => {
                         </button>}
                     </div>;
                 })}
-                {todoTasks.length === 0 && <div className="flex flex-col items-center justify-center py-8 sm:py-12 text-center">
-                    <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-white/20 flex items-center justify-center mb-3">
-                      <ListTodo className="w-5 h-5 sm:w-6 sm:h-6 text-white/70" />
+                {todoTasks.length === 0 && <div className="flex flex-col items-center justify-center py-6 sm:py-8 md:py-12 text-center">
+                    <div className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 rounded-2xl bg-white/20 flex items-center justify-center mb-2 sm:mb-3">
+                      <ListTodo className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 text-white/70" />
                     </div>
-                    <p className="text-sm text-white">No tasks to do</p>
-                    <p className="text-xs text-white/70 mt-1">Add one above to get started!</p>
+                    <p className="text-xs sm:text-sm text-white">No tasks to do</p>
+                    <p className="text-[10px] sm:text-xs text-white/70 mt-1">Add one above to get started!</p>
                   </div>}
               </SortableColumn>
               
@@ -698,12 +705,12 @@ const ProjectBoard = () => {
                         </button>}
                     </div>;
                 })}
-                {completeTasks.length === 0 && <div className="flex flex-col items-center justify-center py-8 sm:py-12 text-center">
-                    <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-white/20 flex items-center justify-center mb-3">
-                      <CheckSquare className="w-5 h-5 sm:w-6 sm:h-6 text-white/70" />
+                {completeTasks.length === 0 && <div className="flex flex-col items-center justify-center py-6 sm:py-8 md:py-12 text-center">
+                    <div className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 rounded-2xl bg-white/20 flex items-center justify-center mb-2 sm:mb-3">
+                      <CheckSquare className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 text-white/70" />
                     </div>
-                    <p className="text-sm text-white">No completed tasks yet</p>
-                    <p className="text-xs text-white/70 mt-1">Drag tasks here when done</p>
+                    <p className="text-xs sm:text-sm text-white">No completed tasks yet</p>
+                    <p className="text-[10px] sm:text-xs text-white/70 mt-1">Drag tasks here when done</p>
                   </div>}
               </SortableColumn>
               </div>

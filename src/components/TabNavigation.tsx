@@ -38,7 +38,7 @@ const TabNavigation = ({ activeTab, onTabChange }: TabNavigationProps) => {
   }
 
   return (
-    <div className="flex items-center justify-center gap-1 sm:gap-2 flex-wrap">
+    <div className="flex items-center gap-1 sm:gap-2 flex-nowrap">
       {visibleTabs.map((tab, index) => {
         const Icon = tab.icon;
         const isActive = activeTab === tab.id;
@@ -61,15 +61,15 @@ const TabNavigation = ({ activeTab, onTabChange }: TabNavigationProps) => {
             key={tab.id}
             variant={variant}
             className={cn(
-              "px-3 py-2 sm:px-5 sm:py-2.5 h-auto rounded-full transition-all duration-300 ease-out btn-smooth text-xs sm:text-sm",
-              isActive && "shadow-md ring-2 ring-brand-coral ring-offset-2",
+              "px-2 py-1.5 sm:px-5 sm:py-2.5 h-auto rounded-full transition-all duration-300 ease-out btn-smooth text-[10px] sm:text-sm whitespace-nowrap",
+              isActive && "shadow-md ring-2 ring-brand-coral ring-offset-1 sm:ring-offset-2",
               inactiveColorClass
             )}
             onClick={() => onTabChange(tab.id)}
           >
             <Icon
               className={cn(
-                "w-4 h-4 sm:mr-2 transition-transform duration-200",
+                "w-3.5 h-3.5 sm:w-4 sm:h-4 sm:mr-2 transition-transform duration-200",
                 isActive && "scale-110"
               )}
             />
