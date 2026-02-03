@@ -44,6 +44,7 @@ import {
   Ban,
   CheckCircle,
   Loader2,
+  Download,
 } from "lucide-react";
 import { useSuperAdmin } from "@/hooks/useSuperAdmin";
 import { useAuth } from "@/hooks/useAuth";
@@ -63,6 +64,31 @@ const CustomerList = () => {
   const [selectedOrgId, setSelectedOrgId] = useState<string | null>(null);
   const [suspensionReason, setSuspensionReason] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
+
+  const exportUsersToCSV = (org: typeof organizations[0]) => {
+    // Build CSV content
+    const headers = ["Name", "Job Role", "Email", "Phone", "Role"];
+    const rows = org.users.map((user) => [
+      user.full_name,
+      user.job_role,
+      user.email || "",
+      user.phone_number || "",
+      user.role || "member",
+    ]);
+
+    const csvContent = [
+      headers.join(","),
+      ...rows.map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(",")),
+    ].join("\n");
+
+    // Create and trigger download
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = `${org.slug}-users-${format(new Date(), "yyyy-MM-dd")}.csv`;
+    link.click();
+    URL.revokeObjectURL(link.href);
+  };
 
   const toggleExpanded = (orgId: string) => {
     setExpandedOrgs((prev) =>
@@ -449,11 +475,28 @@ const CustomerList = () => {
                               Team Members ({org.users.length})
                             </h4>
                             {org.users.length > 0 ? (
-                              <Table>
+                              <>
+                                <div className="flex justify-end mb-2">
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="border-slate-600 text-slate-300 hover:bg-slate-700"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      exportUsersToCSV(org);
+                                    }}
+                                  >
+                                    <Download className="w-4 h-4 mr-1" />
+                                    Export CSV
+                                  </Button>
+                                </div>
+                                <Table>
                                 <TableHeader>
                                   <TableRow className="border-slate-700 hover:bg-transparent">
                                     <TableHead className="text-slate-400">Name</TableHead>
                                     <TableHead className="text-slate-400">Job Role</TableHead>
+                                    <TableHead className="text-slate-400">Email</TableHead>
+                                    <TableHead className="text-slate-400">Phone</TableHead>
                                     <TableHead className="text-slate-400">Role</TableHead>
                                   </TableRow>
                                 </TableHeader>
@@ -462,6 +505,8 @@ const CustomerList = () => {
                                     <TableRow key={user.id} className="border-slate-700 hover:bg-slate-800/30">
                                       <TableCell className="text-white">{user.full_name}</TableCell>
                                       <TableCell className="text-slate-300">{user.job_role}</TableCell>
+                                      <TableCell className="text-slate-300">{user.email || "-"}</TableCell>
+                                      <TableCell className="text-slate-300">{user.phone_number || "-"}</TableCell>
                                       <TableCell>
                                         <Badge
                                           variant="outline"
@@ -478,6 +523,7 @@ const CustomerList = () => {
                                   ))}
                                 </TableBody>
                               </Table>
+                              </>
                             ) : (
                               <p className="text-slate-400 text-sm">No users found</p>
                             )}
