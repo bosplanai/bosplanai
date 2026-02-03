@@ -278,7 +278,11 @@ const ProjectBoard = () => {
     completeTasks
   } = useMemo(() => {
     const filtered = tasks.filter(task => {
-      const matchesCategory = task.category === activeTab;
+      // For team members (viewers), show assigned operational/strategic tasks on the product tab
+      const isAssignedToTask = task.task_assignments?.some(a => a.user_id === user?.id) || task.assigned_user_id === user?.id;
+      const isOpsOrStrategicTask = task.category === "operational" || task.category === "strategic";
+      const matchesCategory = task.category === activeTab || 
+        (activeTab === "product" && isViewer && isOpsOrStrategicTask && isAssignedToTask);
       const matchesSearch = debouncedSearchQuery.trim() === "" || task.title.toLowerCase().includes(debouncedSearchQuery.toLowerCase());
       const matchesPriority = priorityFilter === "all" || task.priority === priorityFilter;
       const matchesSubcategory = !showSubcategoryFilter || subcategoryFilter === "all" || task.subcategory === subcategoryFilter;
