@@ -21,6 +21,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Switch } from "@/components/ui/switch";
 import { format } from "date-fns";
 import OrganizationSwitcher from "@/components/OrganizationSwitcher";
 import { FileUploadDialog } from "@/components/drive/FileUploadDialog";
@@ -346,6 +347,9 @@ const Drive = () => {
   const [editFileDescription, setEditFileDescription] = useState("");
   const [editFileFolderId, setEditFileFolderId] = useState<string | null>(null);
   const [editFileAssignedTo, setEditFileAssignedTo] = useState<string | null>(null);
+  const [editFileCategory, setEditFileCategory] = useState<string>("general");
+  const [editFileIsRestricted, setEditFileIsRestricted] = useState(false);
+  const [editFileAssignedUsers, setEditFileAssignedUsers] = useState<string[]>([]);
 
   // File preview state
   const [previewFile, setPreviewFile] = useState<DriveFile | null>(null);
@@ -1253,13 +1257,17 @@ const Drive = () => {
       name,
       description,
       folder_id,
-      assigned_to
+      assigned_to,
+      file_category,
+      is_restricted
     }: {
       fileId: string;
       name: string;
       description: string | null;
       folder_id: string | null;
       assigned_to: string | null;
+      file_category: string;
+      is_restricted: boolean;
     }) => {
       const {
         error
@@ -1267,7 +1275,9 @@ const Drive = () => {
         name,
         description,
         folder_id,
-        assigned_to
+        assigned_to,
+        file_category,
+        is_restricted
       }).eq("id", fileId);
       if (error) throw error;
     },
@@ -1285,6 +1295,22 @@ const Drive = () => {
     onError: () => toast.error("Failed to update file details")
   });
 
+  // Helper to toggle assigned user in edit dialog
+  const toggleEditAssignedUser = (userId: string) => {
+    setEditFileAssignedUsers(prev =>
+      prev.includes(userId)
+        ? prev.filter(id => id !== userId)
+        : [...prev, userId]
+    );
+    // Also update the single assigned_to field with the first user
+    setEditFileAssignedTo(prev => {
+      const newList = editFileAssignedUsers.includes(userId)
+        ? editFileAssignedUsers.filter(id => id !== userId)
+        : [...editFileAssignedUsers, userId];
+      return newList.length > 0 ? newList[0] : null;
+    });
+  };
+
   // Helper to open edit dialog with file data
   const openEditFileDialog = (file: DriveFile) => {
     setFileToEdit(file);
@@ -1292,6 +1318,9 @@ const Drive = () => {
     setEditFileDescription(file.description || "");
     setEditFileFolderId(file.folder_id);
     setEditFileAssignedTo(file.assigned_to);
+    setEditFileCategory(file.file_category || "general");
+    setEditFileIsRestricted(file.is_restricted || false);
+    setEditFileAssignedUsers(file.assigned_to ? [file.assigned_to] : []);
     setEditFileDialogOpen(true);
   };
 
@@ -2361,82 +2390,167 @@ const Drive = () => {
           setFileToEdit(null);
         }
       }}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Edit File Details</DialogTitle>
+            <DialogTitle>Edit Details</DialogTitle>
           </DialogHeader>
           <div className="py-4 space-y-4">
-            <div>
-              <Label htmlFor="edit-file-name">File Name</Label>
-              <Input id="edit-file-name" value={editFileName} onChange={e => setEditFileName(e.target.value)} placeholder="Enter file name" className="mt-2" />
+            {/* Selected File Display */}
+            <div className="flex flex-col items-center justify-center p-4 border-2 border-dashed border-border rounded-lg bg-muted/30">
+              <FileText className="w-10 h-10 text-muted-foreground mb-2" />
+              <p className="text-sm text-muted-foreground">1 file(s) selected</p>
+              <Badge variant="secondary" className="mt-2">
+                {fileToEdit?.name}
+              </Badge>
             </div>
+
+            {/* Destination Folder */}
             <div>
-              <Label htmlFor="edit-file-description">Description</Label>
-              <Textarea id="edit-file-description" value={editFileDescription} onChange={e => setEditFileDescription(e.target.value)} placeholder="Add a description (optional)" className="mt-2 min-h-[80px]" />
-            </div>
-            <div>
-              <Label>Folder</Label>
-              <Select value={editFileFolderId || "uncategorized"} onValueChange={val => setEditFileFolderId(val === "uncategorized" ? null : val)}>
-                <SelectTrigger className="mt-2">
-                  <SelectValue placeholder="Select folder" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="uncategorized">
-                    <div className="flex items-center gap-2">
-                      <File className="w-4 h-4" />
-                      Uncategorized
-                    </div>
-                  </SelectItem>
-                  {allFolders.map(folder => <SelectItem key={folder.id} value={folder.id}>
+              <Label className="font-medium">Destination Folder</Label>
+              <div className="flex gap-2 mt-2">
+                <Select value={editFileFolderId || "uncategorized"} onValueChange={val => setEditFileFolderId(val === "uncategorized" ? null : val)}>
+                  <SelectTrigger className="flex-1">
+                    <SelectValue placeholder="Select folder" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="uncategorized">
                       <div className="flex items-center gap-2">
-                        <Folder className="w-4 h-4 text-orange-400" />
-                        {folder.name}
-                      </div>
-                    </SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label>Assign to</Label>
-              <Select 
-                value={editFileAssignedTo || "unassigned"} 
-                onValueChange={val => setEditFileAssignedTo(val === "unassigned" ? null : val)}
-              >
-                <SelectTrigger className="mt-2">
-                  <SelectValue placeholder="Select team member" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="unassigned">
-                    <div className="flex items-center gap-2">
-                      <Users className="w-4 h-4 text-muted-foreground" />
-                      Unassigned
-                    </div>
-                  </SelectItem>
-                  {teamMembers.map(member => (
-                    <SelectItem key={member.id} value={member.id}>
-                      <div className="flex items-center gap-2">
-                        <Users className="w-4 h-4 text-primary" />
-                        {member.full_name}
+                        <File className="w-4 h-4" />
+                        My Files (No folder)
                       </div>
                     </SelectItem>
-                  ))}
+                    {allFolders.map(folder => <SelectItem key={folder.id} value={folder.id}>
+                        <div className="flex items-center gap-2">
+                          <Folder className="w-4 h-4 text-orange-400" />
+                          {folder.name}
+                        </div>
+                      </SelectItem>)}
+                  </SelectContent>
+                </Select>
+                <Button variant="outline" size="icon" title="Create new folder">
+                  <FolderPlus className="w-4 h-4" />
+                </Button>
+              </div>
+            </div>
+
+            {/* Document Type */}
+            <div>
+              <Label className="font-medium">Document Type *</Label>
+              <Select value={editFileCategory} onValueChange={setEditFileCategory}>
+                <SelectTrigger className="mt-2">
+                  <SelectValue placeholder="Select document type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="general">General Document</SelectItem>
+                  <SelectItem value="contract">Contract</SelectItem>
+                  <SelectItem value="strategy">Strategy Document</SelectItem>
+                  <SelectItem value="policy">Policy</SelectItem>
+                  <SelectItem value="report">Report</SelectItem>
+                  <SelectItem value="presentation">Presentation</SelectItem>
+                  <SelectItem value="financial">Financial Document</SelectItem>
+                  <SelectItem value="legal">Legal Document</SelectItem>
+                  <SelectItem value="hr">HR Document</SelectItem>
+                  <SelectItem value="marketing">Marketing Material</SelectItem>
+                  <SelectItem value="other">Other</SelectItem>
                 </SelectContent>
               </Select>
             </div>
-            
+
+            {/* Restrict Access */}
+            <div className="space-y-3 p-4 rounded-lg bg-muted/50 border border-border">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Lock className="w-4 h-4 text-muted-foreground" />
+                  <Label className="text-sm font-medium">Restrict Access</Label>
+                </div>
+                <Switch
+                  checked={editFileIsRestricted}
+                  onCheckedChange={setEditFileIsRestricted}
+                />
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {editFileIsRestricted 
+                  ? "Only selected members can view this file."
+                  : "All organization members can view this file."}
+              </p>
+            </div>
+
+            {/* Assign Users - Only show when NOT restricted */}
+            {!editFileIsRestricted && (
+              <div className="space-y-3 p-4 rounded-lg bg-muted/50 border border-border">
+                <div className="flex items-center gap-2">
+                  <Users className="w-4 h-4 text-muted-foreground" />
+                  <Label className="text-sm font-medium">Assign To (for review)</Label>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Assign this document to team members for review.
+                </p>
+                <div className="max-h-32 overflow-y-auto space-y-2">
+                  {teamMembers.length > 0 ? (
+                    teamMembers.map((member) => (
+                      <label
+                        key={member.id}
+                        className="flex items-center gap-2 text-sm cursor-pointer hover:bg-muted/50 p-1 rounded"
+                      >
+                        <Checkbox
+                          checked={editFileAssignedUsers.includes(member.id)}
+                          onCheckedChange={() => {
+                            setEditFileAssignedUsers(prev =>
+                              prev.includes(member.id)
+                                ? prev.filter(id => id !== member.id)
+                                : [...prev, member.id]
+                            );
+                            // Update single assigned_to field
+                            const newList = editFileAssignedUsers.includes(member.id)
+                              ? editFileAssignedUsers.filter(id => id !== member.id)
+                              : [...editFileAssignedUsers, member.id];
+                            setEditFileAssignedTo(newList.length > 0 ? newList[0] : null);
+                          }}
+                        />
+                        <span>{member.full_name}</span>
+                      </label>
+                    ))
+                  ) : (
+                    <p className="text-xs text-muted-foreground">No team members available</p>
+                  )}
+                </div>
+                {editFileAssignedUsers.length > 0 && (
+                  <div className="flex flex-wrap gap-1 pt-1">
+                    {editFileAssignedUsers.map((userId) => {
+                      const member = teamMembers.find(m => m.id === userId);
+                      return (
+                        <Badge key={userId} variant="secondary" className="text-xs gap-1">
+                          {member?.full_name}
+                          <X 
+                            className="w-3 h-3 cursor-pointer hover:text-destructive" 
+                            onClick={() => {
+                              setEditFileAssignedUsers(prev => prev.filter(id => id !== userId));
+                              const newList = editFileAssignedUsers.filter(id => id !== userId);
+                              setEditFileAssignedTo(newList.length > 0 ? newList[0] : null);
+                            }}
+                          />
+                        </Badge>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => {
               setEditFileDialogOpen(false);
               setFileToEdit(null);
             }}>Cancel</Button>
-            <Button className="bg-primary hover:bg-primary/90" onClick={() => fileToEdit && updateFileMetadataMutation.mutate({
+            <Button className="bg-brand-teal hover:bg-brand-teal/90" onClick={() => fileToEdit && updateFileMetadataMutation.mutate({
               fileId: fileToEdit.id,
               name: editFileName,
               description: editFileDescription || null,
               folder_id: editFileFolderId,
-              assigned_to: editFileAssignedTo
-            })} disabled={!editFileName.trim() || updateFileMetadataMutation.isPending}>
+              assigned_to: editFileAssignedUsers.length > 0 ? editFileAssignedUsers[0] : null,
+              file_category: editFileCategory,
+              is_restricted: editFileIsRestricted
+            })} disabled={updateFileMetadataMutation.isPending}>
               Save Changes
             </Button>
           </DialogFooter>
