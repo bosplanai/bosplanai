@@ -274,30 +274,57 @@ const SortableTaskCard = memo(({
       )}
       style={sortableStyle}
     >
-      {/* Status toggle + Drag handle */}
+      {/* Status dropdown + Drag handle */}
       <div className="flex-shrink-0 flex items-center gap-1.5">
-        {/* Clickable status toggle */}
+        {/* Status dropdown - desktop */}
         {onStatusChange && (
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onStatusChange(isComplete ? "todo" : "complete");
-            }}
-            onPointerDown={(e) => e.stopPropagation()}
-            className={cn(
-              "hidden sm:flex w-6 h-6 rounded-md items-center justify-center transition-all duration-200 hover:scale-110",
-              isComplete 
-                ? "bg-green-500/20 hover:bg-green-500/30" 
-                : "bg-muted hover:bg-muted/80"
-            )}
-            title={isComplete ? "Mark as To Do" : "Mark as Complete"}
-          >
-            {isComplete ? (
-              <CheckCircle2 className="w-4 h-4 text-green-600" />
-            ) : (
-              <Circle className="w-4 h-4 text-muted-foreground" />
-            )}
-          </button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                onClick={(e) => e.stopPropagation()}
+                onPointerDown={(e) => e.stopPropagation()}
+                className={cn(
+                  "hidden sm:flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium transition-all duration-200 hover:bg-muted",
+                  isComplete 
+                    ? "text-green-600 bg-green-500/10" 
+                    : "text-muted-foreground bg-muted/50"
+                )}
+              >
+                <span>Status</span>
+                <svg className="w-3 h-3" fill="none" viewBox="0 0 10 6" xmlns="http://www.w3.org/2000/svg">
+                  <path stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="m1 1 4 4 4-4"/>
+                </svg>
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-36 bg-popover z-50">
+              <DropdownMenuItem
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onStatusChange("todo");
+                }}
+                className={cn(
+                  "flex items-center gap-2 cursor-pointer",
+                  status === "todo" && !isComplete && "bg-accent"
+                )}
+              >
+                <Circle className="h-4 w-4 text-muted-foreground" />
+                <span>To Do</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onStatusChange("complete");
+                }}
+                className={cn(
+                  "flex items-center gap-2 cursor-pointer",
+                  isComplete && "bg-accent"
+                )}
+              >
+                <CheckCircle2 className="h-4 w-4 text-green-600" />
+                <span>Complete</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         )}
         
         {/* Drag handle */}
