@@ -91,17 +91,17 @@ const STATUS_DISPLAY: Record<string, {
     bgColor: "bg-brand-teal/10"
   },
   review_failed: {
-    label: "Reviewed & Changes Required",
+    label: "Review Failed",
     color: "text-brand-coral",
     bgColor: "bg-brand-coral/10"
   },
   being_amended: {
-    label: "Being Amended",
+    label: "Amending",
     color: "text-brand-orange",
     bgColor: "bg-brand-orange/10"
   },
   completed: {
-    label: "Reviewed & Approved",
+    label: "Completed",
     color: "text-brand-green",
     bgColor: "bg-brand-green/10"
   },
