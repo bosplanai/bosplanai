@@ -47,7 +47,7 @@ const SortableColumn = forwardRef<HTMLDivElement, SortableColumnProps>(({
       ref={setRefs}
       style={getCustomBgStyle()}
       className={cn(
-        "flex-1 min-w-0 rounded-2xl p-4 sm:p-6 min-h-[300px] sm:min-h-[500px] transition-all duration-300 ease-out backdrop-blur-sm relative overflow-hidden",
+        "w-1/2 flex-shrink-0 flex-grow-0 rounded-2xl p-4 sm:p-6 min-h-[300px] sm:min-h-[500px] transition-all duration-300 ease-out backdrop-blur-sm relative overflow-hidden",
         variant === "todo" ? "bg-todo/80" : "bg-complete/80",
         isOver && "ring-2 ring-primary/30 ring-inset scale-[1.01]"
       )}
