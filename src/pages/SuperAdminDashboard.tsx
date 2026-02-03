@@ -2,7 +2,7 @@ import { useOrgNavigation } from "@/hooks/useOrgNavigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Shield, Building2, Users, UserX, Gift, Link, ArrowRight, Sparkles, Activity, Bot, UserPlus, LogOut } from "lucide-react";
+import { Shield, Building2, Users, UserX, Gift, Link, ArrowRight, Sparkles, Activity, Bot, UserPlus, LogOut, FileText } from "lucide-react";
 import { useSuperAdmin } from "@/hooks/useSuperAdmin";
 import { useAuth } from "@/hooks/useAuth";
 import { useSuperAdminData } from "@/hooks/useSuperAdminData";
@@ -144,6 +144,19 @@ const SuperAdminDashboard = () => {
       href: "/superadmin/ai-usage",
       color: "text-amber-500",
       bgColor: "bg-amber-500/10"
+    }]
+  }, {
+    category: "Security & Compliance",
+    description: "Monitor security events and audit trails",
+    icon: Shield,
+    iconColor: "text-red-400",
+    items: [{
+      title: "Audit Logs",
+      description: "View append-only security logs: who did what, when, and from where",
+      icon: FileText,
+      href: "/superadmin/audit-logs",
+      color: "text-red-500",
+      bgColor: "bg-red-500/10"
     }]
   }];
   return <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">

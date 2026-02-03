@@ -9,30 +9,49 @@ const corsHeaders = {
 };
 
 // Rate limit configuration
-const RATE_LIMIT_MAX_REQUESTS = 5; // Max 5 requests
-const RATE_LIMIT_WINDOW_MINUTES = 1; // Per 1 minute
+const RATE_LIMIT_MAX_REQUESTS = 5;
+const RATE_LIMIT_WINDOW_MINUTES = 1;
 
 // Get client IP from request headers
 function getClientIP(req: Request): string {
-  // Check common headers for real IP (in order of priority)
   const forwardedFor = req.headers.get("x-forwarded-for");
   if (forwardedFor) {
-    // x-forwarded-for can contain multiple IPs, take the first one
     return forwardedFor.split(",")[0].trim();
   }
-  
   const realIP = req.headers.get("x-real-ip");
-  if (realIP) {
-    return realIP.trim();
-  }
-  
+  if (realIP) return realIP.trim();
   const cfConnectingIP = req.headers.get("cf-connecting-ip");
-  if (cfConnectingIP) {
-    return cfConnectingIP.trim();
-  }
-  
-  // Fallback to a default if no IP found
+  if (cfConnectingIP) return cfConnectingIP.trim();
   return "unknown";
+}
+
+// Log audit event
+async function logAuditEvent(
+  adminClient: any,
+  userId: string | null,
+  userEmail: string,
+  action: string,
+  resourceType: string | null,
+  resourceId: string | null,
+  details: object | null,
+  ipAddress: string,
+  userAgent: string | null
+) {
+  try {
+    await adminClient.from("super_admin_audit_logs").insert({
+      user_id: userId,
+      user_email: userEmail,
+      action,
+      resource_type: resourceType,
+      resource_id: resourceId,
+      details,
+      ip_address: ipAddress,
+      user_agent: userAgent,
+    });
+    console.log(`Audit log: ${action} by ${userEmail} from ${ipAddress}`);
+  } catch (error) {
+    console.error("Failed to write audit log:", error);
+  }
 }
 
 // Generate a 6-digit OTP
@@ -41,25 +60,21 @@ function generateOTP(): string {
 }
 
 serve(async (req) => {
-  // Handle CORS preflight
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
   const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-
-  // Create admin client for rate limiting check
   const adminClient = createClient(supabaseUrl, supabaseServiceKey);
 
+  const clientIP = getClientIP(req);
+  const userAgent = req.headers.get("user-agent");
+  const endpoint = "superadmin-send-otp";
+
   try {
-    // Get client IP for rate limiting
-    const clientIP = getClientIP(req);
-    const endpoint = "superadmin-send-otp";
-    
     console.log(`Rate limit check for IP: ${clientIP}, endpoint: ${endpoint}`);
     
-    // Check rate limit using database function
     const { data: isAllowed, error: rateLimitError } = await adminClient
       .rpc("check_rate_limit", {
         p_ip_address: clientIP,
@@ -70,9 +85,22 @@ serve(async (req) => {
     
     if (rateLimitError) {
       console.error("Rate limit check error:", rateLimitError);
-      // Don't block on rate limit errors, just log and continue
     } else if (!isAllowed) {
       console.warn(`Rate limit exceeded for IP: ${clientIP}, endpoint: ${endpoint}`);
+      
+      // Log rate limit hit
+      await logAuditEvent(
+        adminClient,
+        null,
+        "unknown",
+        "rate_limit_exceeded",
+        "auth",
+        null,
+        { endpoint, reason: "Too many OTP requests" },
+        clientIP,
+        userAgent
+      );
+      
       return new Response(
         JSON.stringify({ 
           error: "Too many requests. Please try again later.",
@@ -120,6 +148,20 @@ serve(async (req) => {
 
     if (roleError || !roleData) {
       console.error("User is not a super admin:", user_id);
+      
+      // Log unauthorized access attempt
+      await logAuditEvent(
+        adminClient,
+        user_id,
+        email,
+        "unauthorized_access_attempt",
+        "auth",
+        null,
+        { reason: "User is not a super admin" },
+        clientIP,
+        userAgent
+      );
+      
       return new Response(
         JSON.stringify({ error: "Unauthorized" }),
         { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -134,7 +176,7 @@ serve(async (req) => {
 
     // Generate new OTP
     const otpCode = generateOTP();
-    const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes from now
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
 
     console.log(`Generated OTP for user ${user_id}, expires at ${expiresAt.toISOString()}`);
 
@@ -191,17 +233,25 @@ serve(async (req) => {
 
     if (emailError) {
       console.error("Failed to send OTP email:", emailError);
-      // Delete the OTP since we couldn't send the email
-      await adminClient
-        .from("super_admin_otp")
-        .delete()
-        .eq("user_id", user_id);
-      
+      await adminClient.from("super_admin_otp").delete().eq("user_id", user_id);
       return new Response(
         JSON.stringify({ error: "Failed to send verification email" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
+
+    // Log successful OTP send
+    await logAuditEvent(
+      adminClient,
+      user_id,
+      email,
+      "otp_requested",
+      "auth",
+      null,
+      { success: true },
+      clientIP,
+      userAgent
+    );
 
     console.log(`OTP email sent successfully to ${email}`);
 
