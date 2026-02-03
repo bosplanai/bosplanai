@@ -213,6 +213,164 @@ export type Database = {
           },
         ]
       }
+      data_room_document_content: {
+        Row: {
+          content: string
+          content_type: string
+          created_at: string
+          data_room_id: string
+          file_id: string
+          id: string
+          last_edited_by: string | null
+          organization_id: string
+          updated_at: string
+        }
+        Insert: {
+          content?: string
+          content_type?: string
+          created_at?: string
+          data_room_id: string
+          file_id: string
+          id?: string
+          last_edited_by?: string | null
+          organization_id: string
+          updated_at?: string
+        }
+        Update: {
+          content?: string
+          content_type?: string
+          created_at?: string
+          data_room_id?: string
+          file_id?: string
+          id?: string
+          last_edited_by?: string | null
+          organization_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "data_room_document_content_data_room_id_fkey"
+            columns: ["data_room_id"]
+            isOneToOne: false
+            referencedRelation: "data_rooms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "data_room_document_content_file_id_fkey"
+            columns: ["file_id"]
+            isOneToOne: true
+            referencedRelation: "data_room_files"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "data_room_document_content_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      data_room_document_presence: {
+        Row: {
+          cursor_position: number | null
+          file_id: string
+          id: string
+          last_seen_at: string
+          user_id: string
+        }
+        Insert: {
+          cursor_position?: number | null
+          file_id: string
+          id?: string
+          last_seen_at?: string
+          user_id: string
+        }
+        Update: {
+          cursor_position?: number | null
+          file_id?: string
+          id?: string
+          last_seen_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "data_room_document_presence_file_id_fkey"
+            columns: ["file_id"]
+            isOneToOne: false
+            referencedRelation: "data_room_files"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      data_room_document_versions: {
+        Row: {
+          content: string
+          created_at: string
+          created_by: string | null
+          data_room_id: string
+          document_id: string
+          file_id: string
+          id: string
+          organization_id: string
+          version_note: string | null
+          version_number: number
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          created_by?: string | null
+          data_room_id: string
+          document_id: string
+          file_id: string
+          id?: string
+          organization_id: string
+          version_note?: string | null
+          version_number?: number
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          created_by?: string | null
+          data_room_id?: string
+          document_id?: string
+          file_id?: string
+          id?: string
+          organization_id?: string
+          version_note?: string | null
+          version_number?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "data_room_document_versions_data_room_id_fkey"
+            columns: ["data_room_id"]
+            isOneToOne: false
+            referencedRelation: "data_rooms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "data_room_document_versions_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "data_room_document_content"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "data_room_document_versions_file_id_fkey"
+            columns: ["file_id"]
+            isOneToOne: false
+            referencedRelation: "data_room_files"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "data_room_document_versions_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       data_room_file_comments: {
         Row: {
           comment: string
