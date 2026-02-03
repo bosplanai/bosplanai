@@ -157,11 +157,10 @@ const VirtualAssistants = () => {
                 <Badge className="mb-3 bg-[#176884] text-white border-0 hover:bg-[#176884]/90 text-xs">
                   Virtual Assistants
                 </Badge>
-                <p className="text-muted-foreground leading-relaxed">Need affordable assistance for your business? Our Virtual Assistants offer a low-cost and highly-skilled solution. Choose the role and number of hours, then purchase directly through the platform. Once completed, your Virtual Assistant will be added to your organisation and you can allocate work as you wish.
+                <p className="text-muted-foreground leading-relaxed">Need affordable assistance for your business? Our Virtual Assistants offer a low-cost and highly-skilled solution. Choose the role and number of hours, then purchase directly through the platform. Once completed, your Virtual Assistant will be added to your organisation and you can allocate work as you wish. 
 
 
- Important Notice
-Please note that 30 days’ notice is required for the virtual assistant service to start, and 30 days’ notice is also required for cancellation of the service.</p>
+Important: Please note that 30 days’ notice is required for the virtual assistant service to start, and 30 days’ notice is also required for cancellation of the service.</p>
               </div>
             </div>
           </div>
