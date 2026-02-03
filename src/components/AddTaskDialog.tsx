@@ -19,44 +19,86 @@ import { useToast } from "@/hooks/use-toast";
 import { useTemplates, Template } from "@/hooks/useTemplates";
 import TemplateSelectDialog from "./templates/TemplateSelectDialog";
 import TemplatePreviewDialog from "./templates/TemplatePreviewDialog";
-
 const iconMap: Record<string, LucideIcon> = {
-  ListTodo, Search, Users, BarChart3, Coins, TrendingUp, CheckSquare, Navigation, Lightbulb, FileText, ClipboardList
+  ListTodo,
+  Search,
+  Users,
+  BarChart3,
+  Coins,
+  TrendingUp,
+  CheckSquare,
+  Navigation,
+  Lightbulb,
+  FileText,
+  ClipboardList
 };
-
-const iconOptions = [
-  { value: "ListTodo", label: "List" },
-  { value: "Search", label: "Search" },
-  { value: "Users", label: "Users" },
-  { value: "BarChart3", label: "Chart" },
-  { value: "Coins", label: "Money" },
-  { value: "TrendingUp", label: "Trending" },
-  { value: "CheckSquare", label: "Checkbox" },
-  { value: "Navigation", label: "Navigation" },
-  { value: "Lightbulb", label: "Idea" },
-  { value: "FileText", label: "Document" },
-  { value: "ClipboardList", label: "Clipboard" }
-];
-
-const priorityOptions = [
-  { value: "high", label: "High", className: "text-priority-high" },
-  { value: "medium", label: "Medium", className: "text-priority-medium" },
-  { value: "low", label: "Low", className: "text-priority-low" }
-];
-
-const subcategoryOptions = [
-  { value: "weekly", label: "Weekly" },
-  { value: "monthly", label: "Monthly" },
-  { value: "quarterly", label: "Quarterly" },
-  { value: "yearly", label: "Yearly" },
-  { value: "misc", label: "MISC" }
-];
-
+const iconOptions = [{
+  value: "ListTodo",
+  label: "List"
+}, {
+  value: "Search",
+  label: "Search"
+}, {
+  value: "Users",
+  label: "Users"
+}, {
+  value: "BarChart3",
+  label: "Chart"
+}, {
+  value: "Coins",
+  label: "Money"
+}, {
+  value: "TrendingUp",
+  label: "Trending"
+}, {
+  value: "CheckSquare",
+  label: "Checkbox"
+}, {
+  value: "Navigation",
+  label: "Navigation"
+}, {
+  value: "Lightbulb",
+  label: "Idea"
+}, {
+  value: "FileText",
+  label: "Document"
+}, {
+  value: "ClipboardList",
+  label: "Clipboard"
+}];
+const priorityOptions = [{
+  value: "high",
+  label: "High",
+  className: "text-priority-high"
+}, {
+  value: "medium",
+  label: "Medium",
+  className: "text-priority-medium"
+}, {
+  value: "low",
+  label: "Low",
+  className: "text-priority-low"
+}];
+const subcategoryOptions = [{
+  value: "weekly",
+  label: "Weekly"
+}, {
+  value: "monthly",
+  label: "Monthly"
+}, {
+  value: "quarterly",
+  label: "Quarterly"
+}, {
+  value: "yearly",
+  label: "Yearly"
+}, {
+  value: "misc",
+  label: "MISC"
+}];
 interface TeamMember {
   id: string;
   full_name: string;
 }
-
 interface AddTaskDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -84,7 +126,6 @@ interface AddTaskDialogProps {
 
 // Session storage key for persisting form state
 const FORM_STORAGE_KEY = "addTaskDialog_formState";
-
 interface PersistedFormState {
   title: string;
   description: string;
@@ -95,12 +136,14 @@ interface PersistedFormState {
   newProjectTitle: string;
   dueDate: string | null;
   assignedUserIds: string[];
-  taskUrls: { url: string; title: string }[];
+  taskUrls: {
+    url: string;
+    title: string;
+  }[];
   newUrl: string;
   newUrlTitle: string;
   isRecurring: boolean;
 }
-
 const AddTaskDialog = ({
   open,
   onOpenChange,
@@ -124,9 +167,7 @@ const AddTaskDialog = ({
     }
     return null;
   }, []);
-
   const initialState = getInitialState();
-
   const [title, setTitle] = useState(initialState?.title || "");
   const [description, setDescription] = useState(initialState?.description || "");
   const [icon, setIcon] = useState(initialState?.icon || "ListTodo");
@@ -134,12 +175,13 @@ const AddTaskDialog = ({
   const [subcategory, setSubcategory] = useState<TaskSubcategory>(initialState?.subcategory || "weekly");
   const [projectSelection, setProjectSelection] = useState<string>(initialState?.projectSelection || "none");
   const [newProjectTitle, setNewProjectTitle] = useState(initialState?.newProjectTitle || "");
-  const [dueDate, setDueDate] = useState<Date | undefined>(
-    initialState?.dueDate ? new Date(initialState.dueDate) : undefined
-  );
+  const [dueDate, setDueDate] = useState<Date | undefined>(initialState?.dueDate ? new Date(initialState.dueDate) : undefined);
   const [assignedUserIds, setAssignedUserIds] = useState<string[]>(initialState?.assignedUserIds || []);
   const [attachments, setAttachments] = useState<File[]>([]); // Files can't be persisted to sessionStorage
-  const [taskUrls, setTaskUrls] = useState<{ url: string; title: string }[]>(initialState?.taskUrls || []);
+  const [taskUrls, setTaskUrls] = useState<{
+    url: string;
+    title: string;
+  }[]>(initialState?.taskUrls || []);
   const [newUrl, setNewUrl] = useState(initialState?.newUrl || "");
   const [newUrlTitle, setNewUrlTitle] = useState(initialState?.newUrlTitle || "");
   const [isRecurring, setIsRecurring] = useState(initialState?.isRecurring || false);
@@ -147,20 +189,24 @@ const AddTaskDialog = ({
   const [showCloseWarning, setShowCloseWarning] = useState(false);
   const [isSavingDraft, setIsSavingDraft] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const { toast } = useToast();
-  const { templates } = useTemplates();
+  const {
+    toast
+  } = useToast();
+  const {
+    templates
+  } = useTemplates();
   const [templateSelectOpen, setTemplateSelectOpen] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(null);
   const [templatePreviewOpen, setTemplatePreviewOpen] = useState(false);
-  
-  const { projects, addProject } = useProjects();
-  
+  const {
+    projects,
+    addProject
+  } = useProjects();
   const hasTaskTemplates = templates.some(t => t.template_type === "task");
 
   // Persist form state to sessionStorage whenever it changes (only when dialog is open)
   useEffect(() => {
     if (!open) return;
-    
     const formState: PersistedFormState = {
       title,
       description,
@@ -174,9 +220,8 @@ const AddTaskDialog = ({
       taskUrls,
       newUrl,
       newUrlTitle,
-      isRecurring,
+      isRecurring
     };
-    
     try {
       sessionStorage.setItem(FORM_STORAGE_KEY, JSON.stringify(formState));
     } catch (e) {
@@ -185,14 +230,7 @@ const AddTaskDialog = ({
   }, [open, title, description, icon, priority, subcategory, projectSelection, newProjectTitle, dueDate, assignedUserIds, taskUrls, newUrl, newUrlTitle, isRecurring]);
 
   // Check if user has entered any data
-  const hasUnsavedChanges = title.trim() !== "" || 
-    description.trim() !== "" || 
-    attachments.length > 0 || 
-    taskUrls.length > 0 ||
-    projectSelection !== "none" ||
-    dueDate !== undefined ||
-    assignedUserIds.length > 0;
-
+  const hasUnsavedChanges = title.trim() !== "" || description.trim() !== "" || attachments.length > 0 || taskUrls.length > 0 || projectSelection !== "none" || dueDate !== undefined || assignedUserIds.length > 0;
   const resetForm = () => {
     setTitle("");
     setDescription("");
@@ -215,7 +253,6 @@ const AddTaskDialog = ({
       console.error("Error clearing form state from sessionStorage:", e);
     }
   };
-
   const handleCloseAttempt = (isOpen: boolean) => {
     if (!isOpen && hasUnsavedChanges) {
       setShowCloseWarning(true);
@@ -224,55 +261,45 @@ const AddTaskDialog = ({
       onOpenChange(isOpen);
     }
   };
-
   const confirmClose = () => {
     setShowCloseWarning(false);
     resetForm();
     onOpenChange(false);
   };
-
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     setAttachments(prev => [...prev, ...files]);
   };
-
   const removeAttachment = (index: number) => {
     setAttachments(prev => prev.filter((_, i) => i !== index));
   };
-
-  const uploadAttachmentToStorage = async (
-    file: File,
-    taskId: string
-  ): Promise<boolean> => {
+  const uploadAttachmentToStorage = async (file: File, taskId: string): Promise<boolean> => {
     if (!organizationId) return false;
-
-    const { data: userData } = await supabase.auth.getUser();
+    const {
+      data: userData
+    } = await supabase.auth.getUser();
     if (!userData.user) return false;
-
     const fileExt = file.name.split(".").pop();
     const filePath = `${organizationId}/${taskId}_${Date.now()}.${fileExt}`;
-
     try {
       // Upload to storage
-      const { error: uploadError } = await supabase.storage
-        .from("task-attachments")
-        .upload(filePath, file);
-
+      const {
+        error: uploadError
+      } = await supabase.storage.from("task-attachments").upload(filePath, file);
       if (uploadError) throw uploadError;
 
       // Insert into task_attachments table
-      const { error } = await supabase
-        .from("task_attachments")
-        .insert({
-          task_id: taskId,
-          organization_id: organizationId,
-          file_path: filePath,
-          file_name: file.name,
-          file_size: file.size,
-          mime_type: file.type || null,
-          uploaded_by: userData.user.id,
-        });
-
+      const {
+        error
+      } = await supabase.from("task_attachments").insert({
+        task_id: taskId,
+        organization_id: organizationId,
+        file_path: filePath,
+        file_name: file.name,
+        file_size: file.size,
+        mime_type: file.type || null,
+        uploaded_by: userData.user.id
+      });
       if (error) throw error;
       return true;
     } catch (error) {
@@ -280,7 +307,6 @@ const AddTaskDialog = ({
       return false;
     }
   };
-
   const handleSubmit = async () => {
     if (!title.trim()) {
       toast({
@@ -290,9 +316,7 @@ const AddTaskDialog = ({
       });
       return;
     }
-
     setIsUploading(true);
-
     try {
       let finalProjectId: string | null = null;
 
@@ -300,13 +324,11 @@ const AddTaskDialog = ({
       if (projectSelection === "new" && newProjectTitle.trim()) {
         await addProject(newProjectTitle, "", undefined);
         // Get the newly created project
-        const { data: newProjects } = await supabase
-          .from("projects")
-          .select("id")
-          .eq("title", newProjectTitle)
-          .order("created_at", { ascending: false })
-          .limit(1);
-        
+        const {
+          data: newProjects
+        } = await supabase.from("projects").select("id").eq("title", newProjectTitle).order("created_at", {
+          ascending: false
+        }).limit(1);
         if (newProjects && newProjects.length > 0) {
           finalProjectId = newProjects[0].id;
         }
@@ -332,22 +354,22 @@ const AddTaskDialog = ({
 
       // Upload attachments if task was created successfully
       if (taskId && attachments.length > 0) {
-        const uploadPromises = attachments.map(file => 
-          uploadAttachmentToStorage(file, taskId)
-        );
+        const uploadPromises = attachments.map(file => uploadAttachmentToStorage(file, taskId));
         await Promise.all(uploadPromises);
       }
 
       // Save URLs if task was created successfully
       if (taskId && taskUrls.length > 0 && organizationId) {
-        const { data: userData } = await supabase.auth.getUser();
+        const {
+          data: userData
+        } = await supabase.auth.getUser();
         if (userData.user) {
           const urlInserts = taskUrls.map(u => ({
             task_id: taskId,
             organization_id: organizationId,
             url: u.url,
             title: u.title || null,
-            created_by: userData.user.id,
+            created_by: userData.user.id
           }));
           await supabase.from("task_urls").insert(urlInserts);
         }
@@ -355,7 +377,6 @@ const AddTaskDialog = ({
 
       // Trigger refetch after all uploads are complete
       onComplete?.();
-
       resetForm();
       onOpenChange(false);
     } catch (error) {
@@ -369,7 +390,6 @@ const AddTaskDialog = ({
       setIsUploading(false);
     }
   };
-
   const handleSaveAsDraft = async () => {
     if (!title.trim()) {
       toast({
@@ -379,28 +399,22 @@ const AddTaskDialog = ({
       });
       return;
     }
-
     setIsSavingDraft(true);
-
     try {
       let finalProjectId: string | null = null;
-
       if (projectSelection === "new" && newProjectTitle.trim()) {
         await addProject(newProjectTitle, "", undefined);
-        const { data: newProjects } = await supabase
-          .from("projects")
-          .select("id")
-          .eq("title", newProjectTitle)
-          .order("created_at", { ascending: false })
-          .limit(1);
-        
+        const {
+          data: newProjects
+        } = await supabase.from("projects").select("id").eq("title", newProjectTitle).order("created_at", {
+          ascending: false
+        }).limit(1);
         if (newProjects && newProjects.length > 0) {
           finalProjectId = newProjects[0].id;
         }
       } else if (projectSelection !== "none" && projectSelection !== "new") {
         finalProjectId = projectSelection;
       }
-
       const taskId = await onAddTask({
         title,
         icon,
@@ -415,24 +429,23 @@ const AddTaskDialog = ({
         isRecurring: showSubcategoryFilter ? isRecurring : false,
         isDraft: true
       });
-
       if (taskId && attachments.length > 0) {
-        const uploadPromises = attachments.map(file => 
-          uploadAttachmentToStorage(file, taskId)
-        );
+        const uploadPromises = attachments.map(file => uploadAttachmentToStorage(file, taskId));
         await Promise.all(uploadPromises);
       }
 
       // Save URLs for drafts too
       if (taskId && taskUrls.length > 0 && organizationId) {
-        const { data: userData } = await supabase.auth.getUser();
+        const {
+          data: userData
+        } = await supabase.auth.getUser();
         if (userData.user) {
           const urlInserts = taskUrls.map(u => ({
             task_id: taskId,
             organization_id: organizationId,
             url: u.url,
             title: u.title || null,
-            created_by: userData.user.id,
+            created_by: userData.user.id
           }));
           await supabase.from("task_urls").insert(urlInserts);
         }
@@ -440,7 +453,6 @@ const AddTaskDialog = ({
 
       // Trigger refetch after uploads/urls complete for drafts too
       onComplete?.();
-
       resetForm();
       onOpenChange(false);
       toast({
@@ -458,9 +470,7 @@ const AddTaskDialog = ({
       setIsSavingDraft(false);
     }
   };
-
-  return (
-    <>
+  return <>
     {/* Unsaved Changes Warning Dialog */}
     <AlertDialog open={showCloseWarning} onOpenChange={setShowCloseWarning}>
       <AlertDialogContent>
@@ -497,27 +507,15 @@ const AddTaskDialog = ({
         </DialogHeader>
         <div className="space-y-4 pt-4">
           {/* Template Selection Button */}
-          {hasTaskTemplates && (
-            <Button
-              type="button"
-              variant="outline"
-              className="w-full justify-start gap-2 border-dashed"
-              onClick={() => setTemplateSelectOpen(true)}
-            >
+          {hasTaskTemplates && <Button type="button" variant="outline" className="w-full justify-start gap-2 border-dashed" onClick={() => setTemplateSelectOpen(true)}>
               <Library className="h-4 w-4" />
               Use a Template
-            </Button>
-          )}
+            </Button>}
 
           {/* Task Title */}
           <div className="space-y-2">
             <Label htmlFor="title">Task Title <span className="text-destructive">*</span></Label>
-            <Input
-              id="title"
-              placeholder="Enter task title..."
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-            />
+            <Input id="title" placeholder="Enter task title..." value={title} onChange={e => setTitle(e.target.value)} />
           </div>
 
           {/* Task Description */}
@@ -525,14 +523,7 @@ const AddTaskDialog = ({
             <Label htmlFor="description">
               Description <span className="text-muted-foreground text-xs">({description.length}/2000)</span>
             </Label>
-            <Textarea
-              id="description"
-              placeholder="Enter task description (optional)..."
-              value={description}
-              onChange={(e) => setDescription(e.target.value.slice(0, 2000))}
-              rows={3}
-              maxLength={2000}
-            />
+            <Textarea id="description" placeholder="Enter task description (optional)..." value={description} onChange={e => setDescription(e.target.value.slice(0, 2000))} rows={3} maxLength={2000} />
           </div>
 
           {/* Project Association */}
@@ -544,87 +535,55 @@ const AddTaskDialog = ({
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="none">No Project</SelectItem>
-                {canCreateProject && (
-                  <SelectItem value="new">
+                {canCreateProject && <SelectItem value="new">
                     <div className="flex items-center gap-2">
                       <Plus className="w-4 h-4" />
                       Create New Project
                     </div>
-                  </SelectItem>
-                )}
-                {projects.map((project) => (
-                  <SelectItem key={project.id} value={project.id}>
+                  </SelectItem>}
+                {projects.map(project => <SelectItem key={project.id} value={project.id}>
                     {project.title}
-                  </SelectItem>
-                ))}
+                  </SelectItem>)}
               </SelectContent>
             </Select>
           </div>
 
           {/* New Project Title */}
-          {projectSelection === "new" && (
-            <div className="space-y-2">
+          {projectSelection === "new" && <div className="space-y-2">
               <Label htmlFor="newProjectTitle">New Project Title <span className="text-destructive">*</span></Label>
-              <Input
-                id="newProjectTitle"
-                placeholder="Enter new project title..."
-                value={newProjectTitle}
-                onChange={(e) => setNewProjectTitle(e.target.value)}
-              />
-            </div>
-          )}
+              <Input id="newProjectTitle" placeholder="Enter new project title..." value={newProjectTitle} onChange={e => setNewProjectTitle(e.target.value)} />
+            </div>}
 
           {/* Due Date */}
           <div className="space-y-2">
             <Label>Due Date</Label>
             <Popover>
               <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  className={cn(
-                    "w-full justify-start text-left font-normal",
-                    !dueDate && "text-muted-foreground"
-                  )}
-                >
+                <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !dueDate && "text-muted-foreground")}>
                   <CalendarIcon className="mr-2 h-4 w-4" />
                   {dueDate ? format(dueDate, "PPP") : <span>Pick a due date</span>}
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-auto p-0" align="start">
-                <Calendar
-                  mode="single"
-                  selected={dueDate}
-                  onSelect={setDueDate}
-                  initialFocus
-                  className={cn("p-3 pointer-events-auto")}
-                />
+                <Calendar mode="single" selected={dueDate} onSelect={setDueDate} initialFocus className={cn("p-3 pointer-events-auto")} />
               </PopoverContent>
             </Popover>
-            {dueDate && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setDueDate(undefined)}
-                className="text-xs text-muted-foreground"
-              >
+            {dueDate && <Button variant="ghost" size="sm" onClick={() => setDueDate(undefined)} className="text-xs text-muted-foreground">
                 Clear date
-              </Button>
-            )}
+              </Button>}
           </div>
 
           {/* Priority */}
           <div className="space-y-2">
             <Label>Priority</Label>
-            <Select value={priority} onValueChange={(v) => setPriority(v as TaskPriority)}>
+            <Select value={priority} onValueChange={v => setPriority(v as TaskPriority)}>
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {priorityOptions.map((p) => (
-                  <SelectItem key={p.value} value={p.value}>
+                {priorityOptions.map(p => <SelectItem key={p.value} value={p.value}>
                     <span className={p.className}>{p.label}</span>
-                  </SelectItem>
-                ))}
+                  </SelectItem>)}
               </SelectContent>
             </Select>
           </div>
@@ -633,128 +592,61 @@ const AddTaskDialog = ({
           <div className="space-y-2">
             <Label>Assign To (select multiple)</Label>
               <div className="border rounded-md p-2 space-y-1 max-h-40 overflow-y-auto">
-                {teamMembers.length === 0 ? (
-                  <p className="text-xs text-muted-foreground py-2 text-center">No team members available</p>
-                ) : (
-                  teamMembers.map((member) => {
-                    const isSelected = assignedUserIds.includes(member.id);
-                    return (
-                      <div
-                        key={member.id}
-                        className={cn(
-                          "flex items-center gap-2 px-2 py-1.5 rounded-md cursor-pointer hover:bg-muted transition-colors",
-                          isSelected && "bg-primary/10"
-                        )}
-                        onClick={() => {
-                          if (isSelected) {
-                            setAssignedUserIds(assignedUserIds.filter(id => id !== member.id));
-                          } else {
-                            setAssignedUserIds([...assignedUserIds, member.id]);
-                          }
-                        }}
-                      >
-                        <Checkbox 
-                          checked={isSelected}
-                          className="pointer-events-none"
-                        />
+                {teamMembers.length === 0 ? <p className="text-xs text-muted-foreground py-2 text-center">No team members available</p> : teamMembers.map(member => {
+                const isSelected = assignedUserIds.includes(member.id);
+                return <div key={member.id} className={cn("flex items-center gap-2 px-2 py-1.5 rounded-md cursor-pointer hover:bg-muted transition-colors", isSelected && "bg-primary/10")} onClick={() => {
+                  if (isSelected) {
+                    setAssignedUserIds(assignedUserIds.filter(id => id !== member.id));
+                  } else {
+                    setAssignedUserIds([...assignedUserIds, member.id]);
+                  }
+                }}>
+                        <Checkbox checked={isSelected} className="pointer-events-none" />
                         <span className="text-sm">{member.full_name}</span>
-                      </div>
-                    );
-                  })
-                )}
+                      </div>;
+              })}
               </div>
-              {assignedUserIds.length > 0 && (
-                <p className="text-xs text-muted-foreground">
+              {assignedUserIds.length > 0 && <p className="text-xs text-muted-foreground">
                   {assignedUserIds.length} user{assignedUserIds.length !== 1 ? 's' : ''} selected
-                </p>
-              )}
+                </p>}
           </div>
 
           {/* Icon - hidden for Product Management dashboard */}
-          {activeTab !== "product" && (
-            <div className="space-y-2">
-              <Label>Icon</Label>
-              <Select value={icon} onValueChange={setIcon}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {iconOptions.map((ic) => {
-                    const IconComp = iconMap[ic.value];
-                    return (
-                      <SelectItem key={ic.value} value={ic.value}>
-                        <IconComp className="w-4 h-4" />
-                      </SelectItem>
-                    );
-                  })}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
+          {activeTab !== "product"}
 
           {/* Task Type (Subcategory) */}
-          {showSubcategoryFilter && (
-            <div className="space-y-2">
+          {showSubcategoryFilter && <div className="space-y-2">
               <Label>Task Type</Label>
-              <Select value={subcategory} onValueChange={(v) => setSubcategory(v as TaskSubcategory)}>
+              <Select value={subcategory} onValueChange={v => setSubcategory(v as TaskSubcategory)}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {subcategoryOptions.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
+                  {subcategoryOptions.map(option => <SelectItem key={option.value} value={option.value}>
                       {option.label}
-                    </SelectItem>
-                  ))}
+                    </SelectItem>)}
                 </SelectContent>
               </Select>
-            </div>
-          )}
+            </div>}
 
           {/* Recurring Task Checkbox - only for Operations & Strategic dashboards */}
-          {showSubcategoryFilter && (
-            <div className="flex items-center space-x-2">
-              <Checkbox
-                id="isRecurring"
-                checked={isRecurring}
-                onCheckedChange={(checked) => setIsRecurring(checked === true)}
-              />
-              <Label
-                htmlFor="isRecurring"
-                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
-              >
+          {showSubcategoryFilter && <div className="flex items-center space-x-2">
+              <Checkbox id="isRecurring" checked={isRecurring} onCheckedChange={checked => setIsRecurring(checked === true)} />
+              <Label htmlFor="isRecurring" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer">
                 Recurring Task (repeats based on Task Type)
               </Label>
-            </div>
-          )}
+            </div>}
 
           {/* Attachments */}
           <div className="space-y-2">
             <Label>Attachments</Label>
-            <input
-              ref={fileInputRef}
-              type="file"
-              multiple
-              onChange={handleFileSelect}
-              className="hidden"
-              accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.csv"
-            />
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => fileInputRef.current?.click()}
-              className="w-full justify-start gap-2"
-            >
+            <input ref={fileInputRef} type="file" multiple onChange={handleFileSelect} className="hidden" accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.csv" />
+            <Button type="button" variant="outline" onClick={() => fileInputRef.current?.click()} className="w-full justify-start gap-2">
               <Paperclip className="w-4 h-4" />
               Add Attachments
             </Button>
-            {attachments.length > 0 && (
-              <div className="space-y-2 mt-2">
-                {attachments.map((file, index) => (
-                  <div
-                    key={index}
-                    className="flex items-center justify-between p-2 bg-muted rounded-md text-sm"
-                  >
+            {attachments.length > 0 && <div className="space-y-2 mt-2">
+                {attachments.map((file, index) => <div key={index} className="flex items-center justify-between p-2 bg-muted rounded-md text-sm">
                     <div className="flex items-center gap-2 min-w-0">
                       <Paperclip className="w-4 h-4 flex-shrink-0 text-muted-foreground" />
                       <span className="truncate">{file.name}</span>
@@ -762,88 +654,50 @@ const AddTaskDialog = ({
                         ({(file.size / 1024).toFixed(1)} KB)
                       </span>
                     </div>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => removeAttachment(index)}
-                      className="h-6 w-6 p-0 flex-shrink-0"
-                    >
+                    <Button type="button" variant="ghost" size="sm" onClick={() => removeAttachment(index)} className="h-6 w-6 p-0 flex-shrink-0">
                       <X className="w-4 h-4" />
                     </Button>
-                  </div>
-                ))}
-              </div>
-            )}
+                  </div>)}
+              </div>}
           </div>
 
           {/* URLs */}
           <div className="space-y-2">
             <Label>URLs</Label>
             <div className="flex gap-2">
-              <Input
-                placeholder="https://example.com"
-                value={newUrl}
-                onChange={(e) => setNewUrl(e.target.value)}
-                className="flex-1"
-              />
-              <Button
-                type="button"
-                variant="outline"
-                size="icon"
-                onClick={() => {
-                  if (newUrl.trim()) {
-                    setTaskUrls([...taskUrls, { url: newUrl.trim(), title: newUrlTitle.trim() }]);
-                    setNewUrl("");
-                    setNewUrlTitle("");
-                  }
-                }}
-                disabled={!newUrl.trim()}
-              >
+              <Input placeholder="https://example.com" value={newUrl} onChange={e => setNewUrl(e.target.value)} className="flex-1" />
+              <Button type="button" variant="outline" size="icon" onClick={() => {
+                if (newUrl.trim()) {
+                  setTaskUrls([...taskUrls, {
+                    url: newUrl.trim(),
+                    title: newUrlTitle.trim()
+                  }]);
+                  setNewUrl("");
+                  setNewUrlTitle("");
+                }
+              }} disabled={!newUrl.trim()}>
                 <Plus className="w-4 h-4" />
               </Button>
             </div>
-            {taskUrls.length > 0 && (
-              <div className="space-y-2 mt-2">
-                {taskUrls.map((urlItem, index) => (
-                  <div
-                    key={index}
-                    className="flex items-center justify-between p-2 bg-muted rounded-md text-sm"
-                  >
+            {taskUrls.length > 0 && <div className="space-y-2 mt-2">
+                {taskUrls.map((urlItem, index) => <div key={index} className="flex items-center justify-between p-2 bg-muted rounded-md text-sm">
                     <div className="flex items-center gap-2 min-w-0">
                       <Link2 className="w-4 h-4 flex-shrink-0 text-muted-foreground" />
                       <span className="truncate text-primary">{urlItem.url}</span>
                     </div>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setTaskUrls(taskUrls.filter((_, i) => i !== index))}
-                      className="h-6 w-6 p-0 flex-shrink-0"
-                    >
+                    <Button type="button" variant="ghost" size="sm" onClick={() => setTaskUrls(taskUrls.filter((_, i) => i !== index))} className="h-6 w-6 p-0 flex-shrink-0">
                       <X className="w-4 h-4" />
                     </Button>
-                  </div>
-                ))}
-              </div>
-            )}
+                  </div>)}
+              </div>}
           </div>
 
           <div className="flex gap-2">
-            <Button
-              onClick={handleSaveAsDraft}
-              variant="outline"
-              className="flex-1"
-              disabled={isSavingDraft || isUploading || !title.trim()}
-            >
+            <Button onClick={handleSaveAsDraft} variant="outline" className="flex-1" disabled={isSavingDraft || isUploading || !title.trim()}>
               <Save className="w-4 h-4 mr-2" />
               {isSavingDraft ? "Saving..." : "Save as Draft"}
             </Button>
-            <Button
-              onClick={handleSubmit}
-              className="flex-1"
-              disabled={isUploading || isSavingDraft || !title.trim() || (projectSelection === "new" && !newProjectTitle.trim())}
-            >
+            <Button onClick={handleSubmit} className="flex-1" disabled={isUploading || isSavingDraft || !title.trim() || projectSelection === "new" && !newProjectTitle.trim()}>
               {isUploading ? "Creating..." : "Add Task"}
             </Button>
           </div>
@@ -851,31 +705,19 @@ const AddTaskDialog = ({
       </DialogContent>
 
       {/* Template Selection Dialog */}
-      <TemplateSelectDialog
-        open={templateSelectOpen}
-        onOpenChange={setTemplateSelectOpen}
-        onSelectTemplate={(template) => {
-          setTemplateSelectOpen(false);
-          setSelectedTemplate(template);
-          setTemplatePreviewOpen(true);
-          onOpenChange(false); // Close the add task dialog
-        }}
-      />
+      <TemplateSelectDialog open={templateSelectOpen} onOpenChange={setTemplateSelectOpen} onSelectTemplate={template => {
+        setTemplateSelectOpen(false);
+        setSelectedTemplate(template);
+        setTemplatePreviewOpen(true);
+        onOpenChange(false); // Close the add task dialog
+      }} />
 
       {/* Template Preview Dialog */}
-      {selectedTemplate && (
-        <TemplatePreviewDialog
-          open={templatePreviewOpen}
-          onOpenChange={(open) => {
-            setTemplatePreviewOpen(open);
-            if (!open) setSelectedTemplate(null);
-          }}
-          template={selectedTemplate}
-        />
-      )}
+      {selectedTemplate && <TemplatePreviewDialog open={templatePreviewOpen} onOpenChange={open => {
+        setTemplatePreviewOpen(open);
+        if (!open) setSelectedTemplate(null);
+      }} template={selectedTemplate} />}
     </Dialog>
-    </>
-  );
+    </>;
 };
-
 export default AddTaskDialog;
