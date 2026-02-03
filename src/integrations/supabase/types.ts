@@ -1738,6 +1738,33 @@ export type Database = {
           },
         ]
       }
+      super_admin_otp: {
+        Row: {
+          created_at: string
+          expires_at: string
+          id: string
+          otp_code: string
+          used_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          expires_at: string
+          id?: string
+          otp_code: string
+          used_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string
+          id?: string
+          otp_code?: string
+          used_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       task_assignments: {
         Row: {
           accepted_at: string | null
@@ -2440,6 +2467,7 @@ export type Database = {
       can_access_task: { Args: { p_task_id: string }; Returns: boolean }
       check_ai_usage_allowed: { Args: { org_id: string }; Returns: boolean }
       cleanup_expired_notifications: { Args: never; Returns: undefined }
+      cleanup_expired_otp: { Args: never; Returns: undefined }
       cleanup_guest_auth_attempts: { Args: never; Returns: undefined }
       complete_specialist_signup: {
         Args: {
