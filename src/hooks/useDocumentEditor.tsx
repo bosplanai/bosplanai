@@ -52,6 +52,7 @@ export function useDocumentEditor({ fileId, filePath, mimeType, onContentChange 
   const [collaborators, setCollaborators] = useState<Collaborator[]>([]);
   const [versions, setVersions] = useState<DocumentVersion[]>([]);
   const [isLoadingVersions, setIsLoadingVersions] = useState(false);
+  const [versionRefreshTrigger, setVersionRefreshTrigger] = useState(0);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const versionTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const lastVersionContentRef = useRef<string>("");
@@ -378,18 +379,35 @@ export function useDocumentEditor({ fileId, filePath, mimeType, onContentChange 
     if (contentToSave === lastVersionContentRef.current) return;
 
     try {
-      // Get the next version number
-      const { data: latestVersion } = await supabase
-        .from("drive_document_versions")
-        .select("version_number")
-        .eq("document_id", documentId)
-        .order("version_number", { ascending: false })
-        .limit(1)
-        .maybeSingle();
+      // Get the current file details first
+      const { data: currentFile, error: fileError } = await supabase
+        .from("drive_files")
+        .select("*")
+        .eq("id", fileId)
+        .single();
 
-      const nextVersionNumber = (latestVersion?.version_number || 0) + 1;
+      if (fileError || !currentFile) {
+        console.error("Error fetching current file:", fileError);
+        return;
+      }
 
-      const { error } = await supabase
+      // Get the parent file ID (for version chain)
+      const parentId = currentFile.parent_file_id || currentFile.id;
+
+      // Get the latest version number from drive_files (for View Versions)
+      const { data: latestFileVersions } = await supabase
+        .from("drive_files")
+        .select("version")
+        .or(`id.eq.${parentId},parent_file_id.eq.${parentId}`)
+        .is("deleted_at", null)
+        .order("version", { ascending: false })
+        .limit(1);
+
+      const latestFileVersion = latestFileVersions?.[0]?.version || currentFile.version || 1;
+      const nextVersionNumber = latestFileVersion + 1;
+
+      // 1. Create document content version for edit history
+      const { error: docVersionError } = await supabase
         .from("drive_document_versions")
         .insert({
           document_id: documentId,
@@ -400,28 +418,60 @@ export function useDocumentEditor({ fileId, filePath, mimeType, onContentChange 
           version_note: note || null,
         });
 
-      if (error) {
-        console.error("Error creating version:", error);
+      if (docVersionError) {
+        console.error("Error creating document version:", docVersionError);
         return;
       }
 
-      // Update the file version in drive_files table
-      const { error: fileVersionError } = await supabase
+      // 2. Create new drive_files entry for View Versions feature
+      // This allows the version to appear in the file version history dialog
+      const { data: newFileVersion, error: newFileError } = await supabase
         .from("drive_files")
-        .update({ 
+        .insert({
+          organization_id: currentFile.organization_id,
+          folder_id: currentFile.folder_id,
+          name: currentFile.name,
+          file_path: currentFile.file_path, // Keep original file path
+          file_size: currentFile.file_size,
+          mime_type: currentFile.mime_type,
+          uploaded_by: user.id,
           version: nextVersionNumber,
-          updated_at: new Date().toISOString()
+          parent_file_id: parentId,
+          status: "not_opened",
+          file_category: currentFile.file_category,
+          is_restricted: currentFile.is_restricted,
+          requires_signature: currentFile.requires_signature,
+          assigned_to: currentFile.assigned_to,
+          description: note || `Edit version ${nextVersionNumber}`,
         })
-        .eq("id", fileId);
+        .select("id")
+        .single();
 
-      if (fileVersionError) {
-        console.error("Error updating file version:", fileVersionError);
+      if (newFileError) {
+        console.error("Error creating file version entry:", newFileError);
+      } else if (newFileVersion) {
+        // 3. Create document content entry for the new file version
+        // This links the edited content to the new file version
+        await supabase
+          .from("drive_document_content")
+          .insert({
+            file_id: newFileVersion.id,
+            content: contentToSave,
+            content_type: "rich_text",
+            last_edited_by: user.id,
+          });
+        
+        // Show success toast for manual saves
+        if (note) {
+          toast.success(`Version ${nextVersionNumber} saved`);
+        }
       }
 
       lastVersionContentRef.current = contentToSave;
-      // Refresh versions list and invalidate files query
-      fetchVersions();
+      // Trigger versions refresh and invalidate queries
+      setVersionRefreshTrigger(prev => prev + 1);
       queryClient.invalidateQueries({ queryKey: ["drive-files"] });
+      queryClient.invalidateQueries({ queryKey: ["file-versions"] });
     } catch (error) {
       console.error("Error creating version:", error);
     }
@@ -471,12 +521,12 @@ export function useDocumentEditor({ fileId, filePath, mimeType, onContentChange 
     }
   }, [documentId, fileId]);
 
-  // Load versions when documentId is available
+  // Load versions when documentId is available or when refresh is triggered
   useEffect(() => {
     if (documentId) {
       fetchVersions();
     }
-  }, [documentId, fetchVersions]);
+  }, [documentId, fetchVersions, versionRefreshTrigger]);
 
   // Restore a specific version
   const restoreVersion = useCallback(async (version: DocumentVersion) => {
