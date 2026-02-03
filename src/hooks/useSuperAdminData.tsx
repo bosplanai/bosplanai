@@ -126,13 +126,40 @@ export const useSuperAdminData = () => {
             created_at: orgSpecialistPlan.created_at,
           } : null;
 
-          // Fetch usage counts
-          const [projectsResult, tasksResult, filesResult, invoicesResult] = await Promise.all([
-            supabase.from("projects").select("id", { count: "exact", head: true }).eq("organization_id", org.id),
-            supabase.from("tasks").select("id", { count: "exact", head: true }).eq("organization_id", org.id),
-            supabase.from("drive_files").select("id", { count: "exact", head: true }).eq("organization_id", org.id),
-            supabase.from("invoices").select("id", { count: "exact", head: true }).eq("organization_id", org.id),
-          ]);
+          // Fetch usage counts via edge function to bypass RLS
+          let usage = {
+            projects_count: 0,
+            tasks_count: 0,
+            files_count: 0,
+            invoices_count: 0,
+          };
+
+          try {
+            const { data: session } = await supabase.auth.getSession();
+            const statsResponse = await fetch(
+              `https://qiikjhvzlwzysbtzhdcd.supabase.co/functions/v1/get-superadmin-org-stats`,
+              {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  Authorization: `Bearer ${session?.session?.access_token}`,
+                },
+                body: JSON.stringify({ organization_id: org.id }),
+              }
+            );
+            
+            if (statsResponse.ok) {
+              const statsResult = await statsResponse.json();
+              usage = {
+                projects_count: statsResult.projects_count || 0,
+                tasks_count: statsResult.tasks_count || 0,
+                files_count: statsResult.files_count || 0,
+                invoices_count: statsResult.invoices_count || 0,
+              };
+            }
+          } catch (err) {
+            console.error("Error fetching stats for org:", org.id, err);
+          }
 
           return {
             id: org.id,
@@ -146,12 +173,7 @@ export const useSuperAdminData = () => {
             users: usersWithRoles,
             subscription: subscription || null,
             specialistPlan,
-            usage: {
-              projects_count: projectsResult.count || 0,
-              tasks_count: tasksResult.count || 0,
-              files_count: filesResult.count || 0,
-              invoices_count: invoicesResult.count || 0,
-            },
+            usage,
           };
         })
       );

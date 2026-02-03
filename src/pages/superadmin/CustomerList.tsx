@@ -90,6 +90,38 @@ const CustomerList = () => {
     URL.revokeObjectURL(link.href);
   };
 
+  const exportAllUsersToCSV = () => {
+    // Build CSV content with all users from all organizations
+    const headers = ["Name", "Email", "Phone", "Organisation", "Job Role", "Role"];
+    const rows: string[][] = [];
+
+    organizations.forEach((org) => {
+      org.users.forEach((user) => {
+        rows.push([
+          user.full_name,
+          user.email || "",
+          user.phone_number || "",
+          org.name,
+          user.job_role,
+          user.role || "member",
+        ]);
+      });
+    });
+
+    const csvContent = [
+      headers.join(","),
+      ...rows.map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(",")),
+    ].join("\n");
+
+    // Create and trigger download
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = `all-users-${format(new Date(), "yyyy-MM-dd")}.csv`;
+    link.click();
+    URL.revokeObjectURL(link.href);
+  };
+
   const toggleExpanded = (orgId: string) => {
     setExpandedOrgs((prev) =>
       prev.includes(orgId)
@@ -235,9 +267,9 @@ const CustomerList = () => {
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Search */}
-        <div className="mb-6">
-          <div className="relative max-w-md">
+        {/* Search and Export */}
+        <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="relative max-w-md flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
             <Input
               placeholder="Search organisations..."
@@ -246,6 +278,15 @@ const CustomerList = () => {
               className="pl-10 bg-slate-800/50 border-slate-700 text-white placeholder:text-slate-500"
             />
           </div>
+          <Button
+            variant="outline"
+            className="border-emerald-500/50 text-emerald-400 hover:bg-emerald-500/20"
+            onClick={exportAllUsersToCSV}
+            disabled={organizations.length === 0 || dataLoading}
+          >
+            <Download className="w-4 h-4 mr-2" />
+            Export All Users
+          </Button>
         </div>
 
         {/* Stats */}
