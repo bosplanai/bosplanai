@@ -614,8 +614,16 @@ const AddTaskDialog = ({
           {/* Icon - hidden for Product Management dashboard */}
           {activeTab !== "product"}
 
-          {/* Task Type (Subcategory) */}
-          {showSubcategoryFilter && <div className="space-y-2">
+          {/* Recurring Task Checkbox */}
+          <div className="flex items-center space-x-2">
+            <Checkbox id="isRecurring" checked={isRecurring} onCheckedChange={checked => setIsRecurring(checked === true)} />
+            <Label htmlFor="isRecurring" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer">
+              Recurring Task
+            </Label>
+          </div>
+
+          {/* Task Type (Subcategory) - shown when recurring is enabled or on operational/strategic dashboards */}
+          {(showSubcategoryFilter || isRecurring) && <div className="space-y-2">
               <Label>Task Type</Label>
               <Select value={subcategory} onValueChange={v => setSubcategory(v as TaskSubcategory)}>
                 <SelectTrigger>
@@ -628,14 +636,6 @@ const AddTaskDialog = ({
                 </SelectContent>
               </Select>
             </div>}
-
-          {/* Recurring Task Checkbox */}
-          <div className="flex items-center space-x-2">
-            <Checkbox id="isRecurring" checked={isRecurring} onCheckedChange={checked => setIsRecurring(checked === true)} />
-            <Label htmlFor="isRecurring" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer">
-              Recurring Task
-            </Label>
-          </div>
 
           {/* Attachments */}
           <div className="space-y-2">
