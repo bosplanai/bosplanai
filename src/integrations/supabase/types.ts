@@ -2917,6 +2917,21 @@ export type Database = {
           token: string
         }[]
       }
+      get_rate_limit_info: {
+        Args: {
+          p_endpoint: string
+          p_ip_address: string
+          p_max_requests?: number
+          p_window_minutes?: number
+        }
+        Returns: {
+          is_allowed: boolean
+          limit_count: number
+          remaining_count: number
+          reset_at: string
+          retry_after_seconds: number
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]

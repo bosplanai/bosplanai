@@ -24,6 +24,21 @@ function getClientIP(req: Request): string {
   return "unknown";
 }
 
+// Build rate limit headers
+function buildRateLimitHeaders(
+  limit: number,
+  remaining: number,
+  resetAt: string,
+  retryAfterSeconds: number
+): Record<string, string> {
+  return {
+    "X-RateLimit-Limit": String(limit),
+    "X-RateLimit-Remaining": String(remaining),
+    "X-RateLimit-Reset": resetAt,
+    "Retry-After": String(retryAfterSeconds),
+  };
+}
+
 // Log audit event
 async function logAuditEvent(
   adminClient: any,
@@ -66,11 +81,15 @@ serve(async (req) => {
   const userAgent = req.headers.get("user-agent");
   const endpoint = "superadmin-verify-otp";
 
+  // Default rate limit headers (will be updated after rate limit check)
+  let rateLimitHeaders: Record<string, string> = {};
+
   try {
     console.log(`Rate limit check for IP: ${clientIP}, endpoint: ${endpoint}`);
     
-    const { data: isAllowed, error: rateLimitError } = await adminClient
-      .rpc("check_rate_limit", {
+    // Use the new function that returns detailed rate limit info
+    const { data: rateLimitInfo, error: rateLimitError } = await adminClient
+      .rpc("get_rate_limit_info", {
         p_ip_address: clientIP,
         p_endpoint: endpoint,
         p_max_requests: RATE_LIMIT_MAX_REQUESTS,
@@ -79,36 +98,48 @@ serve(async (req) => {
     
     if (rateLimitError) {
       console.error("Rate limit check error:", rateLimitError);
-    } else if (!isAllowed) {
-      console.warn(`Rate limit exceeded for IP: ${clientIP}, endpoint: ${endpoint}`);
+    } else if (rateLimitInfo && rateLimitInfo.length > 0) {
+      const info = rateLimitInfo[0];
       
-      // Log rate limit hit
-      await logAuditEvent(
-        adminClient,
-        null,
-        "unknown",
-        "rate_limit_exceeded",
-        "auth",
-        null,
-        { endpoint, reason: "Too many verification attempts" },
-        clientIP,
-        userAgent
+      // Build rate limit headers for all responses
+      rateLimitHeaders = buildRateLimitHeaders(
+        info.limit_count,
+        info.remaining_count,
+        info.reset_at,
+        info.retry_after_seconds
       );
       
-      return new Response(
-        JSON.stringify({ 
-          error: "Too many verification attempts. Please try again later.",
-          retryAfter: RATE_LIMIT_WINDOW_MINUTES * 60
-        }),
-        { 
-          status: 429, 
-          headers: { 
-            ...corsHeaders, 
-            "Content-Type": "application/json",
-            "Retry-After": String(RATE_LIMIT_WINDOW_MINUTES * 60)
-          } 
-        }
-      );
+      if (!info.is_allowed) {
+        console.warn(`Rate limit exceeded for IP: ${clientIP}, endpoint: ${endpoint}`);
+        
+        // Log rate limit hit
+        await logAuditEvent(
+          adminClient,
+          null,
+          "unknown",
+          "rate_limit_exceeded",
+          "auth",
+          null,
+          { endpoint, reason: "Too many verification attempts" },
+          clientIP,
+          userAgent
+        );
+        
+        return new Response(
+          JSON.stringify({ 
+            error: "Too many verification attempts. Please try again later.",
+            retryAfter: info.retry_after_seconds
+          }),
+          { 
+            status: 429, 
+            headers: { 
+              ...corsHeaders, 
+              ...rateLimitHeaders,
+              "Content-Type": "application/json"
+            } 
+          }
+        );
+      }
     }
 
     const { user_id, otp_code } = await req.json();
@@ -117,7 +148,7 @@ serve(async (req) => {
       console.error("Missing required fields: user_id or otp_code");
       return new Response(
         JSON.stringify({ error: "Missing required fields" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: 400, headers: { ...corsHeaders, ...rateLimitHeaders, "Content-Type": "application/json" } }
       );
     }
 
@@ -139,7 +170,7 @@ serve(async (req) => {
       console.error("Error fetching OTP:", otpError);
       return new Response(
         JSON.stringify({ error: "Verification failed" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: 500, headers: { ...corsHeaders, ...rateLimitHeaders, "Content-Type": "application/json" } }
       );
     }
 
@@ -161,7 +192,7 @@ serve(async (req) => {
       
       return new Response(
         JSON.stringify({ error: "Invalid or expired verification code" }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: 401, headers: { ...corsHeaders, ...rateLimitHeaders, "Content-Type": "application/json" } }
       );
     }
 
@@ -199,13 +230,13 @@ serve(async (req) => {
 
     return new Response(
       JSON.stringify({ success: true, message: "Verification successful" }),
-      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      { status: 200, headers: { ...corsHeaders, ...rateLimitHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {
     console.error("Error in superadmin-verify-otp:", error);
     return new Response(
       JSON.stringify({ error: error instanceof Error ? error.message : "Unknown error" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      { status: 500, headers: { ...corsHeaders, ...rateLimitHeaders, "Content-Type": "application/json" } }
     );
   }
 });
