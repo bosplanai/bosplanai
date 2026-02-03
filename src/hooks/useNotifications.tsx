@@ -21,6 +21,10 @@ export interface Notification {
 // Session-level storage for shown notification IDs to persist across component remounts
 const shownNotificationIdsStorage = new Set<string>();
 
+// Track IDs that are currently being updated to prevent race conditions with realtime
+const pendingUpdateIds = new Set<string>();
+let pendingMarkAllAsRead = false;
+
 export const useNotifications = () => {
   const { user } = useAuth();
   const { organization } = useOrganization();
@@ -73,30 +77,57 @@ export const useNotifications = () => {
 
   const markAsRead = useMutation({
     mutationFn: async (notificationId: string) => {
+      // Track that we're updating this ID
+      pendingUpdateIds.add(notificationId);
+      
       const { error } = await supabase
         .from("notifications")
         .update({ is_read: true })
         .eq("id", notificationId);
 
-      if (error) throw error;
+      if (error) {
+        pendingUpdateIds.delete(notificationId);
+        throw error;
+      }
+      
+      // Clear the pending flag after a short delay to handle race conditions
+      setTimeout(() => pendingUpdateIds.delete(notificationId), 1000);
     },
     onMutate: async (notificationId) => {
-      // Optimistically update the cache
+      // Cancel any outgoing refetches
       await queryClient.cancelQueries({ queryKey: ["notifications", user?.id, organization?.id] });
       
+      // Snapshot the previous value for rollback
+      const previousNotifications = queryClient.getQueryData<Notification[]>(["notifications", user?.id, organization?.id]);
+      
+      // Optimistically update the cache
       queryClient.setQueryData<Notification[]>(
         ["notifications", user?.id, organization?.id],
         (old) => old?.map(n => n.id === notificationId ? { ...n, is_read: true } : n) || []
       );
+      
+      return { previousNotifications };
     },
-    onError: () => {
-      queryClient.invalidateQueries({ queryKey: ["notifications"] });
+    onError: (err, notificationId, context) => {
+      console.error("Error marking notification as read:", err);
+      // Rollback to previous state
+      if (context?.previousNotifications) {
+        queryClient.setQueryData(["notifications", user?.id, organization?.id], context.previousNotifications);
+      }
+    },
+    onSettled: () => {
+      // Don't invalidate here - let the realtime handle syncing
     },
   });
 
   const markAllAsRead = useMutation({
     mutationFn: async () => {
-      if (!user || !organization) return;
+      if (!user || !organization) {
+        throw new Error("User or organization not available");
+      }
+
+      // Track that we're doing a bulk update
+      pendingMarkAllAsRead = true;
 
       const { error } = await supabase
         .from("notifications")
@@ -105,7 +136,13 @@ export const useNotifications = () => {
         .eq("organization_id", organization.id)
         .eq("is_read", false);
 
-      if (error) throw error;
+      if (error) {
+        pendingMarkAllAsRead = false;
+        throw error;
+      }
+      
+      // Clear the pending flag after a short delay to handle race conditions
+      setTimeout(() => { pendingMarkAllAsRead = false; }, 1000);
     },
     onMutate: async () => {
       // Cancel any outgoing refetches to prevent race conditions
@@ -123,14 +160,14 @@ export const useNotifications = () => {
       return { previousNotifications };
     },
     onError: (err, variables, context) => {
+      console.error("Error marking all notifications as read:", err);
       // Rollback on error
       if (context?.previousNotifications) {
         queryClient.setQueryData(["notifications", user?.id, organization?.id], context.previousNotifications);
       }
     },
     onSuccess: () => {
-      // After successful mutation, update cache with confirmed read state
-      // This prevents any stale data from reappearing
+      // After successful mutation, ensure cache reflects the read state
       queryClient.setQueryData<Notification[]>(
         ["notifications", user?.id, organization?.id],
         (old) => old?.map(n => ({ ...n, is_read: true })) || []
@@ -151,13 +188,20 @@ export const useNotifications = () => {
       // Optimistically remove from cache
       await queryClient.cancelQueries({ queryKey: ["notifications", user?.id, organization?.id] });
       
+      const previousNotifications = queryClient.getQueryData<Notification[]>(["notifications", user?.id, organization?.id]);
+      
       queryClient.setQueryData<Notification[]>(
         ["notifications", user?.id, organization?.id],
         (old) => old?.filter(n => n.id !== notificationId) || []
       );
+      
+      return { previousNotifications };
     },
-    onError: () => {
-      queryClient.invalidateQueries({ queryKey: ["notifications"] });
+    onError: (err, notificationId, context) => {
+      console.error("Error deleting notification:", err);
+      if (context?.previousNotifications) {
+        queryClient.setQueryData(["notifications", user?.id, organization?.id], context.previousNotifications);
+      }
     },
   });
 
@@ -175,10 +219,15 @@ export const useNotifications = () => {
     },
     onMutate: async () => {
       await queryClient.cancelQueries({ queryKey: ["notifications", user?.id, organization?.id] });
+      const previousNotifications = queryClient.getQueryData<Notification[]>(["notifications", user?.id, organization?.id]);
       queryClient.setQueryData<Notification[]>(["notifications", user?.id, organization?.id], []);
+      return { previousNotifications };
     },
-    onError: () => {
-      queryClient.invalidateQueries({ queryKey: ["notifications"] });
+    onError: (err, variables, context) => {
+      console.error("Error clearing all notifications:", err);
+      if (context?.previousNotifications) {
+        queryClient.setQueryData(["notifications", user?.id, organization?.id], context.previousNotifications);
+      }
     },
   });
 
@@ -230,8 +279,15 @@ export const useNotifications = () => {
           table: "notifications",
           filter: `user_id=eq.${user.id}`,
         },
-        () => {
-          // Refresh on updates (e.g., mark as read from another device)
+        (payload) => {
+          const updatedNotification = payload.new as Notification;
+          
+          // Skip invalidation if we triggered this update ourselves (prevents race condition)
+          if (pendingMarkAllAsRead || pendingUpdateIds.has(updatedNotification.id)) {
+            return;
+          }
+          
+          // Only invalidate for updates from other sources (e.g., another device)
           queryClient.invalidateQueries({ queryKey: ["notifications"] });
         }
       )
