@@ -5,6 +5,12 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { 
   X, 
   Image, 
@@ -18,12 +24,15 @@ import {
   Video,
   File,
   Edit,
+  FileDown,
+  ChevronDown,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { DataRoomDocumentEditorDialog } from "./DataRoomDocumentEditorDialog";
 import { sanitizeHtml } from "@/lib/sanitize";
+import { toast } from "sonner";
 import { 
   isEditableDocument as isEditableDocumentUtil, 
   isOfficeDocument 
@@ -175,8 +184,68 @@ const DataRoomFilePreviewDialog = ({
     }
   };
 
-  const handleDownload = () => {
-    if (file?.url) {
+  const handleDownload = (format?: 'original' | 'pdf') => {
+    if (!file) return;
+    
+    if (format === 'pdf') {
+      // For PDF export, use browser print if we have document content
+      if (documentContent) {
+        const printWindow = window.open('', '_blank');
+        if (printWindow) {
+          const baseName = file.name.replace(/\.[^/.]+$/, '');
+          const printHtml = `
+            <!DOCTYPE html>
+            <html>
+              <head>
+                <meta charset="UTF-8">
+                <title>${baseName}</title>
+                <style>
+                  @media print {
+                    @page { margin: 1in; size: A4; }
+                  }
+                  body { 
+                    font-family: 'Times New Roman', Georgia, serif; 
+                    font-size: 12pt; 
+                    line-height: 1.6;
+                    color: #000;
+                    max-width: 800px;
+                    margin: 0 auto;
+                    padding: 2em;
+                  }
+                  h1 { font-size: 24pt; font-weight: bold; margin: 0.5em 0; }
+                  h2 { font-size: 18pt; font-weight: bold; margin: 0.5em 0; }
+                  h3 { font-size: 14pt; font-weight: bold; margin: 0.5em 0; }
+                  p { margin: 0.5em 0; }
+                  table { border-collapse: collapse; width: 100%; margin: 1em 0; }
+                  td, th { border: 1px solid #000; padding: 8px; }
+                  th { background: #f0f0f0; font-weight: bold; }
+                  blockquote { border-left: 3px solid #ccc; padding-left: 1em; margin: 1em 0; color: #555; }
+                  ul, ol { margin: 0.5em 0; padding-left: 2em; }
+                  img { max-width: 100%; height: auto; }
+                </style>
+              </head>
+              <body>
+                ${documentContent}
+              </body>
+            </html>
+          `;
+          printWindow.document.write(printHtml);
+          printWindow.document.close();
+          printWindow.onload = () => {
+            printWindow.print();
+          };
+          toast.success("Print dialog opened - select 'Save as PDF' to export");
+        } else {
+          toast.error("Could not open print window. Please allow popups.");
+        }
+      } else {
+        toast.info("PDF export is available for edited documents. Edit the document first to enable PDF export.");
+      }
+      return;
+    }
+    
+    // Original format download
+    if (file.url) {
       window.open(file.url, "_blank");
     }
   };
@@ -245,10 +314,31 @@ const DataRoomFilePreviewDialog = ({
                     Edit Document
                   </Button>
                 )}
-                <Button variant="ghost" size="sm" onClick={handleDownload}>
-                  <Download className="w-4 h-4 mr-1" />
-                  Download
-                </Button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="sm" className="gap-1">
+                      <Download className="w-4 h-4" />
+                      Download
+                      <ChevronDown className="w-3 h-3" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-48">
+                    <DropdownMenuItem onClick={() => handleDownload('original')} className="gap-2">
+                      <FileDown className="w-4 h-4 text-primary" />
+                      <div className="flex flex-col">
+                        <span>Original Format</span>
+                        <span className="text-xs text-muted-foreground">{file.name}</span>
+                      </div>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleDownload('pdf')} className="gap-2">
+                      <FileDown className="w-4 h-4 text-destructive" />
+                      <div className="flex flex-col">
+                        <span>PDF Document</span>
+                        <span className="text-xs text-muted-foreground">.pdf</span>
+                      </div>
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
                 <Button variant="ghost" size="icon" onClick={onClose}>
                   <X className="w-4 h-4" />
                 </Button>
@@ -311,10 +401,31 @@ const DataRoomFilePreviewDialog = ({
                   <p className="text-sm text-muted-foreground mb-4">
                     Preview not available for this file type
                   </p>
-                  <Button onClick={handleDownload} className="gap-2">
-                    <Download className="w-4 h-4" />
-                    Download File
-                  </Button>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button className="gap-2">
+                        <Download className="w-4 h-4" />
+                        Download File
+                        <ChevronDown className="w-3 h-3" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="center" className="w-48">
+                      <DropdownMenuItem onClick={() => handleDownload('original')} className="gap-2">
+                        <FileDown className="w-4 h-4 text-primary" />
+                        <div className="flex flex-col">
+                          <span>Original Format</span>
+                          <span className="text-xs text-muted-foreground">{file.name}</span>
+                        </div>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => handleDownload('pdf')} className="gap-2">
+                        <FileDown className="w-4 h-4 text-destructive" />
+                        <div className="flex flex-col">
+                          <span>PDF Document</span>
+                          <span className="text-xs text-muted-foreground">.pdf</span>
+                        </div>
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
               )}
             </div>
