@@ -81,7 +81,7 @@ const VirtualAssistants = () => {
     const success = searchParams.get("success");
     const canceled = searchParams.get("canceled");
     if (success === "true") {
-      toast.success("Thank you for your purchase! Your Virtual Assistant will be added to your organisation shortly.");
+      toast.success("Thank you for your purchase! Your Remote Assistant will be added to your organisation shortly.");
       myAssistantsRef.current?.refetch();
     } else if (canceled === "true") {
       toast.info("Checkout was cancelled.");
@@ -124,7 +124,7 @@ const VirtualAssistants = () => {
               <ArrowLeft className="w-5 h-5" />
             </Button>
             <div>
-              <h1 className="text-xl sm:text-2xl font-bold text-foreground">Virtual Assistants</h1>
+              <h1 className="text-xl sm:text-2xl font-bold text-foreground">Remote Assistants</h1>
               <p className="text-sm text-muted-foreground hidden sm:block">Hire skilled professionals to supercharge your business at a low and affordable cost!</p>
             </div>
           </div>
@@ -155,10 +155,10 @@ const VirtualAssistants = () => {
               </div>
               <div>
                 <Badge className="mb-3 bg-[#176884] text-white border-0 hover:bg-[#176884]/90 text-xs">
-                  Virtual Assistants
+                  Remote Assistants
                 </Badge>
-                <p className="text-muted-foreground leading-relaxed">Need affordable assistance for your business? Our Virtual Assistants offer a low-cost and highly-skilled solution. Choose the role and number of hours, then purchase directly through the platform. Once completed, your Virtual Assistant will be added to your organisation and you can allocate work as you wish.</p>
-                <p className="text-muted-foreground leading-relaxed mt-3"><strong>Important:</strong> Please note that 30 days' notice is required for the virtual assistant service to start, and 30 days' notice is also required for cancellation of the service.</p>
+                <p className="text-muted-foreground leading-relaxed">Need affordable assistance for your business? Our Remote Assistants offer a low-cost and highly-skilled solution. Choose the role and number of hours, then purchase directly through the platform. Once completed, your Remote Assistant will be added to your organisation and you can allocate work as you wish.</p>
+                <p className="text-muted-foreground leading-relaxed mt-3"><strong>Important:</strong> Please note that 30 days' notice is required for the remote assistant service to start, and 30 days' notice is also required for cancellation of the service.</p>
               </div>
             </div>
           </div>

@@ -47,7 +47,7 @@ const assistantTypeLabels: Record<string, string> = {
   "social-media": "Social Media Executive",
   "graphic-designer": "Graphic Designer",
   "book-writer": "Book Writer",
-  "general": "Virtual Assistant",
+  "general": "Remote Assistant",
 };
 
 const jobRoleLabels: Record<string, string> = {
@@ -57,7 +57,7 @@ const jobRoleLabels: Record<string, string> = {
   "social-media": "Social Media Executive",
   "graphic-designer": "Graphic Designer",
   "book-writer": "Book Writer",
-  "general": "Virtual Assistant",
+  "general": "Remote Assistant",
 };
 
 const MyVirtualAssistants = forwardRef<MyVirtualAssistantsHandle>((_, ref) => {
@@ -83,7 +83,7 @@ const MyVirtualAssistants = forwardRef<MyVirtualAssistantsHandle>((_, ref) => {
       setAllocatedVAs(data.allocatedVAs || []);
     } catch (err: any) {
       console.error("Error fetching VA subscriptions:", err);
-      toast.error("Failed to load virtual assistant data");
+      toast.error("Failed to load remote assistant data");
     } finally {
       setLoading(false);
     }
@@ -178,7 +178,7 @@ const MyVirtualAssistants = forwardRef<MyVirtualAssistantsHandle>((_, ref) => {
                 <Users className="w-5 h-5 text-[#176884]" />
               </div>
               <div className="text-left">
-                <h3 className="font-semibold text-lg">My Virtual Assistants</h3>
+                <h3 className="font-semibold text-lg">My Remote Assistants</h3>
                 <p className="text-sm text-muted-foreground">
                   {totalActiveCount} active assistant{totalActiveCount !== 1 ? 's' : ''} • {activeSubscriptions.length} subscription{activeSubscriptions.length !== 1 ? 's' : ''}
                 </p>
@@ -190,14 +190,14 @@ const MyVirtualAssistants = forwardRef<MyVirtualAssistantsHandle>((_, ref) => {
         
         <CollapsibleContent>
           <div className="px-4 sm:px-6 pb-4 sm:pb-6 space-y-6">
-            {/* Active Virtual Assistants (allocated by super admin only) */}
+            {/* Active Remote Assistants (allocated by super admin only) */}
             <div>
-              <h4 className="font-medium text-sm text-muted-foreground mb-3">Active Virtual Assistants</h4>
+              <h4 className="font-medium text-sm text-muted-foreground mb-3">Active Remote Assistants</h4>
               {allocatedVAs.length === 0 ? (
                 <div className="text-center py-6 text-muted-foreground border rounded-lg">
                   <User className="w-10 h-10 mx-auto mb-2 opacity-30" />
-                  <p className="text-sm">No virtual assistants allocated yet.</p>
-                  <p className="text-xs mt-1">Virtual assistants will appear here once allocated by the administrator.</p>
+                  <p className="text-sm">No remote assistants allocated yet.</p>
+                  <p className="text-xs mt-1">Remote assistants will appear here once allocated by the administrator.</p>
                 </div>
               ) : (
                 <div className="grid gap-3">
@@ -243,7 +243,7 @@ const MyVirtualAssistants = forwardRef<MyVirtualAssistantsHandle>((_, ref) => {
                 <div className="text-center py-6 text-muted-foreground border rounded-lg">
                   <Clock className="w-10 h-10 mx-auto mb-2 opacity-30" />
                   <p className="text-sm">No purchases yet.</p>
-                  <p className="text-xs mt-1">Purchase a virtual assistant package above to get started.</p>
+                  <p className="text-xs mt-1">Purchase a remote assistant package above to get started.</p>
                 </div>
               ) : (
                 <div className="grid gap-3">
@@ -313,7 +313,7 @@ const MyVirtualAssistants = forwardRef<MyVirtualAssistantsHandle>((_, ref) => {
                               <AlertDialogHeader>
                                 <AlertDialogTitle>Cancel Subscription?</AlertDialogTitle>
                                 <AlertDialogDescription>
-                                  Your virtual assistant will remain active until the end of the current billing period
+                                  Your remote assistant will remain active until the end of the current billing period
                                   {sub.current_period_end && ` (${format(new Date(sub.current_period_end), 'MMM d, yyyy')})`}.
                                   After that, you will no longer have access.
                                 </AlertDialogDescription>
