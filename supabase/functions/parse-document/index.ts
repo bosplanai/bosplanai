@@ -6,12 +6,30 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// Store for extracted images (base64)
+interface ParseContext {
+  images: Map<string, string>; // rId -> base64 data URL
+  relationships: Map<string, { target: string; type: string }>;
+  numberingFormats: Map<string, { type: string; level: number }>;
+  headerContent: string;
+  footerContent: string;
+}
+
 // Enhanced DOCX parser that preserves formatting
-function parseDocxXml(documentXml: string, relationshipsXml: string | null, numberingXml: string | null): string {
+function parseDocxXml(
+  documentXml: string, 
+  relationshipsXml: string | null, 
+  numberingXml: string | null,
+  context: ParseContext
+): string {
   const html: string[] = [];
   
-  // Parse relationships for hyperlinks
-  const relationships = new Map<string, string>();
+  // Add header content if exists
+  if (context.headerContent) {
+    html.push(`<header class="document-header">${context.headerContent}</header>`);
+  }
+  
+  // Parse relationships for hyperlinks and images
   if (relationshipsXml) {
     const relMatches = relationshipsXml.match(/<Relationship[^>]*>/g) || [];
     for (const rel of relMatches) {
@@ -19,13 +37,15 @@ function parseDocxXml(documentXml: string, relationshipsXml: string | null, numb
       const targetMatch = rel.match(/Target="([^"]*)"/);
       const typeMatch = rel.match(/Type="[^"]*\/([^"\/]*)"/);
       if (idMatch && targetMatch) {
-        relationships.set(idMatch[1], targetMatch[1]);
+        context.relationships.set(idMatch[1], {
+          target: targetMatch[1],
+          type: typeMatch ? typeMatch[1] : 'unknown'
+        });
       }
     }
   }
 
   // Parse numbering definitions for lists
-  const numberingFormats = new Map<string, { type: string; level: number }>();
   if (numberingXml) {
     const abstractNums = numberingXml.match(/<w:abstractNum[^>]*>[\s\S]*?<\/w:abstractNum>/g) || [];
     for (const abstractNum of abstractNums) {
@@ -37,7 +57,7 @@ function parseDocxXml(documentXml: string, relationshipsXml: string | null, numb
           const numFmtMatch = lvl.match(/<w:numFmt[^>]*w:val="([^"]*)"/);
           if (lvlIdMatch) {
             const isBullet = numFmtMatch && numFmtMatch[1] === 'bullet';
-            numberingFormats.set(`${abstractIdMatch[1]}-${lvlIdMatch[1]}`, {
+            context.numberingFormats.set(`${abstractIdMatch[1]}-${lvlIdMatch[1]}`, {
               type: isBullet ? 'ul' : 'ol',
               level: parseInt(lvlIdMatch[1])
             });
@@ -83,9 +103,18 @@ function parseDocxXml(documentXml: string, relationshipsXml: string | null, numb
         html.push(`</${currentListType}>`);
         currentListType = null;
       }
-      html.push(parseTable(element.content));
+      html.push(parseTable(element.content, context));
     } else {
-      const paraResult = parseParagraph(element.content, relationships, numberingFormats);
+      const paraResult = parseParagraph(element.content, context);
+      
+      // Check for page break
+      if (paraResult.hasPageBreak) {
+        if (currentListType) {
+          html.push(`</${currentListType}>`);
+          currentListType = null;
+        }
+        html.push('<hr class="page-break" />');
+      }
       
       // Handle list transitions
       if (paraResult.listType) {
@@ -114,14 +143,21 @@ function parseDocxXml(documentXml: string, relationshipsXml: string | null, numb
     html.push(`</${currentListType}>`);
   }
   
+  // Add footer content if exists
+  if (context.footerContent) {
+    html.push(`<footer class="document-footer">${context.footerContent}</footer>`);
+  }
+  
   return html.join('\n');
 }
 
 function parseParagraph(
   paraXml: string, 
-  relationships: Map<string, string>,
-  numberingFormats: Map<string, { type: string; level: number }>
-): { html: string; listType: string | null } {
+  context: ParseContext
+): { html: string; listType: string | null; hasPageBreak: boolean } {
+  // Check for page break
+  const hasPageBreak = /<w:br[^>]*w:type="page"/.test(paraXml);
+  
   // Check for heading style
   const styleMatch = paraXml.match(/<w:pStyle[^>]*w:val="([^"]*)"/);
   const style = styleMatch ? styleMatch[1] : null;
@@ -134,7 +170,7 @@ function parseParagraph(
   if (numIdMatch) {
     // Determine if bullet or numbered
     const numFmtKey = `${numIdMatch[1]}-${ilvlMatch ? ilvlMatch[1] : '0'}`;
-    const fmt = numberingFormats.get(numFmtKey);
+    const fmt = context.numberingFormats.get(numFmtKey);
     listType = fmt?.type || 'ul';
   }
   
@@ -154,33 +190,72 @@ function parseParagraph(
   
   // Check for indentation
   const indentMatch = paraXml.match(/<w:ind[^>]*>/);
-  let indent = '';
+  let indentStyles: string[] = [];
   if (indentMatch) {
     const leftMatch = indentMatch[0].match(/w:left="(\d+)"/);
     const firstLineMatch = indentMatch[0].match(/w:firstLine="(\d+)"/);
+    const hangingMatch = indentMatch[0].match(/w:hanging="(\d+)"/);
     if (leftMatch) {
       const twips = parseInt(leftMatch[1]);
       const px = Math.round(twips / 20); // Convert twips to pixels (rough)
-      indent = `margin-left: ${px}px;`;
+      indentStyles.push(`margin-left: ${px}px`);
     }
     if (firstLineMatch) {
       const twips = parseInt(firstLineMatch[1]);
       const px = Math.round(twips / 20);
-      indent += ` text-indent: ${px}px;`;
+      indentStyles.push(`text-indent: ${px}px`);
+    }
+    if (hangingMatch) {
+      const twips = parseInt(hangingMatch[1]);
+      const px = Math.round(twips / 20);
+      indentStyles.push(`text-indent: -${px}px`);
+    }
+  }
+  
+  // Check for line spacing
+  const spacingMatch = paraXml.match(/<w:spacing[^>]*>/);
+  if (spacingMatch) {
+    const lineMatch = spacingMatch[0].match(/w:line="(\d+)"/);
+    const beforeMatch = spacingMatch[0].match(/w:before="(\d+)"/);
+    const afterMatch = spacingMatch[0].match(/w:after="(\d+)"/);
+    const lineRuleMatch = spacingMatch[0].match(/w:lineRule="([^"]*)"/);
+    
+    if (lineMatch) {
+      const value = parseInt(lineMatch[1]);
+      const lineRule = lineRuleMatch ? lineRuleMatch[1] : 'auto';
+      if (lineRule === 'auto') {
+        // Value is in 240ths of a line
+        const lineHeight = value / 240;
+        indentStyles.push(`line-height: ${lineHeight.toFixed(2)}`);
+      } else if (lineRule === 'exact' || lineRule === 'atLeast') {
+        // Value is in twips
+        const pt = value / 20;
+        indentStyles.push(`line-height: ${pt}pt`);
+      }
+    }
+    if (beforeMatch) {
+      const twips = parseInt(beforeMatch[1]);
+      const pt = twips / 20;
+      indentStyles.push(`margin-top: ${pt}pt`);
+    }
+    if (afterMatch) {
+      const twips = parseInt(afterMatch[1]);
+      const pt = twips / 20;
+      indentStyles.push(`margin-bottom: ${pt}pt`);
     }
   }
   
   // Build inline styles
   let styleAttr = '';
-  if (alignment || indent) {
+  if (alignment || indentStyles.length > 0) {
     const styles: string[] = [];
     if (alignment) styles.push(`text-align: ${alignment}`);
-    if (indent) styles.push(indent);
+    styles.push(...indentStyles);
     styleAttr = ` style="${styles.join('; ')}"`;
   }
   
   // Extract runs (text with formatting)
-  const content = parseRuns(paraXml, relationships);
+  const content = parseRuns(paraXml, context);
   
   // Determine element type based on style
   let tag = 'p';
@@ -194,69 +269,121 @@ function parseParagraph(
   }
   
   if (listType) {
-    return { html: content, listType };
+    return { html: content, listType, hasPageBreak };
   }
   
-  return { html: content ? `<${tag}${styleAttr}>${content}</${tag}>` : '', listType: null };
+  return { html: content ? `<${tag}${styleAttr}>${content}</${tag}>` : '', listType: null, hasPageBreak };
 }
 
-function parseRuns(paraXml: string, relationships: Map<string, string>): string {
+function parseRuns(paraXml: string, context: ParseContext): string {
   const parts: string[] = [];
   
-  // Find hyperlinks and regular runs
+  // Find hyperlinks, drawings (images), and regular runs
   const hyperlinkRegex = /<w:hyperlink[^>]*>[\s\S]*?<\/w:hyperlink>/g;
+  const drawingRegex = /<w:drawing>[\s\S]*?<\/w:drawing>/g;
   const runRegex = /<w:r[^\/]*>[\s\S]*?<\/w:r>/g;
   
-  // Process hyperlinks
-  let lastIndex = 0;
-  let match;
+  // Process in order by finding all elements and sorting by index
+  const allElements: { type: string; content: string; index: number }[] = [];
   
-  // Get all content between hyperlinks
-  const processedRanges: { start: number; end: number; content: string }[] = [];
-  
+  let match: RegExpExecArray | null;
   while ((match = hyperlinkRegex.exec(paraXml)) !== null) {
-    // Process runs before this hyperlink
-    const beforeContent = paraXml.slice(lastIndex, match.index);
-    const runsInBefore = beforeContent.match(runRegex) || [];
-    for (const run of runsInBefore) {
-      const runContent = parseRun(run);
-      if (runContent) parts.push(runContent);
-    }
-    
-    // Process hyperlink
-    const rIdMatch = match[0].match(/r:id="([^"]*)"/);
-    const href = rIdMatch ? relationships.get(rIdMatch[1]) : null;
-    const linkRuns = match[0].match(runRegex) || [];
-    const linkText = linkRuns.map(r => parseRun(r)).join('');
-    
-    if (href && linkText) {
-      parts.push(`<a href="${escapeHtml(href)}" target="_blank" rel="noopener noreferrer">${linkText}</a>`);
-    } else if (linkText) {
-      parts.push(linkText);
-    }
-    
-    lastIndex = match.index + match[0].length;
+    allElements.push({ type: 'hyperlink', content: match[0], index: match.index });
   }
   
-  // Process remaining runs after last hyperlink
-  const afterContent = paraXml.slice(lastIndex);
-  const runsAfter = afterContent.match(runRegex) || [];
-  for (const run of runsAfter) {
-    // Skip runs that are inside hyperlinks (already processed)
-    const runContent = parseRun(run);
-    if (runContent) parts.push(runContent);
+  while ((match = drawingRegex.exec(paraXml)) !== null) {
+    allElements.push({ type: 'drawing', content: match[0], index: match.index });
+  }
+  
+  // Find runs that are NOT inside hyperlinks or drawings
+  const processedRanges = allElements.map(e => ({ start: e.index, end: e.index + e.content.length }));
+  
+  let runMatch: RegExpExecArray | null;
+  while ((runMatch = runRegex.exec(paraXml)) !== null) {
+    const isInsideOther = processedRanges.some(
+      range => runMatch!.index >= range.start && runMatch!.index < range.end
+    );
+    if (!isInsideOther) {
+      allElements.push({ type: 'run', content: runMatch[0], index: runMatch.index });
+    }
+  }
+  
+  // Sort by position
+  allElements.sort((a, b) => a.index - b.index);
+  
+  for (const elem of allElements) {
+    if (elem.type === 'hyperlink') {
+      const rIdMatch = elem.content.match(/r:id="([^"]*)"/);
+      const rel = rIdMatch ? context.relationships.get(rIdMatch[1]) : null;
+      const href = rel?.target || null;
+      const linkRuns = elem.content.match(/<w:r[^\/]*>[\s\S]*?<\/w:r>/g) || [];
+      const linkText = linkRuns.map(r => parseRun(r, context)).join('');
+      
+      if (href && linkText) {
+        parts.push(`<a href="${escapeHtml(href)}" target="_blank" rel="noopener noreferrer">${linkText}</a>`);
+      } else if (linkText) {
+        parts.push(linkText);
+      }
+    } else if (elem.type === 'drawing') {
+      // Extract image from drawing
+      const embedMatch = elem.content.match(/r:embed="([^"]*)"/);
+      if (embedMatch) {
+        const imageData = context.images.get(embedMatch[1]);
+        if (imageData) {
+          // Get dimensions if available
+          const cxMatch = elem.content.match(/cx="(\d+)"/);
+          const cyMatch = elem.content.match(/cy="(\d+)"/);
+          let styleAttr = '';
+          if (cxMatch || cyMatch) {
+            const styles: string[] = [];
+            if (cxMatch) {
+              const emuWidth = parseInt(cxMatch[1]);
+              const pxWidth = Math.round(emuWidth / 914400 * 96); // EMU to pixels
+              styles.push(`width: ${pxWidth}px`);
+            }
+            if (cyMatch) {
+              const emuHeight = parseInt(cyMatch[1]);
+              const pxHeight = Math.round(emuHeight / 914400 * 96);
+              styles.push(`height: ${pxHeight}px`);
+            }
+            styleAttr = ` style="${styles.join('; ')}"`;
+          }
+          parts.push(`<img src="${imageData}" class="document-image"${styleAttr} />`);
+        }
+      }
+    } else if (elem.type === 'run') {
+      const runContent = parseRun(elem.content, context);
+      if (runContent) parts.push(runContent);
+    }
   }
   
   return parts.join('');
 }
 
-function parseRun(runXml: string): string {
+function parseRun(runXml: string, context: ParseContext): string {
+  // Check for embedded image in run
+  const drawingMatch = runXml.match(/<w:drawing>[\s\S]*?<\/w:drawing>/);
+  if (drawingMatch) {
+    const embedMatch = drawingMatch[0].match(/r:embed="([^"]*)"/);
+    if (embedMatch) {
+      const imageData = context.images.get(embedMatch[1]);
+      if (imageData) {
+        return `<img src="${imageData}" class="document-image" />`;
+      }
+    }
+  }
+  
   // Extract text
   const textMatches = runXml.match(/<w:t[^>]*>([^<]*)<\/w:t>/g) || [];
   const text = textMatches.map(t => {
     const m = t.match(/<w:t[^>]*>([^<]*)<\/w:t>/);
     return m ? m[1] : '';
   }).join('');
+  
+  // Check for break elements
+  if (/<w:br[^>]*\/>/.test(runXml) && !/<w:br[^>]*w:type="page"/.test(runXml)) {
+    return text + '<br/>';
+  }
   
   if (!text) return '';
   
@@ -265,10 +392,16 @@ function parseRun(runXml: string): string {
   const isItalic = /<w:i[^>]*\/>|<w:i[^>]*>/.test(runXml) && !/<w:i[^>]*w:val="(false|0)"/.test(runXml);
   const isUnderline = /<w:u[^>]*\/>|<w:u[^>]*>/.test(runXml) && !/<w:u[^>]*w:val="none"/.test(runXml);
   const isStrike = /<w:strike[^>]*\/>|<w:strike[^>]*>/.test(runXml) && !/<w:strike[^>]*w:val="(false|0)"/.test(runXml);
+  const isSubscript = /<w:vertAlign[^>]*w:val="subscript"/.test(runXml);
+  const isSuperscript = /<w:vertAlign[^>]*w:val="superscript"/.test(runXml);
   
   // Check for highlight
   const highlightMatch = runXml.match(/<w:highlight[^>]*w:val="([^"]*)"/);
   const highlight = highlightMatch ? highlightMatch[1] : null;
+  
+  // Check for shading (another way Word does highlighting)
+  const shadingMatch = runXml.match(/<w:shd[^>]*w:fill="([^"]*)"/);
+  const shading = shadingMatch && shadingMatch[1] !== 'auto' ? shadingMatch[1] : null;
   
   // Check for color
   const colorMatch = runXml.match(/<w:color[^>]*w:val="([^"]*)"/);
@@ -309,6 +442,8 @@ function parseRun(runXml: string): string {
   
   if (highlight && highlightColors[highlight]) {
     styles.push(`background-color: ${highlightColors[highlight]}`);
+  } else if (shading) {
+    styles.push(`background-color: #${shading}`);
   }
   
   let result = escapeHtml(text);
@@ -323,43 +458,85 @@ function parseRun(runXml: string): string {
   if (isUnderline) result = `<u>${result}</u>`;
   if (isItalic) result = `<em>${result}</em>`;
   if (isBold) result = `<strong>${result}</strong>`;
+  if (isSubscript) result = `<sub>${result}</sub>`;
+  if (isSuperscript) result = `<sup>${result}</sup>`;
   
   return result;
 }
 
-function parseTable(tableXml: string): string {
+function parseTable(tableXml: string, context: ParseContext): string {
   const rows: string[] = [];
   const rowMatches = tableXml.match(/<w:tr[^>]*>[\s\S]*?<\/w:tr>/g) || [];
   
   let isFirstRow = true;
   
+  // Check for header row indication
+  const hasHeaderRow = /<w:tblHeader/.test(tableXml) || /<w:firstRow\s+w:val="(true|1)"/.test(tableXml);
+  
   for (const rowXml of rowMatches) {
     const cells: string[] = [];
     const cellMatches = rowXml.match(/<w:tc[^>]*>[\s\S]*?<\/w:tc>/g) || [];
+    const isHeaderRow = isFirstRow && (hasHeaderRow || /<w:tblHeader/.test(rowXml));
     
     for (const cellXml of cellMatches) {
       // Get cell properties
       const colspanMatch = cellXml.match(/<w:gridSpan[^>]*w:val="(\d+)"/);
       const colspan = colspanMatch ? ` colspan="${colspanMatch[1]}"` : '';
       
+      // Check for vertical merge
+      const vMergeMatch = cellXml.match(/<w:vMerge[^>]*(w:val="([^"]*)")?/);
+      if (vMergeMatch && !vMergeMatch[2]) {
+        // This is a continuation cell, skip it
+        continue;
+      }
+      
+      // Get cell background/shading
+      const cellShadingMatch = cellXml.match(/<w:shd[^>]*w:fill="([^"]*)"/);
+      const cellBg = cellShadingMatch && cellShadingMatch[1] !== 'auto' ? cellShadingMatch[1] : null;
+      
+      // Get cell alignment
+      const cellAlignMatch = cellXml.match(/<w:jc[^>]*w:val="([^"]*)"/);
+      const cellAlign = cellAlignMatch ? cellAlignMatch[1] : null;
+      
+      let cellStyle = '';
+      const cellStyles: string[] = [];
+      if (cellBg) cellStyles.push(`background-color: #${cellBg}`);
+      if (cellAlign) {
+        const alignMap: Record<string, string> = { 'left': 'left', 'center': 'center', 'right': 'right' };
+        if (alignMap[cellAlign]) cellStyles.push(`text-align: ${alignMap[cellAlign]}`);
+      }
+      if (cellStyles.length > 0) cellStyle = ` style="${cellStyles.join('; ')}"`;
+      
       // Parse cell content (paragraphs)
       const cellParas = cellXml.match(/<w:p[^\/]*>[\s\S]*?<\/w:p>|<w:p[^\/]*\/>/g) || [];
       const cellContent = cellParas.map(p => {
-        const result = parseParagraph(p, new Map(), new Map());
+        const result = parseParagraph(p, context);
         // Strip outer p tag for table cells
         const match = result.html.match(/<p[^>]*>([\s\S]*)<\/p>/);
         return match ? match[1] : result.html;
       }).join('<br>');
       
-      const tag = isFirstRow ? 'th' : 'td';
-      cells.push(`<${tag}${colspan}>${cellContent || '&nbsp;'}</${tag}>`);
+      const tag = isHeaderRow ? 'th' : 'td';
+      cells.push(`<${tag}${colspan}${cellStyle}>${cellContent || '&nbsp;'}</${tag}>`);
     }
     
-    rows.push(`<tr>${cells.join('')}</tr>`);
+    if (cells.length > 0) {
+      rows.push(`<tr>${cells.join('')}</tr>`);
+    }
     isFirstRow = false;
   }
   
   return `<table class="document-table">${rows.join('')}</table>`;
+}
+
+// Parse header/footer XML
+function parseHeaderFooter(xml: string, context: ParseContext): string {
+  const paras = xml.match(/<w:p[^\/]*>[\s\S]*?<\/w:p>|<w:p[^\/]*\/>/g) || [];
+  const content = paras.map(p => {
+    const result = parseParagraph(p, context);
+    return result.html;
+  }).filter(h => h.trim()).join('\n');
+  return content;
 }
 
 // Simple XML parser for XLSX files
@@ -455,6 +632,25 @@ function escapeHtml(text: string): string {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#039;');
+}
+
+// Get MIME type from file extension
+function getMimeTypeFromExt(filename: string): string {
+  const ext = filename.split('.').pop()?.toLowerCase() || '';
+  const mimeTypes: Record<string, string> = {
+    'png': 'image/png',
+    'jpg': 'image/jpeg',
+    'jpeg': 'image/jpeg',
+    'gif': 'image/gif',
+    'bmp': 'image/bmp',
+    'tiff': 'image/tiff',
+    'tif': 'image/tiff',
+    'webp': 'image/webp',
+    'svg': 'image/svg+xml',
+    'emf': 'image/x-emf',
+    'wmf': 'image/x-wmf',
+  };
+  return mimeTypes[ext] || 'image/png';
 }
 
 // Unzip function using DecompressionStream
@@ -597,15 +793,74 @@ serve(async (req) => {
         const arrayBuffer = await fileData.arrayBuffer();
         const files = await unzipFile(arrayBuffer);
         
-        const documentXml = files.get('word/document.xml');
+        // Initialize context
+        const context: ParseContext = {
+          images: new Map(),
+          relationships: new Map(),
+          numberingFormats: new Map(),
+          headerContent: '',
+          footerContent: ''
+        };
+        
+        // Extract images from word/media/
+        for (const [filename, data] of files.entries()) {
+          if (filename.startsWith('word/media/')) {
+            // Get rId for this image from relationships
+            const imageName = filename.replace('word/media/', '');
+            const mimeType = getMimeTypeFromExt(imageName);
+            
+            // Convert to base64
+            const base64 = btoa(String.fromCharCode(...data));
+            const dataUrl = `data:${mimeType};base64,${base64}`;
+            
+            // We'll map by filename since we need to match with relationships later
+            context.images.set(imageName, dataUrl);
+          }
+        }
+        
+        // Parse relationships to map rIds to image filenames
         const relationshipsXml = files.get('word/_rels/document.xml.rels');
+        if (relationshipsXml) {
+          const relsContent = new TextDecoder().decode(relationshipsXml);
+          const relMatches = relsContent.match(/<Relationship[^>]*>/g) || [];
+          for (const rel of relMatches) {
+            const idMatch = rel.match(/Id="([^"]*)"/);
+            const targetMatch = rel.match(/Target="([^"]*)"/);
+            const typeMatch = rel.match(/Type="[^"]*\/([^"\/]*)"/);
+            if (idMatch && targetMatch) {
+              const target = targetMatch[1].replace('media/', '');
+              if (typeMatch && typeMatch[1] === 'image') {
+                const imageData = context.images.get(target);
+                if (imageData) {
+                  context.images.set(idMatch[1], imageData);
+                }
+              }
+            }
+          }
+        }
+        
+        // Parse header
+        const header1Data = files.get('word/header1.xml');
+        if (header1Data) {
+          const headerXml = new TextDecoder().decode(header1Data);
+          context.headerContent = parseHeaderFooter(headerXml, context);
+        }
+        
+        // Parse footer
+        const footer1Data = files.get('word/footer1.xml');
+        if (footer1Data) {
+          const footerXml = new TextDecoder().decode(footer1Data);
+          context.footerContent = parseHeaderFooter(footerXml, context);
+        }
+        
+        const documentXml = files.get('word/document.xml');
         const numberingXml = files.get('word/numbering.xml');
         
         if (documentXml) {
           const docContent = new TextDecoder().decode(documentXml);
           const relsContent = relationshipsXml ? new TextDecoder().decode(relationshipsXml) : null;
           const numContent = numberingXml ? new TextDecoder().decode(numberingXml) : null;
-          content = parseDocxXml(docContent, relsContent, numContent);
+          content = parseDocxXml(docContent, relsContent, numContent, context);
           // Check if parsing returned empty/failed
           if (!content || content.trim() === '') {
             content = ''; // Ensure it's empty string for detection
