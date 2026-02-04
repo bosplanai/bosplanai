@@ -410,20 +410,38 @@ By signing below, you acknowledge that you have read, understood, and agree to b
     enabled: !!activeRoomId
   });
 
-  // Check if current user is an internal team member of this data room
+  // Check if current user can access this data room (org member, creator, or explicitly added)
   const { data: isDataRoomMember = false } = useQuery({
-    queryKey: ["is-data-room-member", activeRoomId, user?.id],
+    queryKey: ["is-data-room-member", activeRoomId, user?.id, selectedRoom?.organization_id],
     queryFn: async () => {
       if (!activeRoomId || !user?.id) return false;
-      const { data, error } = await supabase
+      
+      // Check if user is the room creator
+      if (selectedRoom?.created_by === user.id) return true;
+      
+      // Check if user is explicitly added to this data room
+      const { data: memberData } = await supabase
         .from("data_room_members")
         .select("id")
         .eq("data_room_id", activeRoomId)
         .eq("user_id", user.id)
         .maybeSingle();
       
-      if (error) return false;
-      return !!data;
+      if (memberData) return true;
+      
+      // Check if user is an organization member (can access all org data rooms)
+      if (selectedRoom?.organization_id) {
+        const { data: roleData } = await supabase
+          .from("user_roles")
+          .select("id")
+          .eq("user_id", user.id)
+          .eq("organization_id", selectedRoom.organization_id)
+          .maybeSingle();
+        
+        if (roleData) return true;
+      }
+      
+      return false;
     },
     enabled: !!activeRoomId && !!user?.id
   });
@@ -577,9 +595,9 @@ By signing below, you acknowledge that you have read, understood, and agree to b
     data: filesData = { currentFiles: [], surfacedFiles: [] },
     isLoading: filesLoading
   } = useQuery({
-    queryKey: ["data-room-files", organization?.id, activeRoomId, currentFolderId, filePermissions, allFolders, folderPermissions, user?.id, selectedRoom?.created_by],
+    queryKey: ["data-room-files", selectedRoom?.organization_id, activeRoomId, currentFolderId, filePermissions, allFolders, folderPermissions, user?.id, selectedRoom?.created_by],
     queryFn: async () => {
-      if (!organization?.id || !activeRoomId) return { currentFiles: [], surfacedFiles: [] };
+      if (!selectedRoom?.organization_id || !activeRoomId) return { currentFiles: [], surfacedFiles: [] };
       
       // Fetch files in current folder (excluding deleted)
       // Only show root files (original uploads) - versions have parent_file_id set
@@ -588,7 +606,7 @@ By signing below, you acknowledge that you have read, understood, and agree to b
           *,
           uploader:uploaded_by(full_name),
           folder:folder_id(id, name, is_restricted)
-        `).eq("organization_id", organization.id).eq("data_room_id", activeRoomId).is("deleted_at", null).is("parent_file_id", null);
+        `).eq("organization_id", selectedRoom.organization_id).eq("data_room_id", activeRoomId).is("deleted_at", null).is("parent_file_id", null);
       if (currentFolderId) {
         query = query.eq("folder_id", currentFolderId);
       } else {
