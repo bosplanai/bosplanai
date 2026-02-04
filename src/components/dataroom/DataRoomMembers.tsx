@@ -75,18 +75,33 @@ const DataRoomMembers = ({
     enabled: !!dataRoomId
   });
 
-  // Fetch team members from organization for dropdown
+  // Fetch team members from organization for dropdown via user_roles (supports multi-org users)
   const { data: teamMembers = [] } = useQuery({
     queryKey: ["team-members-for-dataroom", organizationId],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("profiles")
-        .select("id, full_name, job_role")
+        .from("user_roles")
+        .select(`
+          user_id,
+          profiles:user_id (
+            id,
+            full_name,
+            job_role
+          )
+        `)
         .eq("organization_id", organizationId)
-        .neq("id", currentUserId);
+        .neq("user_id", currentUserId);
 
       if (error) throw error;
-      return data as { id: string; full_name: string; job_role: string | null }[];
+      
+      // Extract unique profiles from user_roles
+      return (data || [])
+        .filter((r: any) => r.profiles)
+        .map((r: any) => ({
+          id: r.profiles.id,
+          full_name: r.profiles.full_name,
+          job_role: r.profiles.job_role,
+        })) as { id: string; full_name: string; job_role: string | null }[];
     },
     enabled: !!organizationId,
   });
@@ -225,15 +240,14 @@ const DataRoomMembers = ({
       <Card className="p-5">
         <div className="flex items-center justify-between mb-4">
           
-          {isOwner && (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button size="sm" variant="outline" disabled={availableMembers.length === 0}>
-                  <UserPlus className="w-4 h-4 mr-1" />
-                  Add
-                  <ChevronDown className="w-3 h-3 ml-1" />
-                </Button>
-              </DropdownMenuTrigger>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button size="sm" variant="outline" disabled={availableMembers.length === 0}>
+                <UserPlus className="w-4 h-4 mr-1" />
+                Add
+                <ChevronDown className="w-3 h-3 ml-1" />
+              </Button>
+            </DropdownMenuTrigger>
               <DropdownMenuContent align="start" className="w-56">
                 {availableMembers.length === 0 ? (
                   <div className="px-2 py-3 text-center text-sm text-muted-foreground">
@@ -263,7 +277,6 @@ const DataRoomMembers = ({
                 )}
               </DropdownMenuContent>
             </DropdownMenu>
-          )}
         </div>
 
         {isLoading ? <div className="flex items-center justify-center py-4">
@@ -291,7 +304,7 @@ const DataRoomMembers = ({
                           </p>
                         </div>
                       </div>
-                      {isOwner && member.user_id !== currentUserId && <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive" onClick={() => removeMemberMutation.mutate(member.id)}>
+                      {member.user_id !== currentUserId && <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive" onClick={() => removeMemberMutation.mutate(member.id)}>
                           <X className="w-4 h-4" />
                         </Button>}
                     </div>)}
@@ -321,7 +334,7 @@ const DataRoomMembers = ({
                           </div>
                         </div>
                       </div>
-                      {isOwner && invite.status === "pending" && <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive" onClick={() => revokeInviteMutation.mutate(invite.id)}>
+                      {invite.status === "pending" && <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive" onClick={() => revokeInviteMutation.mutate(invite.id)}>
                           <X className="w-4 h-4" />
                         </Button>}
                     </div>)}

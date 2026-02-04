@@ -141,7 +141,7 @@ const ActiveTeamPanel = ({
     enabled: !!dataRoomId,
   });
 
-  // Fetch pending invites (not yet signed NDA) - only for owner
+  // Fetch pending invites (not yet signed NDA)
   const { data: pendingInvites = [], isLoading: pendingLoading } = useQuery({
     queryKey: ["data-room-pending-invites", dataRoomId],
     queryFn: async () => {
@@ -155,7 +155,7 @@ const ActiveTeamPanel = ({
       if (error) throw error;
       return data as PendingInvite[];
     },
-    enabled: !!dataRoomId && isOwner,
+    enabled: !!dataRoomId,
   });
 
   // Fetch creator profile
@@ -175,18 +175,33 @@ const ActiveTeamPanel = ({
     enabled: !!createdBy,
   });
 
-  // Fetch team members for add dropdown
+  // Fetch team members for add dropdown via user_roles (supports multi-org users)
   const { data: teamMembers = [] } = useQuery({
     queryKey: ["team-members-for-dataroom", organizationId],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("profiles")
-        .select("id, full_name, job_role")
+        .from("user_roles")
+        .select(`
+          user_id,
+          profiles:user_id (
+            id,
+            full_name,
+            job_role
+          )
+        `)
         .eq("organization_id", organizationId)
-        .neq("id", currentUserId);
+        .neq("user_id", currentUserId);
 
       if (error) throw error;
-      return data as { id: string; full_name: string; job_role: string | null }[];
+      
+      // Extract unique profiles from user_roles
+      return (data || [])
+        .filter((r: any) => r.profiles)
+        .map((r: any) => ({
+          id: r.profiles.id,
+          full_name: r.profiles.full_name,
+          job_role: r.profiles.job_role,
+        })) as { id: string; full_name: string; job_role: string | null }[];
     },
     enabled: !!organizationId,
   });
@@ -283,7 +298,7 @@ const ActiveTeamPanel = ({
     inviteToTeamMutation.mutate(guest);
   };
 
-  const isLoading = membersLoading || guestsLoading || (isOwner && pendingLoading);
+  const isLoading = membersLoading || guestsLoading || pendingLoading;
   
   // Check if creator is already in the members list
   const isCreatorInMembers = createdBy && members.some(m => m.user_id === createdBy);
@@ -299,8 +314,8 @@ const ActiveTeamPanel = ({
 
   return (
     <div className="p-5 space-y-6">
-      {/* Action Sections for Owner */}
-      {isOwner && (onSendInvite || availableMembers.length > 0) && (
+      {/* Action Sections */}
+      {(onSendInvite || availableMembers.length > 0) && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* Invite Guest Section */}
           {onSendInvite && setInviteEmail && (
@@ -459,7 +474,7 @@ const ActiveTeamPanel = ({
                         </p>
                       )}
                     </div>
-                    {isOwner && member.user_id !== currentUserId && (
+                    {member.user_id !== currentUserId && (
                       <Button
                         variant="ghost"
                         size="sm"
@@ -505,54 +520,52 @@ const ActiveTeamPanel = ({
                         </p>
                       )}
                     </div>
-                    {isOwner && (
-                      <div className="flex items-center gap-1 shrink-0">
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="h-8 w-8 p-0 text-muted-foreground hover:text-primary hover:bg-primary/10 opacity-0 group-hover:opacity-100 transition-opacity"
-                                onClick={() => handleInviteToTeam(guest)}
-                                disabled={invitingGuestId === guest.id}
-                              >
-                                {invitingGuestId === guest.id ? (
-                                  <Loader2 className="w-4 h-4 animate-spin" />
-                                ) : (
-                                  <UserPlus2 className="w-4 h-4" />
-                                )}
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              <p>Invite to Team</p>
-                            </TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10 opacity-0 group-hover:opacity-100 transition-opacity"
-                                onClick={() => revokeInviteMutation.mutate(guest.id)}
-                                disabled={revokeInviteMutation.isPending}
-                              >
-                                {revokeInviteMutation.isPending ? (
-                                  <Loader2 className="w-4 h-4 animate-spin" />
-                                ) : (
-                                  <X className="w-4 h-4" />
-                                )}
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              <p>Revoke Access</p>
-                            </TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
-                      </div>
-                    )}
+                    <div className="flex items-center gap-1 shrink-0">
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 w-8 p-0 text-muted-foreground hover:text-primary hover:bg-primary/10 opacity-0 group-hover:opacity-100 transition-opacity"
+                              onClick={() => handleInviteToTeam(guest)}
+                              disabled={invitingGuestId === guest.id}
+                            >
+                              {invitingGuestId === guest.id ? (
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                              ) : (
+                                <UserPlus2 className="w-4 h-4" />
+                              )}
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>Invite to Team</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10 opacity-0 group-hover:opacity-100 transition-opacity"
+                              onClick={() => revokeInviteMutation.mutate(guest.id)}
+                              disabled={revokeInviteMutation.isPending}
+                            >
+                              {revokeInviteMutation.isPending ? (
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                              ) : (
+                                <X className="w-4 h-4" />
+                              )}
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>Revoke Access</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -561,8 +574,8 @@ const ActiveTeamPanel = ({
         )}
       </div>
 
-      {/* Pending Invites Section - Only visible to owner */}
-      {isOwner && pendingInvites.length > 0 && (
+      {/* Pending Invites Section */}
+      {pendingInvites.length > 0 && (
         <div className="space-y-4 pt-4 border-t border-border/50">
           <div className="flex items-center gap-2.5">
             <div className="w-6 h-6 rounded-md bg-amber-500/15 flex items-center justify-center">
