@@ -7,7 +7,7 @@ import { DocumentEditor } from "./DocumentEditor";
 import { DocumentVersionHistory } from "./DocumentVersionHistory";
 import { useDocumentEditor } from "@/hooks/useDocumentEditor";
 import { supabase } from "@/integrations/supabase/client";
-import { X, FileText, Cloud, CloudOff, Users, Loader2, Check, Save, Download, FileDown } from "lucide-react";
+import { X, FileText, Cloud, CloudOff, Users, Loader2, Check, Save, Download, FileDown, RefreshCw } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
@@ -46,6 +46,7 @@ export function DocumentEditorDialog({
     saveVersion,
     restoreVersion,
     fetchVersions,
+    reloadFromFile,
   } = useDocumentEditor({
     fileId: file?.id || "",
     filePath: file?.file_path,
@@ -281,6 +282,27 @@ export function DocumentEditorDialog({
                 </Button>
               </TooltipTrigger>
               <TooltipContent>Create a named version snapshot</TooltipContent>
+            </Tooltip>
+
+            {/* Reload from File Button */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={reloadFromFile}
+                  disabled={isParsing || !file?.file_path}
+                  className="gap-2"
+                >
+                  {isParsing ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <RefreshCw className="w-4 h-4" />
+                  )}
+                  <span className="hidden sm:inline">Reload</span>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Reload content from original uploaded file</TooltipContent>
             </Tooltip>
 
             {/* Collaborators */}

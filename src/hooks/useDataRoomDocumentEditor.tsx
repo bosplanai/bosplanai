@@ -68,31 +68,42 @@ export function useDataRoomDocumentEditor({
 
   // Parse uploaded document content
   const parseUploadedDocument = useCallback(async (): Promise<string | null> => {
-    if (!filePath || !mimeType) return null;
-
-    // Only parse supported document formats
-    const parsableTypes = [
-      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-      "application/msword",
-      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-      "application/vnd.ms-excel",
-      "application/pdf",
-      "text/plain",
-      "text/html",
-      "text/markdown",
-    ];
-
-    if (!parsableTypes.some(type => mimeType?.includes(type) || mimeType?.startsWith("text/"))) {
+    if (!filePath) {
+      console.log('[DataRoomDocEditor] No filePath, skipping parse');
       return null;
     }
 
+    // Only parse supported document formats
+    const lowerMimeType = (mimeType || '').toLowerCase();
+    const lowerPath = filePath.toLowerCase();
+    
+    const isParseable = 
+      lowerMimeType.includes('word') ||
+      lowerMimeType.includes('officedocument.wordprocessingml') ||
+      lowerMimeType.includes('excel') ||
+      lowerMimeType.includes('spreadsheet') ||
+      lowerMimeType.includes('officedocument.spreadsheetml') ||
+      lowerMimeType.includes('msword') ||
+      lowerPath.endsWith('.docx') ||
+      lowerPath.endsWith('.doc') ||
+      lowerPath.endsWith('.xlsx') ||
+      lowerPath.endsWith('.xls') ||
+      lowerMimeType.startsWith('text/');
+
+    if (!isParseable) {
+      console.log('[DataRoomDocEditor] File type not parseable:', mimeType, filePath);
+      return null;
+    }
+
+    console.log('[DataRoomDocEditor] Starting document parse for:', filePath, 'mimeType:', mimeType);
     setIsParsing(true);
     try {
       const { data: sessionData } = await supabase.auth.getSession();
       const token = sessionData.session?.access_token;
 
       if (!token) {
-        console.error("No auth token available");
+        console.error("[DataRoomDocEditor] No auth token available");
+        toast.error('Authentication required to parse document');
         return null;
       }
 
@@ -113,16 +124,31 @@ export function useDataRoomDocumentEditor({
         }
       );
 
-      const result = await response.json();
-
-      if (result.error) {
-        console.error("Parse error:", result.error);
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('[DataRoomDocEditor] Failed to parse document:', response.status, errorText);
+        toast.error('Failed to parse document. Please try again.');
         return null;
       }
 
-      return result.content || null;
+      const result = await response.json();
+      console.log('[DataRoomDocEditor] Parse result received, content length:', result.content?.length || 0);
+
+      if (result.error) {
+        console.error("[DataRoomDocEditor] Parse error:", result.error);
+        toast.error(result.error);
+        return null;
+      }
+
+      if (!result.content || result.content.trim() === '') {
+        console.warn('[DataRoomDocEditor] Parsing returned empty content');
+        return null;
+      }
+
+      return result.content;
     } catch (error) {
-      console.error("Error parsing document:", error);
+      console.error("[DataRoomDocEditor] Error parsing document:", error);
+      toast.error('Error parsing document');
       return null;
     } finally {
       setIsParsing(false);
@@ -133,10 +159,12 @@ export function useDataRoomDocumentEditor({
   useEffect(() => {
     const loadOrCreateDocument = async () => {
       if (!fileId || !user || !dataRoomId || !organizationId) {
+        console.log('[DataRoomDocEditor] Missing required params, skipping load');
         setIsLoading(false);
         return;
       }
 
+      console.log('[DataRoomDocEditor] Loading document for fileId:', fileId);
       setIsLoading(true);
       try {
         // Check for existing document content
@@ -147,27 +175,43 @@ export function useDataRoomDocumentEditor({
           .maybeSingle();
 
         if (error) {
-          console.error("Error loading document:", error);
+          console.error("[DataRoomDocEditor] Error loading document:", error);
+          toast.error("Failed to load document");
           setIsLoading(false);
           return;
         }
 
         if (existingDoc) {
+          console.log('[DataRoomDocEditor] Found existing document, content length:', existingDoc.content?.length || 0);
           setDocumentId(existingDoc.id);
           
           // Check if existing content is empty, placeholder, or an error message - if so, try parsing again
-          const isPlaceholderContent = existingDoc.content === "<p>Start editing this document...</p>" ||
-            existingDoc.content === "" ||
+          const isPlaceholderContent = !existingDoc.content ||
+            existingDoc.content.trim() === "" ||
             existingDoc.content === "<p></p>" ||
-            existingDoc.content.includes("Could not extract document content");
+            existingDoc.content === "<p>Start editing this document...</p>" ||
+            existingDoc.content.includes("Could not extract document content") ||
+            existingDoc.content.includes("Legacy .doc format detected") ||
+            existingDoc.content.includes("Legacy .xls format detected") ||
+            existingDoc.content.length < 20;
+          
+          console.log('[DataRoomDocEditor] Is placeholder:', isPlaceholderContent, 'filePath:', filePath, 'mimeType:', mimeType);
           
           if (isPlaceholderContent && filePath && mimeType) {
             // Try to re-parse the document since we only have placeholder content
+            console.log('[DataRoomDocEditor] Attempting to parse document from file...');
             const parsedContent = await parseUploadedDocument();
-            // Accept legacy format messages as valid content
-            if (parsedContent && parsedContent.length > 50 && !parsedContent.includes("Could not extract")) {
+            
+            // Check if we got valid content back
+            const isValidParsedContent = parsedContent && 
+              parsedContent.trim().length > 0 &&
+              !parsedContent.includes("Could not extract document content");
+            
+            console.log('[DataRoomDocEditor] Parse result - valid:', isValidParsedContent, 'length:', parsedContent?.length || 0);
+            
+            if (isValidParsedContent) {
               // Update the document with parsed content
-              await supabase
+              const { error: updateError } = await supabase
                 .from("data_room_document_content")
                 .update({
                   content: parsedContent,
@@ -176,27 +220,64 @@ export function useDataRoomDocumentEditor({
                 })
                 .eq("id", existingDoc.id);
               
+              if (updateError) {
+                console.error('[DataRoomDocEditor] Error updating document content:', updateError);
+              } else {
+                console.log('[DataRoomDocEditor] Successfully updated document with parsed content');
+              }
+              
               setContent(parsedContent);
               lastVersionContentRef.current = parsedContent;
               onContentChange?.(parsedContent);
-              setContentType(existingDoc.content_type as "rich_text" | "plain_text");
+              toast.success("Document content loaded from uploaded file");
+              
+              // Create initial version with parsed content
+              const { data: latestVersion } = await supabase
+                .from("data_room_document_versions")
+                .select("version_number")
+                .eq("document_id", existingDoc.id)
+                .order("version_number", { ascending: false })
+                .limit(1)
+                .maybeSingle();
+              
+              if (!latestVersion) {
+                await supabase.from("data_room_document_versions").insert({
+                  document_id: existingDoc.id,
+                  file_id: fileId,
+                  data_room_id: dataRoomId,
+                  organization_id: organizationId,
+                  content: parsedContent,
+                  version_number: 1,
+                  created_by: user.id,
+                  version_note: "Original uploaded content",
+                });
+              }
             } else {
-              // Fall back to existing content if parsing fails again
-              setContent(existingDoc.content);
-              lastVersionContentRef.current = existingDoc.content;
-              onContentChange?.(existingDoc.content);
-              setContentType(existingDoc.content_type as "rich_text" | "plain_text");
+              // Fall back to existing content if parsing fails
+              console.log('[DataRoomDocEditor] Parsing failed, using existing content');
+              setContent(existingDoc.content || '');
+              lastVersionContentRef.current = existingDoc.content || '';
+              onContentChange?.(existingDoc.content || '');
             }
           } else {
+            // Content exists and is valid, use it
+            console.log('[DataRoomDocEditor] Using existing valid content');
             setContent(existingDoc.content);
-            setContentType(existingDoc.content_type as "rich_text" | "plain_text");
             lastVersionContentRef.current = existingDoc.content;
             onContentChange?.(existingDoc.content);
           }
+          setContentType(existingDoc.content_type as "rich_text" | "plain_text");
         } else {
-          // Try to parse the uploaded file
+          // No existing document - try to parse the uploaded file
+          console.log('[DataRoomDocEditor] No existing document, creating new...');
           const parsedContent = await parseUploadedDocument();
-          const initialContent = parsedContent || "<p>Start editing this document...</p>";
+          
+          // Accept any non-empty parsed content
+          const initialContent = (parsedContent && parsedContent.trim().length > 0) 
+            ? parsedContent 
+            : "";
+          
+          console.log('[DataRoomDocEditor] Initial content length:', initialContent.length);
 
           // Create new document content
           const { data: newDoc, error: createError } = await supabase
@@ -213,21 +294,27 @@ export function useDataRoomDocumentEditor({
             .single();
 
           if (createError) {
-            console.error("Error creating document:", createError);
+            console.error("[DataRoomDocEditor] Error creating document:", createError);
+            toast.error("Failed to create document");
           } else if (newDoc) {
+            console.log('[DataRoomDocEditor] Created new document with content length:', newDoc.content?.length || 0);
             setDocumentId(newDoc.id);
             setContent(newDoc.content);
             lastVersionContentRef.current = newDoc.content;
             onContentChange?.(newDoc.content);
+            
+            if (initialContent) {
+              toast.success("Document content loaded from uploaded file");
+            }
 
             // Create initial version if content was parsed
-            if (parsedContent) {
+            if (initialContent) {
               await supabase.from("data_room_document_versions").insert({
                 document_id: newDoc.id,
                 file_id: fileId,
                 data_room_id: dataRoomId,
                 organization_id: organizationId,
-                content: parsedContent,
+                content: initialContent,
                 version_number: 1,
                 created_by: user.id,
                 version_note: "Initial version from uploaded file",
@@ -236,7 +323,8 @@ export function useDataRoomDocumentEditor({
           }
         }
       } catch (error) {
-        console.error("Error in loadOrCreateDocument:", error);
+        console.error("[DataRoomDocEditor] Error in loadOrCreateDocument:", error);
+        toast.error("Failed to load document");
       } finally {
         setIsLoading(false);
       }
@@ -562,6 +650,40 @@ export function useDataRoomDocumentEditor({
     };
   }, []);
 
+  // Force reload content from the uploaded file
+  const reloadFromFile = useCallback(async () => {
+    if (!filePath || !mimeType) {
+      toast.error("No file path available to reload from");
+      return;
+    }
+    
+    console.log('[DataRoomDocEditor] Manual reload triggered for:', filePath);
+    const parsedContent = await parseUploadedDocument();
+    
+    if (parsedContent && parsedContent.trim().length > 0) {
+      setContent(parsedContent);
+      onContentChange?.(parsedContent);
+      
+      if (documentId && user) {
+        await supabase
+          .from("data_room_document_content")
+          .update({
+            content: parsedContent,
+            last_edited_by: user.id,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", documentId);
+        
+        // Create a version for the reload
+        await createVersion(parsedContent, "Reloaded from original file");
+      }
+      
+      toast.success("Document reloaded from original file");
+    } else {
+      toast.error("Could not parse content from the file");
+    }
+  }, [filePath, mimeType, documentId, user, onContentChange, createVersion, parseUploadedDocument]);
+
   return {
     content,
     contentType,
@@ -577,5 +699,6 @@ export function useDataRoomDocumentEditor({
     saveVersion,
     restoreVersion,
     fetchVersions,
+    reloadFromFile,
   };
 }
