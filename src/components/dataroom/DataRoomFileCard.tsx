@@ -7,6 +7,10 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubTrigger,
+  DropdownMenuSubContent,
+  DropdownMenuPortal,
 } from "@/components/ui/dropdown-menu";
 import {
   Eye,
@@ -28,6 +32,7 @@ import {
   PenLine,
   CheckCircle2,
   AlertCircle,
+  FileDown,
 } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
@@ -59,7 +64,7 @@ interface DataRoomFileCardProps {
   isAdmin?: boolean;
   currentUserId?: string;
   onView: () => void;
-  onDownload: () => void;
+  onDownload: (format?: 'original' | 'pdf') => void;
   onMoveToFolder: () => void;
   onViewVersions: () => void;
   onEditDetails: () => void;
@@ -157,10 +162,30 @@ export function DataRoomFileCard({
                 <Eye className="w-4 h-4" />
                 View
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={onDownload} className="gap-2">
-                <Download className="w-4 h-4" />
-                Download
-              </DropdownMenuItem>
+              <DropdownMenuSub>
+                <DropdownMenuSubTrigger className="gap-2">
+                  <Download className="w-4 h-4" />
+                  Export
+                </DropdownMenuSubTrigger>
+                <DropdownMenuPortal>
+                  <DropdownMenuSubContent className="bg-popover">
+                    <DropdownMenuItem onClick={() => onDownload('original')} className="gap-2">
+                      <FileDown className="w-4 h-4 text-primary" />
+                      <div className="flex flex-col">
+                        <span>Original Format</span>
+                        <span className="text-xs text-muted-foreground">{file.name}</span>
+                      </div>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => onDownload('pdf')} className="gap-2">
+                      <FileDown className="w-4 h-4 text-destructive" />
+                      <div className="flex flex-col">
+                        <span>PDF Document</span>
+                        <span className="text-xs text-muted-foreground">.pdf</span>
+                      </div>
+                    </DropdownMenuItem>
+                  </DropdownMenuSubContent>
+                </DropdownMenuPortal>
+              </DropdownMenuSub>
               <DropdownMenuItem onClick={onMoveToFolder} className="gap-2">
                 <FolderInput className="w-4 h-4" />
                 Move to folder
