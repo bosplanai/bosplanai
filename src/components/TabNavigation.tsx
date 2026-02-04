@@ -38,7 +38,7 @@ const TabNavigation = ({ activeTab, onTabChange }: TabNavigationProps) => {
   }
 
   return (
-    <div className="flex items-center gap-1 sm:gap-2 flex-nowrap">
+    <div className="flex items-center gap-1 sm:gap-2 flex-nowrap py-1">
       {visibleTabs.map((tab, index) => {
         const Icon = tab.icon;
         const isActive = activeTab === tab.id;
