@@ -1,5 +1,4 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import * as bcrypt from "https://deno.land/x/bcrypt@v0.4.1/mod.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -155,30 +154,13 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Verify password using bcrypt (or fall back to legacy SHA-256 check for migration)
+    // Verify password using SHA-256
     let passwordValid = false;
     const storedHash = invite.access_password;
     
     if (storedHash) {
-      // Check if it's a bcrypt hash (starts with $2a$, $2b$, or $2y$)
-      if (storedHash.startsWith("$2")) {
-        // New bcrypt format - compare with uppercase password
-        passwordValid = await bcrypt.compare(actualPassword.toUpperCase(), storedHash);
-      } else {
-        // Legacy SHA-256 format - use old comparison method for migration
-        const legacyHash = await legacyHashPassword(actualPassword.toUpperCase());
-        passwordValid = (storedHash === legacyHash);
-        
-        // If valid, upgrade to bcrypt
-        if (passwordValid) {
-          const newBcryptHash = await bcrypt.hash(actualPassword.toUpperCase());
-          await supabaseAdmin
-            .from("data_room_invites")
-            .update({ access_password: newBcryptHash })
-            .eq("id", invite.id);
-          console.log("Upgraded password hash to bcrypt for invite:", invite.id);
-        }
-      }
+      const passwordHash = await hashPassword(actualPassword.toUpperCase());
+      passwordValid = (storedHash === passwordHash);
     }
 
     if (!passwordValid) {
@@ -376,12 +358,11 @@ Deno.serve(async (req) => {
   }
 });
 
-// Helper function for legacy SHA-256 password hash (for migration only)
-async function legacyHashPassword(password: string): Promise<string> {
+// Helper function for SHA-256 password hash
+async function hashPassword(password: string): Promise<string> {
   const encoder = new TextEncoder();
   const data = encoder.encode(password);
   const hashBuffer = await crypto.subtle.digest("SHA-256", data);
-  // Convert to hex string
   const hashArray = Array.from(new Uint8Array(hashBuffer));
   return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 }

@@ -1,5 +1,4 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import * as bcrypt from "https://deno.land/x/bcrypt@v0.4.1/mod.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -107,10 +106,15 @@ Deno.serve(async (req) => {
 
     // Generate a new secure password for the guest (16 characters instead of 8)
     const plainPassword = generatePassword(16);
-    // Hash with bcrypt for secure storage
-    const hashedPassword = await bcrypt.hash(plainPassword);
+    
+    // Hash with SHA-256 using Web Crypto API (compatible with Edge Functions)
+    const encoder = new TextEncoder();
+    const data = encoder.encode(plainPassword);
+    const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    const hashedPassword = hashArray.map(b => b.toString(16).padStart(2, "0")).join("");
 
-    // Mark the invite as accepted and store the bcrypt hashed password
+    // Mark the invite as accepted and store the hashed password
     const { error: updateError } = await supabaseAdmin
       .from("data_room_invites")
       .update({ 
