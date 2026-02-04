@@ -179,29 +179,28 @@ const ActiveTeamPanel = ({
   const { data: teamMembers = [] } = useQuery({
     queryKey: ["team-members-for-dataroom", organizationId],
     queryFn: async () => {
-      const { data, error } = await supabase
+      // First, get user_ids from user_roles for this organization
+      const { data: roleData, error: roleError } = await supabase
         .from("user_roles")
-        .select(`
-          user_id,
-          profiles:user_id (
-            id,
-            full_name,
-            job_role
-          )
-        `)
+        .select("user_id")
         .eq("organization_id", organizationId)
         .neq("user_id", currentUserId);
 
-      if (error) throw error;
+      if (roleError) throw roleError;
       
-      // Extract unique profiles from user_roles
-      return (data || [])
-        .filter((r: any) => r.profiles)
-        .map((r: any) => ({
-          id: r.profiles.id,
-          full_name: r.profiles.full_name,
-          job_role: r.profiles.job_role,
-        })) as { id: string; full_name: string; job_role: string | null }[];
+      const userIds = (roleData || []).map((r) => r.user_id);
+      
+      if (userIds.length === 0) return [];
+      
+      // Then fetch profiles for these users
+      const { data: profiles, error: profileError } = await supabase
+        .from("profiles")
+        .select("id, full_name, job_role")
+        .in("id", userIds);
+
+      if (profileError) throw profileError;
+      
+      return (profiles || []) as { id: string; full_name: string; job_role: string | null }[];
     },
     enabled: !!organizationId,
   });
