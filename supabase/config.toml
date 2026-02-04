@@ -122,3 +122,15 @@ verify_jwt = false
 
 [functions.guest-get-file-versions]
 verify_jwt = false
+
+[functions.get-guest-chat-messages]
+verify_jwt = false
+
+[functions.guest-send-message]
+verify_jwt = false
+
+[functions.get-guest-activity]
+verify_jwt = false
+
+[functions.get-guest-team-members]
+verify_jwt = false
