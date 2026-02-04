@@ -296,15 +296,13 @@ const DataRoomInvite = () => {
               You now have access to the <strong>{inviteDetails?.dataRoom?.name}</strong> data room.
             </p>
             <div className="space-y-3 mt-6">
-              {accessId && (
-                <Button 
-                  className="w-full bg-emerald-500 hover:bg-emerald-600"
-                  onClick={() => navigate(`/guest-dataroom?accessId=${accessId}`)}
-                >
-                  <ExternalLink className="w-4 h-4 mr-2" />
-                  View Data Room
-                </Button>
-              )}
+              <Button 
+                className="w-full bg-emerald-500 hover:bg-emerald-600"
+                onClick={() => navigate(`/guest-dataroom?accessId=${accessId}`)}
+              >
+                <ExternalLink className="w-4 h-4 mr-2" />
+                Go to Data Room
+              </Button>
               <p className="text-xs text-muted-foreground">
                 You can also access the data room anytime using the link sent to your email.
               </p>
