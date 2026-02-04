@@ -1354,7 +1354,7 @@ By signing below, you acknowledge that you have read, understood, and agree to b
           folder_id: data.folder_id,
           is_restricted: data.is_restricted,
           assigned_to: data.assigned_to
-        } as any)
+        })
         .eq("id", data.fileId);
       if (error) throw error;
     },
@@ -1415,12 +1415,14 @@ By signing below, you acknowledge that you have read, understood, and agree to b
   const fileVersions = fileVersionsData.versions;
   const originalFileName = fileVersionsData.originalFileName;
 
-  // Fetch data room members for assignee selection
+  // Fetch data room members for assignee selection (creator + invited members)
   const { data: dataRoomMembers = [] } = useQuery({
-    queryKey: ["data-room-members-list", activeRoomId],
+    queryKey: ["data-room-members-list", activeRoomId, selectedRoom?.created_by],
     queryFn: async () => {
-      if (!activeRoomId) return [];
-      const { data, error } = await supabase
+      if (!activeRoomId || !selectedRoom) return [];
+      
+      // Fetch invited members
+      const { data: membersData, error: membersError } = await supabase
         .from("data_room_members")
         .select(`
           user_id,
@@ -1428,13 +1430,36 @@ By signing below, you acknowledge that you have read, understood, and agree to b
         `)
         .eq("data_room_id", activeRoomId);
       
-      if (error) throw error;
-      return (data || []).map((m: any) => ({
+      if (membersError) throw membersError;
+      
+      // Build members list from invited users
+      const membersList: { id: string; full_name: string }[] = (membersData || []).map((m: any) => ({
         id: m.user?.id || m.user_id,
         full_name: m.user?.full_name || "Unknown"
       }));
+      
+      // Fetch and add the creator if not already in the list
+      if (selectedRoom.created_by) {
+        const creatorExists = membersList.some(m => m.id === selectedRoom.created_by);
+        if (!creatorExists) {
+          const { data: creatorData } = await supabase
+            .from("profiles")
+            .select("id, full_name")
+            .eq("id", selectedRoom.created_by)
+            .single();
+          
+          if (creatorData) {
+            membersList.unshift({
+              id: creatorData.id,
+              full_name: creatorData.full_name
+            });
+          }
+        }
+      }
+      
+      return membersList;
     },
-    enabled: !!activeRoomId
+    enabled: !!activeRoomId && !!selectedRoom
   });
 
   // Build profile map for displaying names

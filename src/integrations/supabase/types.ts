@@ -511,6 +511,7 @@ export type Database = {
       }
       data_room_files: {
         Row: {
+          assigned_to: string | null
           created_at: string
           data_room_id: string
           deleted_at: string | null
@@ -528,6 +529,7 @@ export type Database = {
           version: number
         }
         Insert: {
+          assigned_to?: string | null
           created_at?: string
           data_room_id: string
           deleted_at?: string | null
@@ -545,6 +547,7 @@ export type Database = {
           version?: number
         }
         Update: {
+          assigned_to?: string | null
           created_at?: string
           data_room_id?: string
           deleted_at?: string | null
@@ -562,6 +565,20 @@ export type Database = {
           version?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "data_room_files_assigned_to_fkey"
+            columns: ["assigned_to"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "data_room_files_assigned_to_fkey"
+            columns: ["assigned_to"]
+            isOneToOne: false
+            referencedRelation: "profiles_decrypted"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "data_room_files_data_room_id_fkey"
             columns: ["data_room_id"]
