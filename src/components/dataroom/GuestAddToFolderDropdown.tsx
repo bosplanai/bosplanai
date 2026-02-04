@@ -221,17 +221,6 @@ export function GuestAddToFolderDropdown({
                   No folders available
                 </div>
               )}
-
-              <DropdownMenuSeparator />
-              
-              {/* Create new folder option */}
-              <DropdownMenuItem 
-                onClick={() => setCreateFolderOpen(true)}
-                className="cursor-pointer text-primary"
-              >
-                <FolderPlus className="w-4 h-4 mr-2" />
-                <span>Create new folder</span>
-              </DropdownMenuItem>
             </>
           )}
         </DropdownMenuContent>

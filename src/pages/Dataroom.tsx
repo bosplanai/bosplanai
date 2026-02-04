@@ -1826,12 +1826,16 @@ By signing below, you acknowledge that you have read, understood, and agree to b
                         )}
                       </div>
                       <div className="flex gap-2">
+                        {/* Only creator can create folders */}
+                        {selectedRoom?.created_by === user?.id && (
+                          <Button variant="outline" size="sm" onClick={() => setCreateFolderOpen(true)} className="h-8 text-xs">
+                            <FolderPlus className="w-3.5 h-3.5 mr-1.5" />
+                            Folder
+                          </Button>
+                        )}
+                        {/* All members with edit access can upload files */}
                         {canEditCurrentFolder && (
                           <>
-                            <Button variant="outline" size="sm" onClick={() => setCreateFolderOpen(true)} className="h-8 text-xs">
-                              <FolderPlus className="w-3.5 h-3.5 mr-1.5" />
-                              Folder
-                            </Button>
                             <Button size="sm" className="bg-emerald-500 hover:bg-emerald-600 h-8 text-xs" onClick={() => fileInputRef.current?.click()}>
                               <Upload className="w-3.5 h-3.5 mr-1.5" />
                               Upload
