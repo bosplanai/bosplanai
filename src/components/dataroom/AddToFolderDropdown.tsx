@@ -278,14 +278,16 @@ export function AddToFolderDropdown({
 
               <DropdownMenuSeparator />
               
-              {/* Create new folder option */}
-              <DropdownMenuItem 
-                onClick={() => setCreateFolderOpen(true)}
-                className="cursor-pointer text-primary"
-              >
-                <FolderPlus className="w-4 h-4 mr-2" />
-                <span>Create new folder</span>
-              </DropdownMenuItem>
+              {/* Create new folder option - only for data room creator */}
+              {dataRoomCreatorId && userId === dataRoomCreatorId && (
+                <DropdownMenuItem 
+                  onClick={() => setCreateFolderOpen(true)}
+                  className="cursor-pointer text-primary"
+                >
+                  <FolderPlus className="w-4 h-4 mr-2" />
+                  <span>Create new folder</span>
+                </DropdownMenuItem>
+              )}
             </>
           )}
         </DropdownMenuContent>
