@@ -15,6 +15,20 @@ interface ParseContext {
   footerContent: string;
 }
 
+// Safe base64 encoding that doesn't cause stack overflow on large data
+function safeBase64Encode(data: Uint8Array): string {
+  // Process in chunks to avoid stack overflow with spread operator
+  const chunkSize = 8192;
+  let binary = '';
+  for (let i = 0; i < data.length; i += chunkSize) {
+    const chunk = data.subarray(i, Math.min(i + chunkSize, data.length));
+    for (let j = 0; j < chunk.length; j++) {
+      binary += String.fromCharCode(chunk[j]);
+    }
+  }
+  return btoa(binary);
+}
+
 // Enhanced DOCX parser that preserves formatting
 function parseDocxXml(
   documentXml: string, 
@@ -1052,8 +1066,8 @@ serve(async (req) => {
             const imageName = filename.replace('word/media/', '');
             const mimeType = getMimeTypeFromExt(imageName);
             
-            // Convert to base64
-            const base64 = btoa(String.fromCharCode(...data));
+            // Convert to base64 using safe method to avoid stack overflow
+            const base64 = safeBase64Encode(data);
             const dataUrl = `data:${mimeType};base64,${base64}`;
             
             // We'll map by filename since we need to match with relationships later
