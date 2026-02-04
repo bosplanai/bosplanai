@@ -155,13 +155,17 @@ export function useDataRoomDocumentEditor({
         if (existingDoc) {
           setDocumentId(existingDoc.id);
           
-          // Check if existing content is just the placeholder - if so, try parsing again
-          const isPlaceholderContent = existingDoc.content === "<p>Start editing this document...</p>";
+          // Check if existing content is empty, placeholder, or an error message - if so, try parsing again
+          const isPlaceholderContent = existingDoc.content === "<p>Start editing this document...</p>" ||
+            existingDoc.content === "" ||
+            existingDoc.content === "<p></p>" ||
+            existingDoc.content.includes("Could not extract document content");
           
           if (isPlaceholderContent && filePath && mimeType) {
             // Try to re-parse the document since we only have placeholder content
             const parsedContent = await parseUploadedDocument();
-            if (parsedContent) {
+            // Accept legacy format messages as valid content
+            if (parsedContent && parsedContent.length > 50 && !parsedContent.includes("Could not extract")) {
               // Update the document with parsed content
               await supabase
                 .from("data_room_document_content")

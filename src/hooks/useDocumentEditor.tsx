@@ -150,19 +150,21 @@ export function useDocumentEditor({ fileId, filePath, mimeType, onContentChange 
         if (existingDoc) {
           setDocumentId(existingDoc.id);
           
-          // Check if existing content is empty or placeholder - if so, try parsing again
+          // Check if existing content is empty, placeholder, or an error message - if so, try parsing again
           const isEmptyOrPlaceholder = !existingDoc.content || 
             existingDoc.content === "" || 
             existingDoc.content === "<p></p>" ||
-            existingDoc.content === "<p>Start editing this document...</p>";
+            existingDoc.content === "<p>Start editing this document...</p>" ||
+            existingDoc.content.includes("Could not extract document content");
           
           if (isEmptyOrPlaceholder && filePath && mimeType) {
             // Try to re-parse the document since we only have placeholder content
             const parsedContent = await parseUploadedDocument();
-            // Only use parsed content if it's valid and meaningful
+            // Only use parsed content if it's valid - either meaningful content or a legacy format message
             const isValidParsedContent = parsedContent && 
               parsedContent.length > 50 &&
-              !parsedContent.includes("Could not extract document content");
+              !parsedContent.includes("Could not extract document content") &&
+              !parsedContent.includes("<p></p>");
             
             if (isValidParsedContent) {
               // Update the document with parsed content
@@ -220,10 +222,11 @@ export function useDocumentEditor({ fileId, filePath, mimeType, onContentChange 
           
           if (filePath && mimeType) {
             const parsedContent = await parseUploadedDocument();
-            // Only use parsed content if it's valid and meaningful
+            // Only use parsed content if it's valid - either meaningful content or a legacy format message
             const isValidParsedContent = parsedContent && 
               parsedContent.length > 50 &&
-              !parsedContent.includes("Could not extract document content");
+              !parsedContent.includes("Could not extract document content") &&
+              !parsedContent.includes("<p></p>");
             
             if (isValidParsedContent) {
               initialContent = parsedContent;

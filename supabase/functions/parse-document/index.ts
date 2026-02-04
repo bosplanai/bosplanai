@@ -586,8 +586,13 @@ serve(async (req) => {
     const lowerPath = filePath.toLowerCase();
     let content = '';
 
-    // Handle DOCX files
-    if (lowerMimeType.includes('wordprocessingml') || lowerMimeType.includes('msword') || lowerPath.endsWith('.docx')) {
+    // Determine file type - distinguish between .doc (legacy) and .docx (modern)
+    const isDocx = lowerPath.endsWith('.docx') || lowerMimeType.includes('wordprocessingml');
+    const isLegacyDoc = (lowerPath.endsWith('.doc') && !lowerPath.endsWith('.docx')) || 
+                        (lowerMimeType.includes('msword') && !lowerMimeType.includes('wordprocessingml'));
+
+    // Handle DOCX files (modern XML-based format)
+    if (isDocx) {
       try {
         const arrayBuffer = await fileData.arrayBuffer();
         const files = await unzipFile(arrayBuffer);
@@ -613,6 +618,10 @@ serve(async (req) => {
         content = ''; // Return empty on error
       }
     }
+    // Handle legacy DOC files
+    else if (isLegacyDoc) {
+      content = '<p><strong>Legacy .doc format detected.</strong></p><p>This file uses the older Microsoft Word binary format which cannot be directly edited in the browser.</p><p>To edit this document:</p><ol><li>Download the original file</li><li>Open it in Microsoft Word or Google Docs</li><li>Save it as .docx format</li><li>Re-upload the .docx file</li></ol>';
+    }
     // Handle XLSX files
     else if (lowerMimeType.includes('spreadsheet') || lowerMimeType.includes('excel') || lowerPath.endsWith('.xlsx')) {
       try {
@@ -636,10 +645,7 @@ serve(async (req) => {
         content = ''; // Return empty on error
       }
     }
-    // Handle DOC files (older format) - limited support
-    else if (lowerMimeType.includes('msword') || lowerPath.endsWith('.doc')) {
-      content = '<p>Legacy .doc format detected. For best editing experience, please convert to .docx format.</p>';
-    }
+    // Legacy DOC files are now handled above with isLegacyDoc check
     // Handle XLS files (older format) - limited support
     else if (lowerPath.endsWith('.xls')) {
       content = '<p>Legacy .xls format detected. For best editing experience, please convert to .xlsx format.</p>';
