@@ -2,7 +2,7 @@ import { useState, useRef, useCallback, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useOrgNavigation } from "@/hooks/useOrgNavigation";
 import SideNavigation from "@/components/SideNavigation";
-import { HardDrive, Upload, Folder, FolderPlus, Plus, ChevronDown, FileText, Image, Video, Music, File, Eye, Download, Trash2, GripVertical, ArrowUpDown, Check, Clock, AlertCircle, PenLine, CheckCircle2, FolderInput, X, CheckSquare, RotateCcw, ChevronUp, Settings2, Search, ArrowLeft, Lock, FileSignature, Megaphone, FileSpreadsheet, Scale, Users, Briefcase, BookOpen, BarChart3, Presentation, Tag, Edit3, LayoutTemplate, CreditCard, User } from "lucide-react";
+import { HardDrive, Upload, Folder, FolderPlus, Plus, ChevronDown, FileText, Image, Video, Music, File, Eye, Download, Trash2, GripVertical, ArrowUpDown, Check, Clock, AlertCircle, PenLine, CheckCircle2, FolderInput, X, CheckSquare, RotateCcw, ChevronUp, Settings2, Search, ArrowLeft, Lock, FileSignature, Megaphone, FileSpreadsheet, Scale, Users, Briefcase, BookOpen, BarChart3, Presentation, Tag, Edit3, LayoutTemplate, CreditCard, User, AlertTriangle } from "lucide-react";
 import { useAppearance } from "@/contexts/AppearanceContext";
 import bosplanLogo from "@/assets/bosplan-logo.png";
 import { Button } from "@/components/ui/button";
@@ -31,6 +31,13 @@ import { NotificationBell } from "@/components/NotificationBell";
 import MobileHeaderMenu from "@/components/MobileHeaderMenu";
 import BetaFooter from "@/components/BetaFooter";
 import { useDriveStorage, DRIVE_STORAGE_QUERY_KEY } from "@/hooks/useDriveStorage";
+import { 
+  isEditableDocument, 
+  isLegacyOfficeDocument, 
+  isOfficeDocument as isOfficeDocumentUtil, 
+  isPreviewable as isPreviewableUtil,
+  getFileCapabilitiesDescription 
+} from "@/lib/documentUtils";
 
 // Upload progress state type
 interface UploadProgress {
@@ -1644,34 +1651,24 @@ const Drive = () => {
     setPreviewLoading(false);
   };
 
-  // Check if file type is previewable inline
-  const isPreviewable = (mimeType: string | null): boolean => {
-    if (!mimeType) return false;
-    return (
-      mimeType.startsWith("image/") || 
-      mimeType.startsWith("video/") || 
-      mimeType.startsWith("audio/") || 
-      mimeType === "application/pdf" ||
-      mimeType.includes("wordprocessingml") ||
-      mimeType.includes("msword") ||
-      mimeType.includes("spreadsheetml") ||
-      mimeType.includes("ms-excel") ||
-      mimeType.includes("presentationml") ||
-      mimeType.includes("ms-powerpoint")
-    );
+  // Check if file type is previewable inline - use utility function
+  const isPreviewable = (mimeType: string | null, fileName?: string | null): boolean => {
+    return isPreviewableUtil(mimeType, fileName);
   };
   
-  // Check if file is an Office document (needs Google Docs Viewer)
-  const isOfficeDocument = (mimeType: string | null): boolean => {
-    if (!mimeType) return false;
-    return (
-      mimeType.includes("wordprocessingml") ||
-      mimeType.includes("msword") ||
-      mimeType.includes("spreadsheetml") ||
-      mimeType.includes("ms-excel") ||
-      mimeType.includes("presentationml") ||
-      mimeType.includes("ms-powerpoint")
-    );
+  // Check if file is an Office document (needs Google Docs Viewer) - use utility function
+  const isOfficeDocument = (mimeType: string | null, fileName?: string | null): boolean => {
+    return isOfficeDocumentUtil(mimeType, fileName);
+  };
+  
+  // Check if file can be edited in-app
+  const canEditDocument = (mimeType: string | null, fileName?: string | null): boolean => {
+    return isEditableDocument(mimeType, fileName);
+  };
+  
+  // Check if file is legacy Office format
+  const isLegacyDocument = (mimeType: string | null, fileName?: string | null): boolean => {
+    return isLegacyOfficeDocument(mimeType, fileName);
   };
 
   // Get the most recent activity timestamp for sorting
@@ -2220,13 +2217,23 @@ const Drive = () => {
                                 <Settings2 className="w-4 h-4" />
                                 Edit Details
                               </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => {
-                              setDocumentEditorFile(file);
-                              setDocumentEditorOpen(true);
-                            }} className="gap-2">
-                                <Edit3 className="w-4 h-4" />
-                                Edit Document
-                              </DropdownMenuItem>
+                              {/* Edit Document - Only show for editable file types (docx, xlsx) */}
+                              {canEditDocument(file.mime_type, file.name) && (
+                                <DropdownMenuItem onClick={() => {
+                                  setDocumentEditorFile(file);
+                                  setDocumentEditorOpen(true);
+                                }} className="gap-2">
+                                  <Edit3 className="w-4 h-4" />
+                                  Edit Document
+                                </DropdownMenuItem>
+                              )}
+                              {/* Show info for legacy documents */}
+                              {isLegacyDocument(file.mime_type, file.name) && (
+                                <DropdownMenuItem disabled className="gap-2 text-muted-foreground">
+                                  <AlertTriangle className="w-4 h-4" />
+                                  Legacy format (view only)
+                                </DropdownMenuItem>
+                              )}
                               {/* Delete: Admins can delete any file, others can only delete their own */}
                               {(isAdmin || file.uploaded_by === user?.id) && (
                                 <DropdownMenuItem onClick={() => deleteFileMutation.mutate(file.id)} className="gap-2 text-destructive focus:text-destructive">
@@ -2824,18 +2831,44 @@ const Drive = () => {
               </div>}
           </div>
           <DialogFooter className="flex-shrink-0">
-            <div className="flex items-center gap-2 w-full justify-between">
-              <span className="text-sm text-muted-foreground">
-                {previewFile && formatFileSize(previewFile.file_size)}
-              </span>
-              <div className="flex gap-2">
-                {previewFile && <Button variant="outline" onClick={() => downloadFile(previewFile)} className="gap-2">
-                    <Download className="w-4 h-4" />
-                    Download
-                  </Button>}
-                <Button variant="outline" onClick={closePreview}>
-                  Close
-                </Button>
+            <div className="flex flex-col gap-2 w-full">
+              {/* Legacy document notice */}
+              {previewFile && isLegacyDocument(previewFile.mime_type, previewFile.name) && (
+                <div className="flex items-center gap-2 p-2 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-700 dark:text-amber-400">
+                  <AlertTriangle className="w-4 h-4 flex-shrink-0" />
+                  <span className="text-xs">
+                    This is a legacy format file (.doc/.xls). Convert to .docx/.xlsx for in-app editing.
+                  </span>
+                </div>
+              )}
+              <div className="flex items-center gap-2 justify-between">
+                <span className="text-sm text-muted-foreground">
+                  {previewFile && formatFileSize(previewFile.file_size)}
+                </span>
+                <div className="flex gap-2">
+                  {/* Edit Document button - only for editable files */}
+                  {previewFile && canEditDocument(previewFile.mime_type, previewFile.name) && (
+                    <Button 
+                      variant="default" 
+                      onClick={() => {
+                        closePreview();
+                        setDocumentEditorFile(previewFile);
+                        setDocumentEditorOpen(true);
+                      }} 
+                      className="gap-2"
+                    >
+                      <Edit3 className="w-4 h-4" />
+                      Edit Document
+                    </Button>
+                  )}
+                  {previewFile && <Button variant="outline" onClick={() => downloadFile(previewFile)} className="gap-2">
+                      <Download className="w-4 h-4" />
+                      Download
+                    </Button>}
+                  <Button variant="outline" onClick={closePreview}>
+                    Close
+                  </Button>
+                </div>
               </div>
             </div>
           </DialogFooter>

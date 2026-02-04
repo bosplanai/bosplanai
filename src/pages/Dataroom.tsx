@@ -1359,18 +1359,23 @@ By signing below, you acknowledge that you have read, understood, and agree to b
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
   };
 
-  // Helper to check if file is editable
-  const isEditableDocument = (mimeType: string | null) => {
-    if (!mimeType) return false;
+  // Helper to check if file is editable - use utility function
+  const isEditableDocumentCheck = (mimeType: string | null, fileName?: string | null) => {
+    // Import is at file level, use inline check for now
+    if (!mimeType && !fileName) return false;
+    const lowerMime = (mimeType || '').toLowerCase();
+    const lowerName = (fileName || '').toLowerCase();
+    // Only .docx and .xlsx are editable, NOT legacy .doc/.xls or PDF
     return (
-      mimeType.includes("wordprocessingml") ||
-      mimeType.includes("msword") ||
-      mimeType.includes("spreadsheetml") ||
-      mimeType.includes("ms-excel") ||
-      mimeType === "application/pdf" ||
-      mimeType.startsWith("text/")
+      lowerMime.includes('wordprocessingml') ||
+      lowerMime.includes('spreadsheetml') ||
+      lowerName.endsWith('.docx') ||
+      lowerName.endsWith('.xlsx')
     );
   };
+  
+  // Keep old function name for backwards compatibility
+  const isEditableDocument = (mimeType: string | null) => isEditableDocumentCheck(mimeType);
 
   // Build collaborators list from owner + invites
   const collaborators = [{
