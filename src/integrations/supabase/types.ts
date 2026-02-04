@@ -525,6 +525,7 @@ export type Database = {
           parent_file_id: string | null
           updated_at: string
           uploaded_by: string
+          version: number
         }
         Insert: {
           created_at?: string
@@ -541,6 +542,7 @@ export type Database = {
           parent_file_id?: string | null
           updated_at?: string
           uploaded_by: string
+          version?: number
         }
         Update: {
           created_at?: string
@@ -557,6 +559,7 @@ export type Database = {
           parent_file_id?: string | null
           updated_at?: string
           uploaded_by?: string
+          version?: number
         }
         Relationships: [
           {
