@@ -2316,6 +2316,7 @@ export type Database = {
           task_count: number
           tasks_transferred: Json
           temporary_end_date: string | null
+          temporary_start_date: string | null
         }
         Insert: {
           completed_at?: string | null
@@ -2331,6 +2332,7 @@ export type Database = {
           task_count?: number
           tasks_transferred?: Json
           temporary_end_date?: string | null
+          temporary_start_date?: string | null
         }
         Update: {
           completed_at?: string | null
@@ -2346,6 +2348,7 @@ export type Database = {
           task_count?: number
           tasks_transferred?: Json
           temporary_end_date?: string | null
+          temporary_start_date?: string | null
         }
         Relationships: [
           {
