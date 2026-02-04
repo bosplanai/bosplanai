@@ -49,6 +49,7 @@ const MagicMergeTool = () => {
   const [mergeType, setMergeType] = useState<"temporary" | "permanent">("temporary");
   const [sourceUserId, setSourceUserId] = useState<string>("");
   const [targetUserId, setTargetUserId] = useState<string>("");
+  const [startDate, setStartDate] = useState<Date>();
   const [endDate, setEndDate] = useState<Date>();
   const [selectedTasks, setSelectedTasks] = useState<Record<string, boolean>>({});
   const [isMerging, setIsMerging] = useState(false);
@@ -195,8 +196,14 @@ const MagicMergeTool = () => {
       if (tasksToTransfer.length === 0) {
         throw new Error("No tasks selected for transfer");
       }
+      if (mergeType === "temporary" && !startDate) {
+        throw new Error("Please select a start date for temporary merge");
+      }
       if (mergeType === "temporary" && !endDate) {
         throw new Error("Please select an end date for temporary merge");
+      }
+      if (mergeType === "temporary" && startDate && endDate && startDate >= endDate) {
+        throw new Error("Start date must be before end date");
       }
 
       // Get current user
@@ -248,6 +255,7 @@ const MagicMergeTool = () => {
         source_user_id: sourceUserId,
         target_user_id: targetUserId,
         merge_type: mergeType,
+        temporary_start_date: mergeType === "temporary" ? startDate?.toISOString().split("T")[0] : null,
         temporary_end_date: mergeType === "temporary" ? endDate?.toISOString().split("T")[0] : null,
         tasks_transferred: tasksToTransfer.map(t => ({
           id: t.id,
@@ -275,6 +283,7 @@ const MagicMergeTool = () => {
       // Reset form
       setSourceUserId("");
       setTargetUserId("");
+      setStartDate(undefined);
       setEndDate(undefined);
       setSelectedTasks({});
     },
@@ -299,8 +308,16 @@ const MagicMergeTool = () => {
       toast.error("Please select at least one task to transfer");
       return;
     }
+    if (mergeType === "temporary" && !startDate) {
+      toast.error("Please select a start date for temporary merge");
+      return;
+    }
     if (mergeType === "temporary" && !endDate) {
       toast.error("Please select an end date for temporary merge");
+      return;
+    }
+    if (mergeType === "temporary" && startDate && endDate && startDate >= endDate) {
+      toast.error("Start date must be before end date");
       return;
     }
     mergeMutation.mutate();
@@ -500,30 +517,67 @@ End of Audit Log
                   </CardContent>
                 </Card>
 
-                {/* Step 3: End Date (for temporary) */}
+                {/* Step 3: Date Range (for temporary) */}
                 {mergeType === "temporary" && <Card className="shadow-sm hover:shadow-md transition-shadow duration-300 border-border/60 overflow-hidden">
                     <CardHeader className="bg-secondary/30 border-b border-border/40 pb-4">
                       <div className="flex items-center gap-3">
                         <span className="flex items-center justify-center w-7 h-7 rounded-full bg-brand-green text-white text-sm font-semibold">3</span>
-                        <CardTitle className="text-base font-semibold">Set End Date</CardTitle>
+                        <CardTitle className="text-base font-semibold">Set Date Range</CardTitle>
                       </div>
                     </CardHeader>
                     <CardContent className="pt-5">
-                      <div className="space-y-3">
-                        <Popover>
-                          <PopoverTrigger asChild>
-                            <Button variant="outline" className={cn("w-full md:w-72 justify-start text-left font-normal rounded-xl border-border hover:border-brand-green/50 transition-colors duration-200 h-11", !endDate && "text-muted-foreground")}>
-                              <CalendarIcon className="mr-2 h-4 w-4" />
-                              {endDate ? format(endDate, "PPPP") : "Select a date"}
-                            </Button>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-auto p-0">
-                            <Calendar mode="single" selected={endDate} onSelect={setEndDate} disabled={date => date < new Date()} initialFocus />
-                          </PopoverContent>
-                        </Popover>
-                        <p className="text-xs text-muted-foreground">
-                          Tasks will automatically revert to the source user after this date
-                        </p>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {/* Start Date */}
+                        <div className="space-y-3">
+                          <Label className="text-sm font-medium">Start Date</Label>
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <Button variant="outline" className={cn("w-full justify-start text-left font-normal rounded-xl border-border hover:border-brand-green/50 transition-colors duration-200 h-11", !startDate && "text-muted-foreground")}>
+                                <CalendarIcon className="mr-2 h-4 w-4" />
+                                {startDate ? format(startDate, "PPP") : "Select start date"}
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0" align="start">
+                              <Calendar 
+                                mode="single" 
+                                selected={startDate} 
+                                onSelect={setStartDate} 
+                                disabled={date => date < new Date(new Date().setHours(0, 0, 0, 0))} 
+                                initialFocus 
+                                className={cn("p-3 pointer-events-auto")}
+                              />
+                            </PopoverContent>
+                          </Popover>
+                          <p className="text-xs text-muted-foreground">
+                            When the task transfer becomes active
+                          </p>
+                        </div>
+
+                        {/* End Date */}
+                        <div className="space-y-3">
+                          <Label className="text-sm font-medium">End Date</Label>
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <Button variant="outline" className={cn("w-full justify-start text-left font-normal rounded-xl border-border hover:border-brand-green/50 transition-colors duration-200 h-11", !endDate && "text-muted-foreground")}>
+                                <CalendarIcon className="mr-2 h-4 w-4" />
+                                {endDate ? format(endDate, "PPP") : "Select end date"}
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0" align="start">
+                              <Calendar 
+                                mode="single" 
+                                selected={endDate} 
+                                onSelect={setEndDate} 
+                                disabled={date => date < (startDate || new Date(new Date().setHours(0, 0, 0, 0)))} 
+                                initialFocus 
+                                className={cn("p-3 pointer-events-auto")}
+                              />
+                            </PopoverContent>
+                          </Popover>
+                          <p className="text-xs text-muted-foreground">
+                            Tasks will revert to source user after this date
+                          </p>
+                        </div>
                       </div>
                     </CardContent>
                   </Card>}
@@ -552,10 +606,16 @@ End of Audit Log
                           <span className="text-muted-foreground">To</span>
                           <span className="font-medium truncate max-w-[120px]">{targetUser?.full_name || "—"}</span>
                         </div>
-                        {mergeType === "temporary" && <div className="flex items-center justify-between text-sm">
-                            <span className="text-muted-foreground">Until</span>
-                            <span className="font-medium">{endDate ? format(endDate, "MMM d, yyyy") : "—"}</span>
-                          </div>}
+                        {mergeType === "temporary" && <>
+                            <div className="flex items-center justify-between text-sm">
+                              <span className="text-muted-foreground">From</span>
+                              <span className="font-medium">{startDate ? format(startDate, "MMM d, yyyy") : "—"}</span>
+                            </div>
+                            <div className="flex items-center justify-between text-sm">
+                              <span className="text-muted-foreground">Until</span>
+                              <span className="font-medium">{endDate ? format(endDate, "MMM d, yyyy") : "—"}</span>
+                            </div>
+                          </>}
                         <div className="pt-3 border-t border-border/60">
                           <div className="flex items-center justify-between">
                             <span className="text-muted-foreground text-sm">Tasks Selected</span>
