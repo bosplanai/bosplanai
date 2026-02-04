@@ -30,6 +30,7 @@ interface FileVersion {
   uploaded_by: string;
   created_at: string;
   status?: string;
+  parent_file_id?: string | null;
 }
 
 interface DataRoomVersionHistoryDialogProps {
