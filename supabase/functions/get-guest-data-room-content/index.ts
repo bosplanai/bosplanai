@@ -255,12 +255,13 @@ Deno.serve(async (req) => {
     
     console.log("Folders query result:", { count: folders?.length, error: foldersError, folderId });
 
-    // Get files in current directory
+    // Get files in current directory - only root files (parent_file_id is null) to show grouped versions
     let filesQuery = supabaseAdmin
       .from("data_room_files")
-      .select("id, name, file_path, file_size, mime_type, created_at, updated_at, folder_id, is_restricted, uploaded_by")
+      .select("id, name, file_path, file_size, mime_type, created_at, updated_at, folder_id, is_restricted, uploaded_by, version, parent_file_id, assigned_to")
       .eq("data_room_id", dataRoom.id)
-      .is("deleted_at", null);
+      .is("deleted_at", null)
+      .is("parent_file_id", null); // Only show root files, not version children
     
     // Use .is() for null, .eq() for actual values
     if (folderId) {
