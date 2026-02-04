@@ -25,14 +25,13 @@ import {
   Lock,
   User,
   Check,
-  AlertTriangle,
   PenLine,
   CheckCircle2,
   AlertCircle,
 } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
-import { isEditableDocument, isLegacyOfficeDocument } from "@/lib/documentUtils";
+import { isEditableDocument } from "@/lib/documentUtils";
 
 interface DataRoomFile {
   id: string;
@@ -123,7 +122,6 @@ export function DataRoomFileCard({
 }: DataRoomFileCardProps) {
   const statusDisplay = STATUS_DISPLAY[file.status || "not_opened"] || STATUS_DISPLAY.not_opened;
   const canEditDocument = isEditableDocument(file.mime_type, file.name);
-  const isLegacyDocument = isLegacyOfficeDocument(file.mime_type, file.name);
   const canDeleteFile = canDelete || isAdmin || file.uploaded_by === currentUserId;
 
   return (
@@ -180,12 +178,6 @@ export function DataRoomFileCard({
                 <DropdownMenuItem onClick={onEditDocument} className="gap-2">
                   <Edit3 className="w-4 h-4" />
                   Edit Document
-                </DropdownMenuItem>
-              )}
-              {isLegacyDocument && (
-                <DropdownMenuItem disabled className="gap-2 text-muted-foreground">
-                  <AlertTriangle className="w-4 h-4" />
-                  Legacy format (view only)
                 </DropdownMenuItem>
               )}
               {canDeleteFile && (
