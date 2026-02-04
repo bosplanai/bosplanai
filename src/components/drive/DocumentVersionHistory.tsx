@@ -39,28 +39,6 @@ export function DocumentVersionHistory({
 
   return (
     <>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => {
-              setIsOpen(true);
-              onRefresh();
-            }}
-            className="gap-2"
-          >
-            <History className="w-4 h-4" />
-            <span className="hidden sm:inline">History</span>
-            {versions.length > 0 && (
-              <Badge variant="secondary" className="h-5 px-1.5 text-xs">
-                {versions.length}
-              </Badge>
-            )}
-          </Button>
-        </TooltipTrigger>
-        <TooltipContent>View version history</TooltipContent>
-      </Tooltip>
 
       {/* Version History Panel */}
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
