@@ -52,6 +52,8 @@ import bosplanLogo from "@/assets/bosplan-logo.png";
 import GuestFilePreviewDialog from "@/components/dataroom/GuestFilePreviewDialog";
 import GuestDataRoomDocumentEditorDialog from "@/components/dataroom/GuestDataRoomDocumentEditorDialog";
 import { GuestAddToFolderDropdown } from "@/components/dataroom/GuestAddToFolderDropdown";
+import { GuestDataRoomFileCard } from "@/components/dataroom/GuestDataRoomFileCard";
+import { DataRoomVersionHistoryDialog } from "@/components/dataroom/DataRoomVersionHistoryDialog";
 
 interface PreviewFile {
   id: string;
@@ -89,6 +91,24 @@ interface FileItem {
   folder_id?: string | null;
   folder_name?: string | null;
   is_own_upload?: boolean;
+  version?: number;
+  assigned_to?: string | null;
+  uploaded_by?: string;
+  is_restricted?: boolean;
+  status?: string;
+}
+
+interface FileVersion {
+  id: string;
+  name: string;
+  version: number;
+  file_path: string;
+  file_size: number;
+  mime_type: string | null;
+  uploaded_by: string;
+  created_at: string;
+  status?: string;
+  parent_file_id?: string | null;
 }
 
 interface Breadcrumb {
@@ -227,6 +247,16 @@ const GuestDataRoom = () => {
   const [deletingFileId, setDeletingFileId] = useState<string | null>(null);
   const [deletingFolderId, setDeletingFolderId] = useState<string | null>(null);
 
+  // Version history state
+  const [versionHistoryFile, setVersionHistoryFile] = useState<{ id: string; name: string } | null>(null);
+  const [fileVersions, setFileVersions] = useState<FileVersion[]>([]);
+  const [versionProfileMap, setVersionProfileMap] = useState<Record<string, string>>({});
+  const [loadingVersions, setLoadingVersions] = useState(false);
+
+  // Profile map for uploaders and assignees
+  const [profileMap, setProfileMap] = useState<Record<string, string>>({});
+  const [allFolders, setAllFolders] = useState<FolderItem[]>([]);
+
   const token = searchParams.get("token");
   const accessIdParam = searchParams.get("accessId");
 
@@ -310,6 +340,8 @@ const GuestDataRoom = () => {
       setFiles(data.files || []);
       setBreadcrumbs(data.breadcrumbs || []);
       setCurrentFolderId(data.currentFolderId);
+      setProfileMap(data.profileMap || {});
+      setAllFolders(data.allFolders || []);
       setStep("browse");
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to load content";
@@ -816,6 +848,98 @@ const GuestDataRoom = () => {
     }
   };
 
+  // Version history handlers
+  const fetchFileVersions = async (file: { id: string; name: string }) => {
+    setVersionHistoryFile(file);
+    setLoadingVersions(true);
+    setFileVersions([]);
+    setVersionProfileMap({});
+
+    try {
+      const { data, error: fnError } = await supabase.functions.invoke(
+        "guest-get-file-versions",
+        {
+          body: { token: token || password, email: email.toLowerCase(), fileId: file.id },
+        }
+      );
+
+      if (fnError) throw new Error(await extractFunctionErrorMessage(fnError));
+      if (data?.error) throw new Error(data.error);
+
+      setFileVersions(data.versions || []);
+      setVersionProfileMap(data.profileMap || {});
+    } catch (err) {
+      console.error("Failed to fetch versions:", err);
+      toast.error(err instanceof Error ? err.message : "Failed to load version history");
+      setVersionHistoryFile(null);
+    } finally {
+      setLoadingVersions(false);
+    }
+  };
+
+  const handleViewVersion = async (version: FileVersion) => {
+    try {
+      const { data, error: fnError } = await supabase.functions.invoke(
+        "get-guest-file-download",
+        {
+          body: { token: token || password, email: email.toLowerCase(), fileId: version.id, mode: "preview" },
+        }
+      );
+
+      if (fnError) throw new Error(await extractFunctionErrorMessage(fnError));
+      if (data?.error) throw new Error(data.error);
+
+      const mimeType = version.mime_type || "";
+      let fileType: "image" | "pdf" | "video" | "document" | "other" = "other";
+      
+      if (mimeType.startsWith("image/")) {
+        fileType = "image";
+      } else if (mimeType === "application/pdf") {
+        fileType = "pdf";
+      } else if (mimeType.startsWith("video/")) {
+        fileType = "video";
+      } else if (
+        mimeType.includes("word") ||
+        mimeType.includes("document") ||
+        mimeType.includes("spreadsheet") ||
+        mimeType.includes("excel") ||
+        mimeType.includes("presentation") ||
+        mimeType.includes("powerpoint")
+      ) {
+        fileType = "document";
+      }
+
+      setPreviewFile({
+        id: version.id,
+        name: version.name,
+        url: data.downloadUrl,
+        type: fileType,
+        mimeType: version.mime_type || undefined,
+      });
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to preview version");
+    }
+  };
+
+  const handleDownloadVersion = async (version: FileVersion) => {
+    try {
+      const { data, error: fnError } = await supabase.functions.invoke(
+        "get-guest-file-download",
+        {
+          body: { token: token || password, email: email.toLowerCase(), fileId: version.id },
+        }
+      );
+
+      if (fnError) throw new Error(await extractFunctionErrorMessage(fnError));
+      if (data?.error) throw new Error(data.error);
+
+      window.open(data.downloadUrl, "_blank");
+      toast.success(`Downloading ${version.name}`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to download version");
+    }
+  };
+
   useEffect(() => {
     if (step === "browse" && dataRoom) {
       fetchMessages();
@@ -1288,138 +1412,39 @@ const GuestDataRoom = () => {
                       </div>
                     )}
 
-                    {/* Files */}
+                    {/* Files - Card based layout matching team view */}
                     {files.length > 0 && (
-                      <div className="space-y-1">
-                        {files.map(file => (
-                          <div
-                            key={file.id}
-                            className="p-3 rounded-lg hover:bg-muted/30 transition-all group flex items-center justify-between cursor-pointer"
-                            onClick={() => handleFilePreview(file)}
-                          >
-                            <div className="flex items-center gap-3 min-w-0 flex-1">
-                              {getFileIcon(file.mime_type)}
-                              <div className="min-w-0 flex-1">
-                                <div className="flex items-center gap-2">
-                                  <p className="text-sm font-medium truncate">{file.name}</p>
-                                </div>
-                                <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                  <span>{formatFileSize(file.file_size)} • {format(new Date(file.created_at), "MMM d")}</span>
-                                </div>
-                              </div>
-                              {/* Folder indicator for files that have been moved to a folder */}
-                              {/* Shows to all users so they can see where the file is saved */}
-                              {file.folder_name && (
-                                <span 
-                                  className="flex items-center gap-1 text-xs text-muted-foreground bg-muted/50 px-1.5 py-0.5 rounded shrink-0" 
-                                  title={`Saved in folder: ${file.folder_name}${(file as any).folder_is_restricted ? ' (restricted)' : ''}`}
-                                >
-                                  {(file as any).folder_is_restricted ? (
-                                    <FolderLock className="w-3 h-3" />
-                                  ) : (
-                                    <Folder className="w-3 h-3" />
-                                  )}
-                                  <span className="max-w-[80px] truncate">{file.folder_name}</span>
-                                </span>
-                              )}
-                            </div>
-                            <div className="flex items-center gap-1">
-                              {/* Add to folder dropdown */}
-                              <GuestAddToFolderDropdown
-                                fileId={file.id}
-                                fileName={file.name}
-                                currentFolderId={file.folder_id || null}
-                                dataRoomId={dataRoom?.id || ""}
-                                token={token || password}
-                                email={email}
-                                onMoveComplete={() => fetchContent(currentFolderId)}
-                              />
-                              {/* Permissions button for files the guest uploaded */}
-                              {file.is_own_upload && (
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="h-7 w-7 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    openFilePermissions(file);
-                                  }}
-                                  title="Manage Permissions"
-                                >
-                                  <Shield className="w-3.5 h-3.5" />
-                                </Button>
-                              )}
-                              {/* Preview button - always visible */}
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="h-7 w-7 p-0"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleFilePreview(file);
-                                }}
-                                title="Preview"
-                              >
-                                <Eye className="w-3.5 h-3.5" />
-                              </Button>
-                              {/* Edit button for files with edit permission - always visible */}
-                              {file.permission_level === "edit" && (
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="h-7 w-7 p-0"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setEditFile(file);
-                                  }}
-                                  title="Edit"
-                                >
-                                  <Edit className="w-3.5 h-3.5" />
-                                </Button>
-                              )}
-                              {/* Download button - always visible for files with download permission */}
-                              {file.permission_level !== "view" && (
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="h-7 w-7 p-0"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleDownload(file);
-                                  }}
-                                  disabled={downloading === file.id}
-                                  title="Download"
-                                >
-                                  {downloading === file.id ? (
-                                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                                  ) : (
-                                    <Download className="w-3.5 h-3.5" />
-                                  )}
-                                </Button>
-                              )}
-                              {/* Delete button for files the guest uploaded */}
-                              {file.is_own_upload && (
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="h-7 w-7 p-0 text-destructive hover:text-destructive"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleDeleteFile(file);
-                                  }}
-                                  disabled={deletingFileId === file.id}
-                                  title="Delete"
-                                >
-                                  {deletingFileId === file.id ? (
-                                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                                  ) : (
-                                    <Trash2 className="w-3.5 h-3.5" />
-                                  )}
-                                </Button>
-                              )}
-                            </div>
-                          </div>
-                        ))}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {files.map(file => {
+                          const folder = allFolders.find(f => f.id === file.folder_id);
+                          const uploaderName = file.uploaded_by ? (profileMap[file.uploaded_by] || "Unknown") : "Unknown";
+                          const assigneeName = file.assigned_to ? (profileMap[file.assigned_to] || undefined) : undefined;
+
+                          return (
+                            <GuestDataRoomFileCard
+                              key={file.id}
+                              file={{
+                                ...file,
+                                status: file.status || "not_opened",
+                              }}
+                              folder={folder ? { id: folder.id, name: folder.name } : null}
+                              uploaderName={uploaderName}
+                              assigneeName={assigneeName}
+                              version={file.version || 1}
+                              isDownloading={downloading === file.id}
+                              isDeleting={deletingFileId === file.id}
+                              onView={() => handleFilePreview(file)}
+                              onDownload={() => handleDownload(file)}
+                              onMoveToFolder={() => {
+                                // Open move to folder dialog - use existing dropdown logic
+                              }}
+                              onViewVersions={() => fetchFileVersions({ id: file.id, name: file.name })}
+                              onEditDocument={file.permission_level === "edit" ? () => setEditFile(file) : undefined}
+                              onDelete={file.is_own_upload ? () => handleDeleteFile(file) : undefined}
+                              onManagePermissions={file.is_own_upload ? () => openFilePermissions(file) : undefined}
+                            />
+                          );
+                        })}
                       </div>
                     )}
                   </div>
@@ -1937,6 +1962,25 @@ const GuestDataRoom = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Version History Dialog */}
+      <DataRoomVersionHistoryDialog
+        open={!!versionHistoryFile}
+        onOpenChange={(open) => !open && setVersionHistoryFile(null)}
+        fileName={versionHistoryFile?.name || ""}
+        originalFileName={versionHistoryFile?.name || ""}
+        versions={fileVersions}
+        isLoading={loadingVersions}
+        profileMap={versionProfileMap}
+        onView={handleViewVersion}
+        onDownload={(version) => handleDownloadVersion(version)}
+        onRestore={() => {
+          toast.info("Restore functionality is not available for guests");
+        }}
+        onDelete={() => {
+          toast.info("Delete functionality is not available for guests");
+        }}
+      />
     </div>
   );
 };

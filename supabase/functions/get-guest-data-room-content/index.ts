@@ -258,7 +258,7 @@ Deno.serve(async (req) => {
     // Get files in current directory - only root files (parent_file_id is null) to show grouped versions
     let filesQuery = supabaseAdmin
       .from("data_room_files")
-      .select("id, name, file_path, file_size, mime_type, created_at, updated_at, folder_id, is_restricted, uploaded_by, version, parent_file_id, assigned_to")
+      .select("id, name, file_path, file_size, mime_type, created_at, updated_at, folder_id, is_restricted, uploaded_by, version, parent_file_id, assigned_to, status")
       .eq("data_room_id", dataRoom.id)
       .is("deleted_at", null)
       .is("parent_file_id", null); // Only show root files, not version children
@@ -311,6 +311,34 @@ Deno.serve(async (req) => {
       accessibleFiles = [];
     }
 
+    // Get all folders in the data room (for the card display)
+    const { data: allFolders } = await supabaseAdmin
+      .from("data_room_folders")
+      .select("id, name, created_at")
+      .eq("data_room_id", dataRoom.id)
+      .is("deleted_at", null)
+      .order("name");
+
+    // Fetch profile names for uploaders and assignees
+    const uploaderIds = [...new Set(accessibleFiles.map(f => f.uploaded_by).filter(Boolean))];
+    const assigneeIds = [...new Set(accessibleFiles.map(f => f.assigned_to).filter(Boolean))];
+    const allProfileIds = [...new Set([...uploaderIds, ...assigneeIds])];
+    
+    let profileMap: Record<string, string> = {};
+    if (allProfileIds.length > 0) {
+      const { data: profiles } = await supabaseAdmin
+        .from("profiles")
+        .select("id, full_name")
+        .in("id", allProfileIds);
+      
+      if (profiles) {
+        profileMap = profiles.reduce((acc, p) => {
+          acc[p.id] = p.full_name;
+          return acc;
+        }, {} as Record<string, string>);
+      }
+    }
+
     // Build breadcrumbs
     const breadcrumbs: { id: string; name: string }[] = [];
     let currentFolderId = folderId;
@@ -355,6 +383,8 @@ Deno.serve(async (req) => {
         files: accessibleFiles,
         breadcrumbs,
         currentFolderId: folderId || null,
+        profileMap,
+        allFolders: allFolders || [],
       }),
       { status: 200, headers: { ...corsHeaders, ...rateLimitHeaders, "Content-Type": "application/json" } }
     );
