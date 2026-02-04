@@ -548,6 +548,7 @@ export function useDataRoomDocumentEditor({
                   parent_file_id: rootFileId,
                   uploaded_by: user.id,
                   is_restricted: currentFile.is_restricted,
+                  version: nextFileVersion,
                 });
 
                 if (fileVersionError) {
