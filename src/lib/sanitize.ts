@@ -12,6 +12,8 @@ export function sanitizeHtml(dirty: string): string {
     ALLOWED_TAGS: [
       // Text formatting
       'p', 'br', 'strong', 'b', 'em', 'i', 'u', 's', 'strike', 'del',
+      // Subscript and superscript
+      'sub', 'sup',
       // Headings
       'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
       // Lists
@@ -26,6 +28,8 @@ export function sanitizeHtml(dirty: string): string {
       'span', 'div', 'hr', 'mark', 'sub', 'sup',
       // Images (src will be validated)
       'img',
+      // Document structure
+      'header', 'footer', 'section', 'article',
     ],
     ALLOWED_ATTR: [
       'href', 'target', 'rel',
@@ -33,10 +37,12 @@ export function sanitizeHtml(dirty: string): string {
       'src', 'alt', 'width', 'height',
       'colspan', 'rowspan',
       'align',
+      // Data attributes for editor
+      'data-*',
     ],
-    ALLOW_DATA_ATTR: false,
+    ALLOW_DATA_ATTR: true,
     // Only allow safe URL protocols
-    ALLOWED_URI_REGEXP: /^(?:(?:https?|mailto|tel):|[^a-z]|[a-z+.\-]+(?:[^a-z+.\-:]|$))/i,
+    ALLOWED_URI_REGEXP: /^(?:(?:https?|mailto|tel|data):|[^a-z]|[a-z+.\-]+(?:[^a-z+.\-:]|$))/i,
     // Add rel="noopener noreferrer" to links automatically
     ADD_ATTR: ['target'],
   });

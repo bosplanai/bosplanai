@@ -9,10 +9,19 @@ import { TableRow } from "@tiptap/extension-table-row";
 import { TableCell } from "@tiptap/extension-table-cell";
 import { TableHeader } from "@tiptap/extension-table-header";
 import { Image } from "@tiptap/extension-image";
+import Link from "@tiptap/extension-link";
+import { Color } from "@tiptap/extension-color";
+import { TextStyle } from "@tiptap/extension-text-style";
+import Subscript from "@tiptap/extension-subscript";
+import Superscript from "@tiptap/extension-superscript";
+import FontFamily from "@tiptap/extension-font-family";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Input } from "@/components/ui/input";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { SignaturePadDialog } from "./SignaturePadDialog";
 import {
   Bold,
@@ -34,6 +43,11 @@ import {
   Highlighter,
   Minus,
   PenTool,
+  Link as LinkIcon,
+  Palette,
+  Type,
+  Subscript as SubscriptIcon,
+  Superscript as SuperscriptIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -45,6 +59,30 @@ interface DocumentEditorProps {
   className?: string;
 }
 
+// Font family options
+const fontFamilies = [
+  { value: "default", label: "Default" },
+  { value: "Arial", label: "Arial" },
+  { value: "Times New Roman", label: "Times New Roman" },
+  { value: "Georgia", label: "Georgia" },
+  { value: "Verdana", label: "Verdana" },
+  { value: "Courier New", label: "Courier New" },
+  { value: "Calibri", label: "Calibri" },
+  { value: "Tahoma", label: "Tahoma" },
+];
+
+// Common text colors
+const textColors = [
+  { value: "#000000", label: "Black" },
+  { value: "#374151", label: "Gray" },
+  { value: "#DC2626", label: "Red" },
+  { value: "#2563EB", label: "Blue" },
+  { value: "#16A34A", label: "Green" },
+  { value: "#9333EA", label: "Purple" },
+  { value: "#EA580C", label: "Orange" },
+  { value: "#0891B2", label: "Cyan" },
+];
+
 export function DocumentEditor({
   content,
   onContentChange,
@@ -53,6 +91,8 @@ export function DocumentEditor({
   className,
 }: DocumentEditorProps) {
   const [showSignatureDialog, setShowSignatureDialog] = useState(false);
+  const [linkUrl, setLinkUrl] = useState("");
+  const [showLinkPopover, setShowLinkPopover] = useState(false);
   
   const editor = useEditor({
     extensions: [
@@ -69,7 +109,10 @@ export function DocumentEditor({
         types: ["heading", "paragraph", "tableCell", "tableHeader"],
       }),
       Highlight.configure({
-        multicolor: false,
+        multicolor: true,
+        HTMLAttributes: {
+          class: 'highlight',
+        },
       }),
       Table.configure({
         resizable: true,
@@ -87,6 +130,21 @@ export function DocumentEditor({
           class: 'document-image',
         },
       }),
+      Link.configure({
+        openOnClick: false,
+        HTMLAttributes: {
+          class: 'document-link',
+          rel: 'noopener noreferrer',
+          target: '_blank',
+        },
+      }),
+      TextStyle,
+      Color,
+      FontFamily.configure({
+        types: ['textStyle'],
+      }),
+      Subscript,
+      Superscript,
     ],
     content: content,
     editable: !isReadOnly,
@@ -124,6 +182,32 @@ export function DocumentEditor({
     }
   };
 
+  const handleSetLink = () => {
+    if (!editor) return;
+    
+    if (linkUrl) {
+      editor.chain().focus().extendMarkRange('link').setLink({ href: linkUrl }).run();
+    } else {
+      editor.chain().focus().extendMarkRange('link').unsetLink().run();
+    }
+    setShowLinkPopover(false);
+    setLinkUrl("");
+  };
+
+  const handleSetColor = (color: string) => {
+    if (!editor) return;
+    editor.chain().focus().setColor(color).run();
+  };
+
+  const handleSetFontFamily = (fontFamily: string) => {
+    if (!editor) return;
+    if (fontFamily === "default") {
+      editor.chain().focus().unsetFontFamily().run();
+    } else {
+      editor.chain().focus().setFontFamily(fontFamily).run();
+    }
+  };
+
   if (!editor) {
     return null;
   }
@@ -149,6 +233,23 @@ export function DocumentEditor({
               <Redo className="h-4 w-4" />
             </ToolbarButton>
           </div>
+
+          <Separator orientation="vertical" className="h-6 mx-1" />
+
+          {/* Font Family Selector */}
+          <Select onValueChange={handleSetFontFamily} defaultValue="default">
+            <SelectTrigger className="h-8 w-[130px] text-xs">
+              <Type className="h-3 w-3 mr-1" />
+              <SelectValue placeholder="Font" />
+            </SelectTrigger>
+            <SelectContent>
+              {fontFamilies.map((font) => (
+                <SelectItem key={font.value} value={font.value} style={{ fontFamily: font.value !== 'default' ? font.value : 'inherit' }}>
+                  {font.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
 
           <Separator orientation="vertical" className="h-6 mx-1" />
 
@@ -208,20 +309,79 @@ export function DocumentEditor({
               <Strikethrough className="h-4 w-4" />
             </ToolbarButton>
             <ToolbarButton
-              onClick={() => editor.chain().focus().toggleHighlight().run()}
-              active={editor.isActive("highlight")}
-              tooltip="Highlight"
+              onClick={() => editor.chain().focus().toggleSubscript().run()}
+              active={editor.isActive("subscript")}
+              tooltip="Subscript"
             >
-              <Highlighter className="h-4 w-4" />
+              <SubscriptIcon className="h-4 w-4" />
             </ToolbarButton>
             <ToolbarButton
-              onClick={() => editor.chain().focus().toggleCode().run()}
-              active={editor.isActive("code")}
-              tooltip="Inline Code"
+              onClick={() => editor.chain().focus().toggleSuperscript().run()}
+              active={editor.isActive("superscript")}
+              tooltip="Superscript"
             >
-              <Code className="h-4 w-4" />
+              <SuperscriptIcon className="h-4 w-4" />
             </ToolbarButton>
           </div>
+
+          <Separator orientation="vertical" className="h-6 mx-1" />
+
+          {/* Text Color Picker */}
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-8 w-8">
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div className="flex flex-col items-center">
+                      <Palette className="h-4 w-4" />
+                      <div 
+                        className="h-1 w-4 mt-0.5 rounded-sm" 
+                        style={{ backgroundColor: editor.getAttributes('textStyle').color || '#000000' }}
+                      />
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent>Text Color</TooltipContent>
+                </Tooltip>
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-2">
+              <div className="grid grid-cols-4 gap-1">
+                {textColors.map((color) => (
+                  <button
+                    key={color.value}
+                    onClick={() => handleSetColor(color.value)}
+                    className="w-6 h-6 rounded border border-border hover:scale-110 transition-transform"
+                    style={{ backgroundColor: color.value }}
+                    title={color.label}
+                  />
+                ))}
+              </div>
+              <div className="mt-2 flex gap-1">
+                <Input
+                  type="color"
+                  className="w-8 h-8 p-0 border-0"
+                  onChange={(e) => handleSetColor(e.target.value)}
+                />
+                <span className="text-xs text-muted-foreground self-center">Custom</span>
+              </div>
+            </PopoverContent>
+          </Popover>
+
+          <ToolbarButton
+            onClick={() => editor.chain().focus().toggleHighlight().run()}
+            active={editor.isActive("highlight")}
+            tooltip="Highlight"
+          >
+            <Highlighter className="h-4 w-4" />
+          </ToolbarButton>
+
+          <ToolbarButton
+            onClick={() => editor.chain().focus().toggleCode().run()}
+            active={editor.isActive("code")}
+            tooltip="Inline Code"
+          >
+            <Code className="h-4 w-4" />
+          </ToolbarButton>
 
           <Separator orientation="vertical" className="h-6 mx-1" />
 
@@ -282,6 +442,53 @@ export function DocumentEditor({
           </div>
 
           <Separator orientation="vertical" className="h-6 mx-1" />
+
+          {/* Link Button */}
+          <Popover open={showLinkPopover} onOpenChange={setShowLinkPopover}>
+            <PopoverTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className={cn("h-8 w-8", editor.isActive("link") && "bg-accent text-accent-foreground")}
+              >
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <LinkIcon className="h-4 w-4" />
+                  </TooltipTrigger>
+                  <TooltipContent>Insert Link</TooltipContent>
+                </Tooltip>
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-80">
+              <div className="flex flex-col gap-2">
+                <label className="text-sm font-medium">Link URL</label>
+                <Input
+                  type="url"
+                  placeholder="https://example.com"
+                  value={linkUrl}
+                  onChange={(e) => setLinkUrl(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleSetLink()}
+                />
+                <div className="flex gap-2">
+                  <Button size="sm" onClick={handleSetLink}>
+                    {editor.isActive("link") ? "Update Link" : "Add Link"}
+                  </Button>
+                  {editor.isActive("link") && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        editor.chain().focus().unsetLink().run();
+                        setShowLinkPopover(false);
+                      }}
+                    >
+                      Remove
+                    </Button>
+                  )}
+                </div>
+              </div>
+            </PopoverContent>
+          </Popover>
 
           {/* Signature Button */}
           <div className="flex items-center gap-0.5">
@@ -354,6 +561,7 @@ export function DocumentEditor({
             border: none;
             border-top: 2px dashed hsl(var(--border));
             margin: 2em 0;
+            page-break-after: always;
           }
           
           /* Document title/subtitle */
@@ -391,6 +599,18 @@ export function DocumentEditor({
             border-color: hsl(var(--primary));
           }
           
+          /* Links */
+          .document-editor-content a,
+          .document-editor-content .document-link {
+            color: hsl(var(--primary));
+            text-decoration: underline;
+            cursor: pointer;
+          }
+          .document-editor-content a:hover,
+          .document-editor-content .document-link:hover {
+            color: hsl(var(--primary) / 0.8);
+          }
+          
           /* Blockquotes */
           .document-editor-content blockquote {
             border-left: 4px solid hsl(var(--border));
@@ -402,6 +622,34 @@ export function DocumentEditor({
             border-left-color: hsl(var(--primary));
             font-style: italic;
           }
+          
+          /* Subscript and Superscript */
+          .document-editor-content sub {
+            font-size: 0.75em;
+            vertical-align: sub;
+          }
+          .document-editor-content sup {
+            font-size: 0.75em;
+            vertical-align: super;
+          }
+          
+          /* Highlight colors */
+          .document-editor-content mark,
+          .document-editor-content .highlight {
+            background-color: #ffff00;
+            padding: 0.1em 0.2em;
+            border-radius: 2px;
+          }
+          
+          /* Preserve inline styles from Word documents */
+          .document-editor-content [style*="color"] { color: inherit; }
+          .document-editor-content [style*="font-family"] { font-family: inherit; }
+          .document-editor-content [style*="font-size"] { font-size: inherit; }
+          .document-editor-content [style*="background-color"] { background-color: inherit; }
+          .document-editor-content [style*="text-align"] { text-align: inherit; }
+          .document-editor-content [style*="margin-left"] { margin-left: inherit; }
+          .document-editor-content [style*="text-indent"] { text-indent: inherit; }
+          .document-editor-content [style*="line-height"] { line-height: inherit; }
         `}</style>
         <EditorContent editor={editor} className="h-full" />
       </div>
