@@ -522,6 +522,7 @@ export type Database = {
           mime_type: string | null
           name: string
           organization_id: string
+          parent_file_id: string | null
           updated_at: string
           uploaded_by: string
         }
@@ -537,6 +538,7 @@ export type Database = {
           mime_type?: string | null
           name: string
           organization_id: string
+          parent_file_id?: string | null
           updated_at?: string
           uploaded_by: string
         }
@@ -552,6 +554,7 @@ export type Database = {
           mime_type?: string | null
           name?: string
           organization_id?: string
+          parent_file_id?: string | null
           updated_at?: string
           uploaded_by?: string
         }
@@ -575,6 +578,13 @@ export type Database = {
             columns: ["organization_id"]
             isOneToOne: false
             referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "data_room_files_parent_file_id_fkey"
+            columns: ["parent_file_id"]
+            isOneToOne: false
+            referencedRelation: "data_room_files"
             referencedColumns: ["id"]
           },
           {
