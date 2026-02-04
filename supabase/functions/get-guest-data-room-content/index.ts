@@ -278,27 +278,36 @@ Deno.serve(async (req) => {
     let accessibleFiles = files || [];
 
     if (fileIds.length > 0) {
-      // For guests, we need to check file permissions differently
-      // Get all file permissions for this guest (by email match in invite)
-      const { data: filePermissions } = await supabaseAdmin
+      // For guests, check file permissions specific to this guest's invite
+      const { data: guestPermissions } = await supabaseAdmin
         .from("data_room_file_permissions")
         .select("file_id, permission_level")
+        .eq("guest_invite_id", invite.id)
         .in("file_id", fileIds);
 
-      // Filter files: show unrestricted OR files where guest has explicit permission
+      // Filter files: show unrestricted files OR restricted files where guest has explicit permission
       accessibleFiles = (files || []).filter(file => {
+        // Unrestricted files are visible to all guests
         if (!file.is_restricted) return true;
-        // For restricted files, check if guest uploaded it or has permission
-        const permission = filePermissions?.find(p => p.file_id === file.id);
+        // Restricted files require explicit guest permission
+        const permission = guestPermissions?.find(p => p.file_id === file.id);
         return !!permission;
       }).map(file => {
-        const permission = filePermissions?.find(p => p.file_id === file.id);
+        const guestPermission = guestPermissions?.find(p => p.file_id === file.id);
+        // Unrestricted files: guests get full edit access (can view, edit, download)
+        // Restricted files: use explicit permission level
+        const permissionLevel = file.is_restricted 
+          ? (guestPermission?.permission_level || "view")
+          : "edit"; // Full access for unrestricted files
         return {
           ...file,
-          permission_level: permission?.permission_level || "view",
-          is_own_upload: false // Guests can't be uploaders in the traditional sense
+          permission_level: permissionLevel,
+          is_own_upload: false
         };
       });
+    } else {
+      // No files - nothing to filter
+      accessibleFiles = [];
     }
 
     // Build breadcrumbs
