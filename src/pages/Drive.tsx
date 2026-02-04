@@ -1613,25 +1613,12 @@ const Drive = () => {
         }
       }
 
-      // PDFs can be blocked by browsers when embedded from signed URLs.
-      // Download to a blob URL first to ensure reliable previews.
-      if (file.mime_type === "application/pdf") {
-        const {
-          data: blob,
-          error
-        } = await supabase.storage.from("drive-files").download(file.file_path);
-        if (error) throw error;
-        if (blob) {
-          const objectUrl = URL.createObjectURL(blob);
-          setPreviewUrl(objectUrl);
-        }
-      } else {
-        const {
-          data
-        } = await supabase.storage.from("drive-files").createSignedUrl(file.file_path, 300);
-        if (data?.signedUrl) {
-          setPreviewUrl(data.signedUrl);
-        }
+      // Get signed URL for all file types - PDFs use Google Docs Viewer for reliable previews
+      const {
+        data
+      } = await supabase.storage.from("drive-files").createSignedUrl(file.file_path, 300);
+      if (data?.signedUrl) {
+        setPreviewUrl(data.signedUrl);
       }
     } finally {
       setPreviewLoading(false);
@@ -2807,7 +2794,7 @@ const Drive = () => {
                     <audio src={previewUrl} controls className="w-full max-w-md" />
                   </div>}
                 {previewFile.mime_type === "application/pdf" && <div className="w-full h-[60vh] rounded-lg border overflow-hidden bg-background">
-                    <iframe src={previewUrl} className="w-full h-full" title={previewFile.name} />
+                    <iframe src={`https://docs.google.com/gview?url=${encodeURIComponent(previewUrl)}&embedded=true`} className="w-full h-full" title={previewFile.name} />
                   </div>}
                 {isOfficeDocument(previewFile.mime_type) && <div className="w-full h-[60vh] rounded-lg border overflow-hidden bg-background">
                     <iframe 
