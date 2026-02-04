@@ -10,8 +10,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { X, FileText, Cloud, CloudOff, Users, Loader2, Check, Save, Download, FileDown, RefreshCw } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { toast } from "sonner";
+import { useQueryClient } from "@tanstack/react-query";
 
 interface DataRoomDocumentEditorDialogProps {
   open: boolean;
@@ -34,6 +35,8 @@ export function DataRoomDocumentEditorDialog({
   organizationId,
 }: DataRoomDocumentEditorDialogProps) {
   const [isExporting, setIsExporting] = useState(false);
+  const queryClient = useQueryClient();
+  const wasOpenRef = useRef(false);
 
   const {
     content,
@@ -58,6 +61,16 @@ export function DataRoomDocumentEditorDialog({
     filePath: file?.file_path,
     mimeType: file?.mime_type || undefined,
   });
+
+  // Invalidate file queries when dialog closes to refresh version counts
+  useEffect(() => {
+    if (wasOpenRef.current && !open) {
+      // Dialog was open and is now closing - invalidate queries to refresh version counts
+      queryClient.invalidateQueries({ queryKey: ["data-room-files"] });
+      queryClient.invalidateQueries({ queryKey: ["data-room-file-versions"] });
+    }
+    wasOpenRef.current = open;
+  }, [open, queryClient]);
 
   const handleExport = async (format: string) => {
     if (!file || !content) return;
