@@ -165,7 +165,7 @@ const GuestFilePreviewDialog = ({
               )}
               {file.type === "pdf" && (
                 <iframe
-                  src={file.url}
+                  src={`https://docs.google.com/gview?url=${encodeURIComponent(file.url)}&embedded=true`}
                   className="w-full h-full rounded-lg border bg-white"
                   title={file.name}
                 />
