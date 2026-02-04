@@ -141,6 +141,8 @@ interface Member {
   user_id: string;
   role: string;
   created_at: string;
+  is_owner?: boolean;
+  email?: string | null;
   user: {
     full_name: string;
     job_role: string | null;
@@ -1499,22 +1501,35 @@ const GuestDataRoom = () => {
                             className="flex items-center gap-3 p-3 rounded-lg bg-muted/30 border border-border/50"
                           >
                             <Avatar className="w-10 h-10">
-                              <AvatarFallback className="bg-emerald-500/10 text-emerald-600 text-sm font-medium">
+                              <AvatarFallback className={cn(
+                                "text-sm font-medium",
+                                member.is_owner 
+                                  ? "bg-brand-orange/10 text-brand-orange" 
+                                  : "bg-emerald-500/10 text-emerald-600"
+                              )}>
                                 {member.user?.full_name?.charAt(0).toUpperCase() || "?"}
                               </AvatarFallback>
                             </Avatar>
                             <div className="flex-1 min-w-0">
-                              <p className="text-sm font-medium truncate">{member.user?.full_name}</p>
-                              <div className="flex items-center gap-1.5">
-                                <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 bg-emerald-500/10 text-emerald-600">
-                                  Team
+                              <div className="flex items-center gap-2">
+                                <p className="text-sm font-medium truncate">{member.user?.full_name}</p>
+                                <Badge variant="secondary" className={cn(
+                                  "text-[10px] px-1.5 py-0 h-4 shrink-0",
+                                  member.is_owner 
+                                    ? "bg-brand-orange/10 text-brand-orange border-brand-orange/20" 
+                                    : "bg-emerald-500/10 text-emerald-600"
+                                )}>
+                                  {member.is_owner ? "☆ Owner" : "Team"}
                                 </Badge>
-                                {member.user?.job_role && (
-                                  <span className="text-xs text-muted-foreground truncate">
-                                    {member.user.job_role}
-                                  </span>
-                                )}
                               </div>
+                              {member.email && (
+                                <p className="text-xs text-muted-foreground truncate">{member.email}</p>
+                              )}
+                              {member.user?.job_role && (
+                                <p className="text-xs text-muted-foreground truncate">
+                                  {member.user.job_role}
+                                </p>
+                              )}
                             </div>
                           </div>
                         ))}
@@ -1525,24 +1540,25 @@ const GuestDataRoom = () => {
                             key={guest.id}
                             className="flex items-center gap-3 p-3 rounded-lg bg-muted/30 border border-border/50"
                           >
-                            <div className="w-10 h-10 rounded-full bg-blue-500/10 flex items-center justify-center">
-                              <Mail className="w-4 h-4 text-blue-500" />
+                            <div className="w-10 h-10 rounded-full bg-muted/50 flex items-center justify-center">
+                              <Mail className="w-4 h-4 text-muted-foreground" />
                             </div>
                             <div className="flex-1 min-w-0">
-                              <p className="text-sm font-medium truncate">
-                                {guest.guest_name || guest.email}
-                              </p>
-                              <div className="flex items-center gap-1.5">
-                                <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 bg-blue-500/10 text-blue-600">
+                              <div className="flex items-center gap-2">
+                                <p className="text-sm font-medium truncate">
+                                  {guest.guest_name || guest.email.split("@")[0]}
+                                </p>
+                                <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 bg-emerald-500/10 text-emerald-600 shrink-0">
                                   <CheckCircle className="w-2.5 h-2.5 mr-0.5" />
                                   NDA Signed
                                 </Badge>
-                                {guest.nda_signed_at && (
-                                  <span className="text-[10px] text-muted-foreground">
-                                    {format(new Date(guest.nda_signed_at), "MMM d")}
-                                  </span>
-                                )}
                               </div>
+                              <p className="text-xs text-muted-foreground truncate">{guest.email}</p>
+                              {guest.nda_signed_at && (
+                                <p className="text-[10px] text-muted-foreground">
+                                  Signed {format(new Date(guest.nda_signed_at), "MMM d, yyyy")}
+                                </p>
+                              )}
                             </div>
                           </div>
                         ))}

@@ -79,6 +79,15 @@ Deno.serve(async (req) => {
       );
     }
 
+    // Get data room to find the owner
+    const { data: dataRoom } = await supabaseAdmin
+      .from("data_rooms")
+      .select("created_by")
+      .eq("id", invite.data_room_id)
+      .single();
+
+    const ownerId = dataRoom?.created_by;
+
     // Fetch team members for this data room
     const { data: members, error: membersError } = await supabaseAdmin
       .from("data_room_members")
@@ -87,12 +96,27 @@ Deno.serve(async (req) => {
         user_id,
         role,
         created_at,
-        user:profiles(full_name, job_role)
+        user:profiles!data_room_members_user_id_fkey(full_name, job_role)
       `)
       .eq("data_room_id", invite.data_room_id);
 
     if (membersError) {
       console.error("Members fetch error:", membersError);
+    }
+
+    // Fetch user emails from auth.users for display
+    const userIds = (members || []).map(m => m.user_id).filter(Boolean);
+    let emailMap: Record<string, string> = {};
+    
+    if (userIds.length > 0) {
+      const { data: authUsers } = await supabaseAdmin.auth.admin.listUsers();
+      if (authUsers?.users) {
+        authUsers.users.forEach(u => {
+          if (userIds.includes(u.id) && u.email) {
+            emailMap[u.id] = u.email;
+          }
+        });
+      }
     }
 
     // Fetch guests for this data room
@@ -106,17 +130,26 @@ Deno.serve(async (req) => {
       console.error("Guests fetch error:", guestsError);
     }
 
-    // Format members data
+    // Format members data with owner flag and email
     const formattedMembers = (members || []).map(m => ({
       id: m.id,
       user_id: m.user_id,
       role: m.role,
+      is_owner: m.user_id === ownerId,
       created_at: m.created_at,
+      email: emailMap[m.user_id] || null,
       user: {
         full_name: (m.user as any)?.full_name || "Unknown",
         job_role: (m.user as any)?.job_role || null,
       }
     }));
+
+    // Sort members: owner first, then by name
+    formattedMembers.sort((a, b) => {
+      if (a.is_owner && !b.is_owner) return -1;
+      if (!a.is_owner && b.is_owner) return 1;
+      return (a.user.full_name || "").localeCompare(b.user.full_name || "");
+    });
 
     return new Response(
       JSON.stringify({ 
