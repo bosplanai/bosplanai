@@ -1382,10 +1382,10 @@ By signing below, you acknowledge that you have read, understood, and agree to b
   });
 
   // Fetch file versions
-  const { data: fileVersions = [], isLoading: versionsLoading } = useQuery({
+  const { data: fileVersionsData = { versions: [], originalFileName: '' }, isLoading: versionsLoading } = useQuery({
     queryKey: ["data-room-file-versions", versionHistoryFile?.id],
     queryFn: async () => {
-      if (!versionHistoryFile?.id || !activeRoomId) return [];
+      if (!versionHistoryFile?.id || !activeRoomId) return { versions: [], originalFileName: '' };
       
       // Get the file family (original + all versions)
       const { data: file } = await supabase
@@ -1394,7 +1394,7 @@ By signing below, you acknowledge that you have read, understood, and agree to b
         .eq("id", versionHistoryFile.id)
         .single();
       
-      if (!file) return [];
+      if (!file) return { versions: [], originalFileName: '' };
       
       // The root file is either the parent_file_id or the current file if it has no parent
       const rootFileId = file.parent_file_id || file.id;
@@ -1409,10 +1409,18 @@ By signing below, you acknowledge that you have read, understood, and agree to b
         .order("version", { ascending: false });
       
       if (error) throw error;
-      return versions || [];
+      
+      // Find the original file (the one with no parent_file_id)
+      const originalFile = versions?.find(v => !v.parent_file_id) || versions?.[versions.length - 1];
+      const originalFileName = originalFile?.name || versionHistoryFile.name;
+      
+      return { versions: versions || [], originalFileName };
     },
     enabled: !!versionHistoryFile?.id && !!activeRoomId
   });
+  
+  const fileVersions = fileVersionsData.versions;
+  const originalFileName = fileVersionsData.originalFileName;
 
   // Fetch data room members for assignee selection
   const { data: dataRoomMembers = [] } = useQuery({
@@ -1676,6 +1684,174 @@ By signing below, you acknowledge that you have read, understood, and agree to b
       const link = document.createElement("a");
       link.href = data.signedUrl;
       link.download = fileName;
+      link.target = "_blank";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+  };
+
+  const handleDownloadFileWithFormat = async (
+    fileId: string, 
+    filePath: string, 
+    originalFileName: string, 
+    mimeType: string | null,
+    format?: 'original' | 'pdf'
+  ) => {
+    // Get the base name without extension for consistent naming
+    const baseName = originalFileName.replace(/\.[^/.]+$/, '');
+    
+    // For PDF format, always export to PDF
+    if (format === 'pdf') {
+      // Check for edited content first
+      const { data: docContent } = await supabase
+        .from("data_room_document_content")
+        .select("content")
+        .eq("file_id", fileId)
+        .maybeSingle();
+      
+      const hasEditedContent = docContent?.content && 
+        docContent.content !== "" && 
+        docContent.content !== "<p></p>" &&
+        docContent.content !== "<p>Start editing this document...</p>" &&
+        !docContent.content.includes("Could not extract document content") &&
+        docContent.content.length > 50;
+      
+      if (hasEditedContent) {
+        // Export edited content as PDF using browser print
+        const printWindow = window.open('', '_blank');
+        if (printWindow) {
+          const printHtml = `
+            <!DOCTYPE html>
+            <html>
+              <head>
+                <meta charset="UTF-8">
+                <title>${baseName}</title>
+                <style>
+                  @media print {
+                    @page { margin: 1in; size: A4; }
+                  }
+                  body { 
+                    font-family: 'Times New Roman', Georgia, serif; 
+                    font-size: 12pt; 
+                    line-height: 1.6;
+                    color: #000;
+                    max-width: 800px;
+                    margin: 0 auto;
+                    padding: 2em;
+                  }
+                  h1 { font-size: 24pt; font-weight: bold; margin: 0.5em 0; }
+                  h2 { font-size: 18pt; font-weight: bold; margin: 0.5em 0; }
+                  h3 { font-size: 14pt; font-weight: bold; margin: 0.5em 0; }
+                  p { margin: 0.5em 0; }
+                  table { border-collapse: collapse; width: 100%; margin: 1em 0; }
+                  td, th { border: 1px solid #000; padding: 8px; }
+                  th { background: #f0f0f0; font-weight: bold; }
+                  blockquote { border-left: 3px solid #ccc; padding-left: 1em; margin: 1em 0; color: #555; }
+                  ul, ol { margin: 0.5em 0; padding-left: 2em; }
+                  img { max-width: 100%; height: auto; }
+                </style>
+              </head>
+              <body>
+                ${docContent.content}
+              </body>
+            </html>
+          `;
+          printWindow.document.write(printHtml);
+          printWindow.document.close();
+          printWindow.onload = () => {
+            printWindow.print();
+          };
+          toast({ title: "Print dialog opened", description: "Select 'Save as PDF' to export" });
+        } else {
+          toast({ title: "Error", description: "Could not open print window. Please allow popups.", variant: "destructive" });
+        }
+        return;
+      }
+      
+      // If no edited content, try to convert original file to PDF
+      // For now, inform user that PDF export is only available for edited documents
+      toast({ 
+        title: "PDF Export", 
+        description: "PDF export is available for edited documents. Open and edit this document first to enable PDF export.", 
+        variant: "default" 
+      });
+      return;
+    }
+    
+    // For original format, download with original filename
+    // For office documents, check if there's edited content to download
+    if (isEditableDocument(mimeType)) {
+      const { data: docContent, error: contentError } = await supabase
+        .from("data_room_document_content")
+        .select("content")
+        .eq("file_id", fileId)
+        .maybeSingle();
+      
+      // Check if there's meaningful edited content
+      const hasEditedContent = docContent?.content && 
+        docContent.content !== "" && 
+        docContent.content !== "<p></p>" &&
+        docContent.content !== "<p>Start editing this document...</p>" &&
+        !docContent.content.includes("Could not extract document content") &&
+        docContent.content.length > 50;
+      
+      if (hasEditedContent) {
+        try {
+          const { data: sessionData } = await supabase.auth.getSession();
+          const token = sessionData.session?.access_token;
+          
+          if (token) {
+            const response = await fetch(
+              `https://qiikjhvzlwzysbtzhdcd.supabase.co/functions/v1/export-document`,
+              {
+                method: 'POST',
+                headers: {
+                  'Authorization': `Bearer ${token}`,
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                  content: docContent.content,
+                  format: 'docx',
+                  fileName: originalFileName,
+                }),
+              }
+            );
+
+            const result = await response.json();
+            
+            if (!result.error && result.data) {
+              const byteCharacters = atob(result.data);
+              const byteNumbers = new Array(byteCharacters.length);
+              for (let i = 0; i < byteCharacters.length; i++) {
+                byteNumbers[i] = byteCharacters.charCodeAt(i);
+              }
+              const byteArray = new Uint8Array(byteNumbers);
+              const blob = new Blob([byteArray], { type: result.mimeType });
+              
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.href = url;
+              // Use original filename with correct extension
+              const ext = result.filename.split('.').pop();
+              a.download = `${baseName}.${ext}`;
+              a.click();
+              URL.revokeObjectURL(url);
+              return;
+            }
+          }
+        } catch (error) {
+          console.error('Export error, falling back to original file:', error);
+        }
+      }
+    }
+
+    // Fall back to original file from storage - use original filename
+    const { data } = await supabase.storage.from("data-room-files").createSignedUrl(filePath, 60 * 60);
+    if (data?.signedUrl) {
+      const link = document.createElement("a");
+      link.href = data.signedUrl;
+      link.download = originalFileName;
       link.target = "_blank";
       document.body.appendChild(link);
       link.click();
@@ -2794,11 +2970,12 @@ By signing below, you acknowledge that you have read, understood, and agree to b
         open={versionHistoryDialogOpen}
         onOpenChange={setVersionHistoryDialogOpen}
         fileName={versionHistoryFile?.name || ""}
+        originalFileName={originalFileName || versionHistoryFile?.name || ""}
         versions={fileVersions}
         isLoading={versionsLoading}
         profileMap={profileMap}
         onView={(version) => handleViewFile(version.id, version.file_path, version.name, version.mime_type)}
-        onDownload={(version) => handleDownloadFile(version.id, version.file_path, version.name, version.mime_type)}
+        onDownload={(version, format) => handleDownloadFileWithFormat(version.id, version.file_path, originalFileName || version.name, version.mime_type, format)}
         onRestore={async (version) => {
           // Create a new version based on the restored one
           if (!activeRoomId || !selectedRoom || !user?.id) return;
