@@ -125,7 +125,7 @@ const VirtualAssistants = () => {
             </Button>
             <div>
               <h1 className="text-xl sm:text-2xl font-bold text-foreground">Remote Assistants</h1>
-              <p className="text-sm text-muted-foreground hidden sm:block">Hire skilled professionals to supercharge your business at a low and affordable cost!</p>
+              <p className="text-sm text-muted-foreground hidden sm:block">Hire skilled human professionals to supercharge your business at a low and affordable cost!</p>
             </div>
           </div>
           {user && <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
@@ -157,7 +157,7 @@ const VirtualAssistants = () => {
                 <Badge className="mb-3 bg-[#176884] text-white border-0 hover:bg-[#176884]/90 text-xs">
                   Remote Assistants
                 </Badge>
-                <p className="text-muted-foreground leading-relaxed">Need affordable assistance for your business? Our Remote Assistants offer a low-cost and highly-skilled solution. Choose the role and number of hours, then purchase directly through the platform. Once completed, your Remote Assistant will be added to your organisation and you can allocate work as you wish.</p>
+                <p className="text-muted-foreground leading-relaxed">Need affordable assistance for your business? Our Human Remote Assistants offer a low-cost and highly-skilled solution. Choose the role and number of hours, then purchase directly through the platform. Once completed, your Remote Assistant will be added to your organisation and you can allocate work as you wish.</p>
                 <p className="text-muted-foreground leading-relaxed mt-3"><strong>Important:</strong> Please note that 30 days' notice is required for the remote assistant service to start, and 30 days' notice is also required for cancellation of the service.</p>
               </div>
             </div>
