@@ -241,38 +241,17 @@ export function DataRoomDocumentEditorDialog({
               </Tooltip>
               <DropdownMenuContent align="end" className="w-48">
                 <DropdownMenuItem onClick={() => handleExport('docx')} className="gap-2">
-                  <FileDown className="w-4 h-4 text-blue-600" />
+                  <FileDown className="w-4 h-4 text-primary" />
                   <div className="flex flex-col">
-                    <span>Word Document</span>
-                    <span className="text-xs text-muted-foreground">.docx</span>
+                    <span>Original Format</span>
+                    <span className="text-xs text-muted-foreground">{file.name}</span>
                   </div>
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => handleExport('pdf')} className="gap-2">
-                  <FileDown className="w-4 h-4 text-red-600" />
+                  <FileDown className="w-4 h-4 text-destructive" />
                   <div className="flex flex-col">
                     <span>PDF Document</span>
                     <span className="text-xs text-muted-foreground">.pdf</span>
-                  </div>
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleExport('rtf')} className="gap-2">
-                  <FileDown className="w-4 h-4 text-purple-600" />
-                  <div className="flex flex-col">
-                    <span>Rich Text Format</span>
-                    <span className="text-xs text-muted-foreground">.rtf</span>
-                  </div>
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleExport('html')} className="gap-2">
-                  <FileDown className="w-4 h-4 text-orange-600" />
-                  <div className="flex flex-col">
-                    <span>HTML Document</span>
-                    <span className="text-xs text-muted-foreground">.html</span>
-                  </div>
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleExport('txt')} className="gap-2">
-                  <FileDown className="w-4 h-4 text-gray-600" />
-                  <div className="flex flex-col">
-                    <span>Plain Text</span>
-                    <span className="text-xs text-muted-foreground">.txt</span>
                   </div>
                 </DropdownMenuItem>
               </DropdownMenuContent>
