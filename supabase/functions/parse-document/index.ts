@@ -73,68 +73,127 @@ function parseDocxXml(
   
   const bodyContent = bodyMatch[1];
   
+  // Limit body content size to prevent regex catastrophic backtracking
+  const maxBodySize = 5000000; // 5MB limit
+  if (bodyContent.length > maxBodySize) {
+    console.warn('Document body too large, content may be truncated');
+  }
+  const processableContent = bodyContent.substring(0, maxBodySize);
+  
   // Process elements in order (paragraphs and tables)
   let currentListType: string | null = null;
   let currentListLevel = 0;
   
-  // Find all top-level elements
+  // Find all top-level elements using indexOf instead of regex to avoid stack overflow
   const elements: { type: string; content: string; index: number }[] = [];
   
-  // Find paragraphs
-  const paraRegex = /<w:p[^\/]*>[\s\S]*?<\/w:p>|<w:p[^\/]*\/>/g;
-  let match;
-  while ((match = paraRegex.exec(bodyContent)) !== null) {
-    elements.push({ type: 'paragraph', content: match[0], index: match.index });
+  // Find paragraphs using indexOf (safer than regex for large documents)
+  let idx = 0;
+  let paraCount = 0;
+  const maxParagraphs = 5000;
+  
+  while (idx < processableContent.length && paraCount < maxParagraphs) {
+    const start = processableContent.indexOf('<w:p>', idx);
+    const start2 = processableContent.indexOf('<w:p ', idx);
+    const selfClosing = processableContent.indexOf('<w:p/>', idx);
+    
+    // Find the earliest paragraph start
+    let actualStart = -1;
+    let isSelfClosing = false;
+    
+    if (selfClosing !== -1 && (selfClosing < start || start === -1) && (selfClosing < start2 || start2 === -1)) {
+      actualStart = selfClosing;
+      isSelfClosing = true;
+    } else if (start !== -1 && (start < start2 || start2 === -1)) {
+      actualStart = start;
+    } else if (start2 !== -1) {
+      actualStart = start2;
+    }
+    
+    if (actualStart === -1) break;
+    
+    if (isSelfClosing) {
+      const endTag = actualStart + '<w:p/>'.length;
+      elements.push({ type: 'paragraph', content: processableContent.substring(actualStart, endTag), index: actualStart });
+      idx = endTag;
+    } else {
+      const end = processableContent.indexOf('</w:p>', actualStart);
+      if (end === -1) break;
+      const endTag = end + '</w:p>'.length;
+      elements.push({ type: 'paragraph', content: processableContent.substring(actualStart, endTag), index: actualStart });
+      idx = endTag;
+    }
+    paraCount++;
   }
   
-  // Find tables
-  const tableRegex = /<w:tbl[^>]*>[\s\S]*?<\/w:tbl>/g;
-  while ((match = tableRegex.exec(bodyContent)) !== null) {
-    elements.push({ type: 'table', content: match[0], index: match.index });
+  // Find tables using indexOf
+  idx = 0;
+  let tableCount = 0;
+  const maxTables = 500;
+  
+  while (idx < processableContent.length && tableCount < maxTables) {
+    const start = processableContent.indexOf('<w:tbl>', idx);
+    const start2 = processableContent.indexOf('<w:tbl ', idx);
+    const actualStart = start === -1 ? start2 : (start2 === -1 ? start : Math.min(start, start2));
+    
+    if (actualStart === -1) break;
+    
+    const end = processableContent.indexOf('</w:tbl>', actualStart);
+    if (end === -1) break;
+    const endTag = end + '</w:tbl>'.length;
+    elements.push({ type: 'table', content: processableContent.substring(actualStart, endTag), index: actualStart });
+    idx = endTag;
+    tableCount++;
   }
   
   // Sort by index to maintain document order
   elements.sort((a, b) => a.index - b.index);
   
+  // Process elements with error handling
   for (const element of elements) {
-    if (element.type === 'table') {
-      // Close any open list
-      if (currentListType) {
-        html.push(`</${currentListType}>`);
-        currentListType = null;
-      }
-      html.push(parseTable(element.content, context));
-    } else {
-      const paraResult = parseParagraph(element.content, context);
-      
-      // Check for page break
-      if (paraResult.hasPageBreak) {
+    try {
+      if (element.type === 'table') {
+        // Close any open list
         if (currentListType) {
           html.push(`</${currentListType}>`);
           currentListType = null;
         }
-        html.push('<hr class="page-break" />');
-      }
-      
-      // Handle list transitions
-      if (paraResult.listType) {
-        if (currentListType !== paraResult.listType) {
+        html.push(parseTable(element.content, context));
+      } else {
+        const paraResult = parseParagraph(element.content, context);
+        
+        // Check for page break
+        if (paraResult.hasPageBreak) {
           if (currentListType) {
             html.push(`</${currentListType}>`);
+            currentListType = null;
           }
-          html.push(`<${paraResult.listType}>`);
-          currentListType = paraResult.listType;
+          html.push('<hr class="page-break" />');
         }
-        html.push(`<li>${paraResult.html}</li>`);
-      } else {
-        if (currentListType) {
-          html.push(`</${currentListType}>`);
-          currentListType = null;
-        }
-        if (paraResult.html.trim()) {
-          html.push(paraResult.html);
+        
+        // Handle list transitions
+        if (paraResult.listType) {
+          if (currentListType !== paraResult.listType) {
+            if (currentListType) {
+              html.push(`</${currentListType}>`);
+            }
+            html.push(`<${paraResult.listType}>`);
+            currentListType = paraResult.listType;
+          }
+          html.push(`<li>${paraResult.html}</li>`);
+        } else {
+          if (currentListType) {
+            html.push(`</${currentListType}>`);
+            currentListType = null;
+          }
+          if (paraResult.html.trim()) {
+            html.push(paraResult.html);
+          }
         }
       }
+    } catch (e) {
+      console.error('Error processing element:', e);
+      // Continue processing other elements
     }
   }
   
@@ -275,86 +334,166 @@ function parseParagraph(
   return { html: content ? `<${tag}${styleAttr}>${content}</${tag}>` : '', listType: null, hasPageBreak };
 }
 
-function parseRuns(paraXml: string, context: ParseContext): string {
+function parseRuns(paraXml: string, context: ParseContext, depth: number = 0): string {
+  // Prevent stack overflow with depth limit
+  if (depth > 10) {
+    console.warn('Parse depth exceeded in parseRuns');
+    return '';
+  }
+  
+  // Limit input size to prevent regex catastrophic backtracking
+  if (paraXml.length > 500000) {
+    console.warn('Paragraph too large, truncating');
+    paraXml = paraXml.substring(0, 500000);
+  }
+  
   const parts: string[] = [];
   
-  // Find hyperlinks, drawings (images), and regular runs
-  const hyperlinkRegex = /<w:hyperlink[^>]*>[\s\S]*?<\/w:hyperlink>/g;
-  const drawingRegex = /<w:drawing>[\s\S]*?<\/w:drawing>/g;
-  const runRegex = /<w:r[^\/]*>[\s\S]*?<\/w:r>/g;
-  
-  // Process in order by finding all elements and sorting by index
-  const allElements: { type: string; content: string; index: number }[] = [];
-  
-  let match: RegExpExecArray | null;
-  while ((match = hyperlinkRegex.exec(paraXml)) !== null) {
-    allElements.push({ type: 'hyperlink', content: match[0], index: match.index });
-  }
-  
-  while ((match = drawingRegex.exec(paraXml)) !== null) {
-    allElements.push({ type: 'drawing', content: match[0], index: match.index });
-  }
-  
-  // Find runs that are NOT inside hyperlinks or drawings
-  const processedRanges = allElements.map(e => ({ start: e.index, end: e.index + e.content.length }));
-  
-  let runMatch: RegExpExecArray | null;
-  while ((runMatch = runRegex.exec(paraXml)) !== null) {
-    const isInsideOther = processedRanges.some(
-      range => runMatch!.index >= range.start && runMatch!.index < range.end
-    );
-    if (!isInsideOther) {
-      allElements.push({ type: 'run', content: runMatch[0], index: runMatch.index });
+  try {
+    // Find hyperlinks, drawings (images), and regular runs
+    // Use simpler regex patterns to avoid catastrophic backtracking
+    const hyperlinkMatches: { content: string; index: number }[] = [];
+    const drawingMatches: { content: string; index: number }[] = [];
+    const runMatches: { content: string; index: number }[] = [];
+    
+    // Extract hyperlinks
+    let idx = 0;
+    while (idx < paraXml.length) {
+      const start = paraXml.indexOf('<w:hyperlink', idx);
+      if (start === -1) break;
+      const end = paraXml.indexOf('</w:hyperlink>', start);
+      if (end === -1) break;
+      const endTag = end + '</w:hyperlink>'.length;
+      hyperlinkMatches.push({ content: paraXml.substring(start, endTag), index: start });
+      idx = endTag;
     }
-  }
-  
-  // Sort by position
-  allElements.sort((a, b) => a.index - b.index);
-  
-  for (const elem of allElements) {
-    if (elem.type === 'hyperlink') {
-      const rIdMatch = elem.content.match(/r:id="([^"]*)"/);
-      const rel = rIdMatch ? context.relationships.get(rIdMatch[1]) : null;
-      const href = rel?.target || null;
-      const linkRuns = elem.content.match(/<w:r[^\/]*>[\s\S]*?<\/w:r>/g) || [];
-      const linkText = linkRuns.map(r => parseRun(r, context)).join('');
+    
+    // Extract drawings
+    idx = 0;
+    while (idx < paraXml.length) {
+      const start = paraXml.indexOf('<w:drawing>', idx);
+      if (start === -1) break;
+      const end = paraXml.indexOf('</w:drawing>', start);
+      if (end === -1) break;
+      const endTag = end + '</w:drawing>'.length;
+      drawingMatches.push({ content: paraXml.substring(start, endTag), index: start });
+      idx = endTag;
+    }
+    
+    // Build processed ranges
+    const processedRanges = [
+      ...hyperlinkMatches.map(e => ({ start: e.index, end: e.index + e.content.length })),
+      ...drawingMatches.map(e => ({ start: e.index, end: e.index + e.content.length })),
+    ];
+    
+    // Extract runs (simplified approach)
+    idx = 0;
+    while (idx < paraXml.length) {
+      const start = paraXml.indexOf('<w:r>', idx);
+      const start2 = paraXml.indexOf('<w:r ', idx);
+      const actualStart = start === -1 ? start2 : (start2 === -1 ? start : Math.min(start, start2));
+      if (actualStart === -1) break;
       
-      if (href && linkText) {
-        parts.push(`<a href="${escapeHtml(href)}" target="_blank" rel="noopener noreferrer">${linkText}</a>`);
-      } else if (linkText) {
-        parts.push(linkText);
+      const end = paraXml.indexOf('</w:r>', actualStart);
+      if (end === -1) break;
+      const endTag = end + '</w:r>'.length;
+      
+      // Check if this run is inside a processed range
+      const isInsideOther = processedRanges.some(
+        range => actualStart >= range.start && actualStart < range.end
+      );
+      
+      if (!isInsideOther) {
+        runMatches.push({ content: paraXml.substring(actualStart, endTag), index: actualStart });
       }
-    } else if (elem.type === 'drawing') {
-      // Extract image from drawing
-      const embedMatch = elem.content.match(/r:embed="([^"]*)"/);
-      if (embedMatch) {
-        const imageData = context.images.get(embedMatch[1]);
-        if (imageData) {
-          // Get dimensions if available
-          const cxMatch = elem.content.match(/cx="(\d+)"/);
-          const cyMatch = elem.content.match(/cy="(\d+)"/);
-          let styleAttr = '';
-          if (cxMatch || cyMatch) {
-            const styles: string[] = [];
-            if (cxMatch) {
-              const emuWidth = parseInt(cxMatch[1]);
-              const pxWidth = Math.round(emuWidth / 914400 * 96); // EMU to pixels
-              styles.push(`width: ${pxWidth}px`);
-            }
-            if (cyMatch) {
-              const emuHeight = parseInt(cyMatch[1]);
-              const pxHeight = Math.round(emuHeight / 914400 * 96);
-              styles.push(`height: ${pxHeight}px`);
-            }
-            styleAttr = ` style="${styles.join('; ')}"`;
-          }
-          parts.push(`<img src="${imageData}" class="document-image"${styleAttr} />`);
-        }
-      }
-    } else if (elem.type === 'run') {
-      const runContent = parseRun(elem.content, context);
-      if (runContent) parts.push(runContent);
+      idx = endTag;
     }
+    
+    // Combine all elements and sort by position
+    const allElements = [
+      ...hyperlinkMatches.map(m => ({ type: 'hyperlink', ...m })),
+      ...drawingMatches.map(m => ({ type: 'drawing', ...m })),
+      ...runMatches.map(m => ({ type: 'run', ...m })),
+    ].sort((a, b) => a.index - b.index);
+    
+    // Limit elements to prevent excessive processing
+    const maxElements = 1000;
+    const elementsToProcess = allElements.slice(0, maxElements);
+    
+    for (const elem of elementsToProcess) {
+      if (elem.type === 'hyperlink') {
+        const rIdMatch = elem.content.match(/r:id="([^"]*)"/);
+        const rel = rIdMatch ? context.relationships.get(rIdMatch[1]) : null;
+        const href = rel?.target || null;
+        
+        // Extract runs from hyperlink (simplified)
+        const linkText = extractTextFromRuns(elem.content, context);
+        
+        if (href && linkText) {
+          parts.push(`<a href="${escapeHtml(href)}" target="_blank" rel="noopener noreferrer">${linkText}</a>`);
+        } else if (linkText) {
+          parts.push(linkText);
+        }
+      } else if (elem.type === 'drawing') {
+        // Extract image from drawing
+        const embedMatch = elem.content.match(/r:embed="([^"]*)"/);
+        if (embedMatch) {
+          const imageData = context.images.get(embedMatch[1]);
+          if (imageData) {
+            // Get dimensions if available
+            const cxMatch = elem.content.match(/cx="(\d+)"/);
+            const cyMatch = elem.content.match(/cy="(\d+)"/);
+            let styleAttr = '';
+            if (cxMatch || cyMatch) {
+              const styles: string[] = [];
+              if (cxMatch) {
+                const emuWidth = parseInt(cxMatch[1]);
+                const pxWidth = Math.round(emuWidth / 914400 * 96);
+                styles.push(`width: ${pxWidth}px`);
+              }
+              if (cyMatch) {
+                const emuHeight = parseInt(cyMatch[1]);
+                const pxHeight = Math.round(emuHeight / 914400 * 96);
+                styles.push(`height: ${pxHeight}px`);
+              }
+              styleAttr = ` style="${styles.join('; ')}"`;
+            }
+            parts.push(`<img src="${imageData}" class="document-image"${styleAttr} />`);
+          }
+        }
+      } else if (elem.type === 'run') {
+        const runContent = parseRun(elem.content, context);
+        if (runContent) parts.push(runContent);
+      }
+    }
+  } catch (e) {
+    console.error('Error in parseRuns:', e);
+  }
+  
+  return parts.join('');
+}
+
+// Helper function to extract text from runs without recursion
+function extractTextFromRuns(xml: string, context: ParseContext): string {
+  const parts: string[] = [];
+  let idx = 0;
+  let iterations = 0;
+  const maxIterations = 500;
+  
+  while (idx < xml.length && iterations < maxIterations) {
+    iterations++;
+    const start = xml.indexOf('<w:r>', idx);
+    const start2 = xml.indexOf('<w:r ', idx);
+    const actualStart = start === -1 ? start2 : (start2 === -1 ? start : Math.min(start, start2));
+    if (actualStart === -1) break;
+    
+    const end = xml.indexOf('</w:r>', actualStart);
+    if (end === -1) break;
+    const endTag = end + '</w:r>'.length;
+    
+    const runContent = parseRun(xml.substring(actualStart, endTag), context);
+    if (runContent) parts.push(runContent);
+    idx = endTag;
   }
   
   return parts.join('');
@@ -465,65 +604,151 @@ function parseRun(runXml: string, context: ParseContext): string {
 }
 
 function parseTable(tableXml: string, context: ParseContext): string {
+  // Limit table size to prevent stack overflow
+  if (tableXml.length > 500000) {
+    console.warn('Table too large, truncating');
+    return '<table class="document-table"><tr><td>Table too large to display</td></tr></table>';
+  }
+  
   const rows: string[] = [];
-  const rowMatches = tableXml.match(/<w:tr[^>]*>[\s\S]*?<\/w:tr>/g) || [];
+  
+  // Extract rows using indexOf instead of regex
+  let idx = 0;
+  let rowCount = 0;
+  const maxRows = 500;
+  const rowMatches: string[] = [];
+  
+  while (idx < tableXml.length && rowCount < maxRows) {
+    const start = tableXml.indexOf('<w:tr>', idx);
+    const start2 = tableXml.indexOf('<w:tr ', idx);
+    const actualStart = start === -1 ? start2 : (start2 === -1 ? start : Math.min(start, start2));
+    
+    if (actualStart === -1) break;
+    
+    const end = tableXml.indexOf('</w:tr>', actualStart);
+    if (end === -1) break;
+    const endTag = end + '</w:tr>'.length;
+    rowMatches.push(tableXml.substring(actualStart, endTag));
+    idx = endTag;
+    rowCount++;
+  }
   
   let isFirstRow = true;
   
   // Check for header row indication
-  const hasHeaderRow = /<w:tblHeader/.test(tableXml) || /<w:firstRow\s+w:val="(true|1)"/.test(tableXml);
+  const hasHeaderRow = tableXml.includes('<w:tblHeader') || /<w:firstRow\s+w:val="(true|1)"/.test(tableXml);
   
   for (const rowXml of rowMatches) {
-    const cells: string[] = [];
-    const cellMatches = rowXml.match(/<w:tc[^>]*>[\s\S]*?<\/w:tc>/g) || [];
-    const isHeaderRow = isFirstRow && (hasHeaderRow || /<w:tblHeader/.test(rowXml));
-    
-    for (const cellXml of cellMatches) {
-      // Get cell properties
-      const colspanMatch = cellXml.match(/<w:gridSpan[^>]*w:val="(\d+)"/);
-      const colspan = colspanMatch ? ` colspan="${colspanMatch[1]}"` : '';
+    try {
+      const cells: string[] = [];
       
-      // Check for vertical merge
-      const vMergeMatch = cellXml.match(/<w:vMerge[^>]*(w:val="([^"]*)")?/);
-      if (vMergeMatch && !vMergeMatch[2]) {
-        // This is a continuation cell, skip it
-        continue;
+      // Extract cells using indexOf
+      let cellIdx = 0;
+      let cellCount = 0;
+      const maxCells = 100;
+      const cellMatches: string[] = [];
+      
+      while (cellIdx < rowXml.length && cellCount < maxCells) {
+        const cellStart = rowXml.indexOf('<w:tc>', cellIdx);
+        const cellStart2 = rowXml.indexOf('<w:tc ', cellIdx);
+        const actualCellStart = cellStart === -1 ? cellStart2 : (cellStart2 === -1 ? cellStart : Math.min(cellStart, cellStart2));
+        
+        if (actualCellStart === -1) break;
+        
+        const cellEnd = rowXml.indexOf('</w:tc>', actualCellStart);
+        if (cellEnd === -1) break;
+        const cellEndTag = cellEnd + '</w:tc>'.length;
+        cellMatches.push(rowXml.substring(actualCellStart, cellEndTag));
+        cellIdx = cellEndTag;
+        cellCount++;
       }
       
-      // Get cell background/shading
-      const cellShadingMatch = cellXml.match(/<w:shd[^>]*w:fill="([^"]*)"/);
-      const cellBg = cellShadingMatch && cellShadingMatch[1] !== 'auto' ? cellShadingMatch[1] : null;
+      const isHeaderRow = isFirstRow && (hasHeaderRow || rowXml.includes('<w:tblHeader'));
       
-      // Get cell alignment
-      const cellAlignMatch = cellXml.match(/<w:jc[^>]*w:val="([^"]*)"/);
-      const cellAlign = cellAlignMatch ? cellAlignMatch[1] : null;
-      
-      let cellStyle = '';
-      const cellStyles: string[] = [];
-      if (cellBg) cellStyles.push(`background-color: #${cellBg}`);
-      if (cellAlign) {
-        const alignMap: Record<string, string> = { 'left': 'left', 'center': 'center', 'right': 'right' };
-        if (alignMap[cellAlign]) cellStyles.push(`text-align: ${alignMap[cellAlign]}`);
+      for (const cellXml of cellMatches) {
+        // Get cell properties
+        const colspanMatch = cellXml.match(/<w:gridSpan[^>]*w:val="(\d+)"/);
+        const colspan = colspanMatch ? ` colspan="${colspanMatch[1]}"` : '';
+        
+        // Check for vertical merge
+        const vMergeMatch = cellXml.match(/<w:vMerge[^>]*(w:val="([^"]*)")?/);
+        if (vMergeMatch && !vMergeMatch[2]) {
+          // This is a continuation cell, skip it
+          continue;
+        }
+        
+        // Get cell background/shading
+        const cellShadingMatch = cellXml.match(/<w:shd[^>]*w:fill="([^"]*)"/);
+        const cellBg = cellShadingMatch && cellShadingMatch[1] !== 'auto' ? cellShadingMatch[1] : null;
+        
+        // Get cell alignment
+        const cellAlignMatch = cellXml.match(/<w:jc[^>]*w:val="([^"]*)"/);
+        const cellAlign = cellAlignMatch ? cellAlignMatch[1] : null;
+        
+        let cellStyle = '';
+        const cellStyles: string[] = [];
+        if (cellBg) cellStyles.push(`background-color: #${cellBg}`);
+        if (cellAlign) {
+          const alignMap: Record<string, string> = { 'left': 'left', 'center': 'center', 'right': 'right' };
+          if (alignMap[cellAlign]) cellStyles.push(`text-align: ${alignMap[cellAlign]}`);
+        }
+        if (cellStyles.length > 0) cellStyle = ` style="${cellStyles.join('; ')}"`;
+        
+        // Parse cell content (paragraphs) using indexOf
+        let paraIdx = 0;
+        const cellParas: string[] = [];
+        const maxCellParas = 50;
+        
+        while (paraIdx < cellXml.length && cellParas.length < maxCellParas) {
+          const paraStart = cellXml.indexOf('<w:p>', paraIdx);
+          const paraStart2 = cellXml.indexOf('<w:p ', paraIdx);
+          const selfClosing = cellXml.indexOf('<w:p/>', paraIdx);
+          
+          let actualParaStart = -1;
+          let isSelfClosing = false;
+          
+          if (selfClosing !== -1 && (selfClosing < paraStart || paraStart === -1) && (selfClosing < paraStart2 || paraStart2 === -1)) {
+            actualParaStart = selfClosing;
+            isSelfClosing = true;
+          } else if (paraStart !== -1 && (paraStart < paraStart2 || paraStart2 === -1)) {
+            actualParaStart = paraStart;
+          } else if (paraStart2 !== -1) {
+            actualParaStart = paraStart2;
+          }
+          
+          if (actualParaStart === -1) break;
+          
+          if (isSelfClosing) {
+            const paraEndTag = actualParaStart + '<w:p/>'.length;
+            cellParas.push(cellXml.substring(actualParaStart, paraEndTag));
+            paraIdx = paraEndTag;
+          } else {
+            const paraEnd = cellXml.indexOf('</w:p>', actualParaStart);
+            if (paraEnd === -1) break;
+            const paraEndTag = paraEnd + '</w:p>'.length;
+            cellParas.push(cellXml.substring(actualParaStart, paraEndTag));
+            paraIdx = paraEndTag;
+          }
+        }
+        
+        const cellContent = cellParas.map(p => {
+          const result = parseParagraph(p, context);
+          // Strip outer p tag for table cells
+          const match = result.html.match(/<p[^>]*>([\s\S]*)<\/p>/);
+          return match ? match[1] : result.html;
+        }).join('<br>');
+        
+        const tag = isHeaderRow ? 'th' : 'td';
+        cells.push(`<${tag}${colspan}${cellStyle}>${cellContent || '&nbsp;'}</${tag}>`);
       }
-      if (cellStyles.length > 0) cellStyle = ` style="${cellStyles.join('; ')}"`;
       
-      // Parse cell content (paragraphs)
-      const cellParas = cellXml.match(/<w:p[^\/]*>[\s\S]*?<\/w:p>|<w:p[^\/]*\/>/g) || [];
-      const cellContent = cellParas.map(p => {
-        const result = parseParagraph(p, context);
-        // Strip outer p tag for table cells
-        const match = result.html.match(/<p[^>]*>([\s\S]*)<\/p>/);
-        return match ? match[1] : result.html;
-      }).join('<br>');
-      
-      const tag = isHeaderRow ? 'th' : 'td';
-      cells.push(`<${tag}${colspan}${cellStyle}>${cellContent || '&nbsp;'}</${tag}>`);
+      if (cells.length > 0) {
+        rows.push(`<tr>${cells.join('')}</tr>`);
+      }
+      isFirstRow = false;
+    } catch (e) {
+      console.error('Error parsing table row:', e);
     }
-    
-    if (cells.length > 0) {
-      rows.push(`<tr>${cells.join('')}</tr>`);
-    }
-    isFirstRow = false;
   }
   
   return `<table class="document-table">${rows.join('')}</table>`;
@@ -531,7 +756,25 @@ function parseTable(tableXml: string, context: ParseContext): string {
 
 // Parse header/footer XML
 function parseHeaderFooter(xml: string, context: ParseContext): string {
-  const paras = xml.match(/<w:p[^\/]*>[\s\S]*?<\/w:p>|<w:p[^\/]*\/>/g) || [];
+  // Extract paragraphs using indexOf
+  let idx = 0;
+  const paras: string[] = [];
+  const maxParas = 50;
+  
+  while (idx < xml.length && paras.length < maxParas) {
+    const start = xml.indexOf('<w:p>', idx);
+    const start2 = xml.indexOf('<w:p ', idx);
+    const actualStart = start === -1 ? start2 : (start2 === -1 ? start : Math.min(start, start2));
+    
+    if (actualStart === -1) break;
+    
+    const end = xml.indexOf('</w:p>', actualStart);
+    if (end === -1) break;
+    const endTag = end + '</w:p>'.length;
+    paras.push(xml.substring(actualStart, endTag));
+    idx = endTag;
+  }
+  
   const content = paras.map(p => {
     const result = parseParagraph(p, context);
     return result.html;

@@ -60,7 +60,10 @@ export function useDocumentEditor({ fileId, filePath, mimeType, onContentChange 
 
   // Parse uploaded document content
   const parseUploadedDocument = async (): Promise<string | null> => {
-    if (!filePath || !fileId) return null;
+    if (!filePath || !fileId) {
+      console.log('[DocumentEditor] No filePath or fileId, skipping parse');
+      return null;
+    }
 
     // Check if this is a parseable file type
     const lowerMimeType = (mimeType || '').toLowerCase();
@@ -73,21 +76,27 @@ export function useDocumentEditor({ fileId, filePath, mimeType, onContentChange 
       lowerMimeType.includes('spreadsheet') ||
       lowerMimeType.includes('officedocument.spreadsheetml') ||
       lowerMimeType.includes('pdf') ||
+      lowerMimeType.includes('msword') ||
       lowerPath.endsWith('.docx') ||
       lowerPath.endsWith('.doc') ||
       lowerPath.endsWith('.xlsx') ||
       lowerPath.endsWith('.xls') ||
       lowerPath.endsWith('.pdf');
 
-    if (!isParseable) return null;
+    if (!isParseable) {
+      console.log('[DocumentEditor] File type not parseable:', mimeType, filePath);
+      return null;
+    }
 
+    console.log('[DocumentEditor] Starting document parse for:', filePath, 'mimeType:', mimeType);
     setIsParsing(true);
     try {
       const { data: sessionData } = await supabase.auth.getSession();
       const token = sessionData.session?.access_token;
 
       if (!token) {
-        console.error('No auth token available');
+        console.error('[DocumentEditor] No auth token available');
+        toast.error('Authentication required to parse document');
         return null;
       }
 
@@ -103,24 +112,36 @@ export function useDocumentEditor({ fileId, filePath, mimeType, onContentChange 
             fileId,
             filePath,
             mimeType,
+            bucket: 'drive-files',
           }),
         }
       );
 
       if (!response.ok) {
-        console.error('Failed to parse document:', response.statusText);
+        const errorText = await response.text();
+        console.error('[DocumentEditor] Failed to parse document:', response.status, errorText);
+        toast.error('Failed to parse document. Please try again.');
         return null;
       }
 
       const result = await response.json();
+      console.log('[DocumentEditor] Parse result received, content length:', result.content?.length || 0);
       
       if (result.error) {
-        console.warn('Document parsing warning:', result.error);
+        console.warn('[DocumentEditor] Parsing warning:', result.error);
+        toast.error(result.error);
+        return null;
       }
       
-      return result.content || null;
+      if (!result.content || result.content.trim() === '') {
+        console.warn('[DocumentEditor] Parsing returned empty content');
+        return null;
+      }
+      
+      return result.content;
     } catch (error) {
-      console.error('Error parsing document:', error);
+      console.error('[DocumentEditor] Error parsing document:', error);
+      toast.error('Error parsing document');
       return null;
     } finally {
       setIsParsing(false);
@@ -130,8 +151,12 @@ export function useDocumentEditor({ fileId, filePath, mimeType, onContentChange 
   // Load or create document content
   useEffect(() => {
     async function loadOrCreateDocument() {
-      if (!fileId || !user) return;
+      if (!fileId || !user) {
+        console.log('[DocumentEditor] Missing fileId or user, skipping load');
+        return;
+      }
       
+      console.log('[DocumentEditor] Loading document for fileId:', fileId);
       setIsLoading(true);
       try {
         // First, try to get existing document content
@@ -142,39 +167,55 @@ export function useDocumentEditor({ fileId, filePath, mimeType, onContentChange 
           .maybeSingle();
 
         if (fetchError) {
-          console.error("Error fetching document:", fetchError);
+          console.error("[DocumentEditor] Error fetching document:", fetchError);
           toast.error("Failed to load document");
           return;
         }
 
         if (existingDoc) {
+          console.log('[DocumentEditor] Found existing document, content length:', existingDoc.content?.length || 0);
           setDocumentId(existingDoc.id);
           
           // Check if existing content is empty, placeholder, or an error message - if so, try parsing again
           const isEmptyOrPlaceholder = !existingDoc.content || 
-            existingDoc.content === "" || 
+            existingDoc.content.trim() === "" || 
             existingDoc.content === "<p></p>" ||
             existingDoc.content === "<p>Start editing this document...</p>" ||
-            existingDoc.content.includes("Could not extract document content");
+            existingDoc.content.includes("Could not extract document content") ||
+            existingDoc.content.includes("Legacy .doc format detected") ||
+            existingDoc.content.includes("Legacy .xls format detected") ||
+            existingDoc.content.length < 20;
+          
+          console.log('[DocumentEditor] Is empty/placeholder:', isEmptyOrPlaceholder, 'filePath:', filePath, 'mimeType:', mimeType);
           
           if (isEmptyOrPlaceholder && filePath && mimeType) {
             // Try to re-parse the document since we only have placeholder content
+            console.log('[DocumentEditor] Attempting to parse document from file...');
             const parsedContent = await parseUploadedDocument();
-            // Only use parsed content if it's valid - either meaningful content or a legacy format message
+            
+            // Check if we got valid content back
             const isValidParsedContent = parsedContent && 
-              parsedContent.length > 50 &&
-              !parsedContent.includes("Could not extract document content") &&
-              !parsedContent.includes("<p></p>");
+              parsedContent.trim().length > 0 &&
+              !parsedContent.includes("Could not extract document content");
+            
+            console.log('[DocumentEditor] Parse result - valid:', isValidParsedContent, 'length:', parsedContent?.length || 0);
             
             if (isValidParsedContent) {
               // Update the document with parsed content
-              await supabase
+              const { error: updateError } = await supabase
                 .from("drive_document_content")
                 .update({
                   content: parsedContent,
                   last_edited_by: user.id,
+                  updated_at: new Date().toISOString(),
                 })
                 .eq("id", existingDoc.id);
+              
+              if (updateError) {
+                console.error('[DocumentEditor] Error updating document content:', updateError);
+              } else {
+                console.log('[DocumentEditor] Successfully updated document with parsed content');
+              }
               
               setContent(parsedContent);
               lastVersionContentRef.current = parsedContent;
@@ -203,12 +244,15 @@ export function useDocumentEditor({ fileId, filePath, mimeType, onContentChange 
                   });
               }
             } else {
-              // Fall back to existing content if parsing fails or returns error
-              setContent(existingDoc.content);
-              lastVersionContentRef.current = existingDoc.content;
-              onContentChange?.(existingDoc.content);
+              // Fall back to existing content if parsing fails
+              console.log('[DocumentEditor] Parsing failed, using existing content');
+              setContent(existingDoc.content || '');
+              lastVersionContentRef.current = existingDoc.content || '';
+              onContentChange?.(existingDoc.content || '');
             }
           } else {
+            // Content exists and is valid, use it
+            console.log('[DocumentEditor] Using existing valid content');
             setContent(existingDoc.content);
             lastVersionContentRef.current = existingDoc.content;
             onContentChange?.(existingDoc.content);
@@ -218,19 +262,20 @@ export function useDocumentEditor({ fileId, filePath, mimeType, onContentChange 
           setLastSaved(new Date(existingDoc.updated_at));
         } else {
           // No existing document content - try to parse the uploaded file
+          console.log('[DocumentEditor] No existing document, creating new...');
           let initialContent = "";
           
           if (filePath && mimeType) {
+            console.log('[DocumentEditor] Attempting to parse uploaded file...');
             const parsedContent = await parseUploadedDocument();
-            // Only use parsed content if it's valid - either meaningful content or a legacy format message
-            const isValidParsedContent = parsedContent && 
-              parsedContent.length > 50 &&
-              !parsedContent.includes("Could not extract document content") &&
-              !parsedContent.includes("<p></p>");
             
-            if (isValidParsedContent) {
+            // Accept any non-empty parsed content
+            if (parsedContent && parsedContent.trim().length > 0) {
               initialContent = parsedContent;
+              console.log('[DocumentEditor] Using parsed content, length:', initialContent.length);
               toast.success("Document content loaded from uploaded file");
+            } else {
+              console.log('[DocumentEditor] Parsing returned empty, using empty content');
             }
           }
 
@@ -247,11 +292,12 @@ export function useDocumentEditor({ fileId, filePath, mimeType, onContentChange 
             .single();
 
           if (createError) {
-            console.error("Error creating document:", createError);
+            console.error("[DocumentEditor] Error creating document:", createError);
             toast.error("Failed to create document");
             return;
           }
 
+          console.log('[DocumentEditor] Created new document with content length:', newDoc.content?.length || 0);
           setDocumentId(newDoc.id);
           setContent(newDoc.content);
           setContentType(newDoc.content_type as "rich_text" | "plain_text");
@@ -260,7 +306,6 @@ export function useDocumentEditor({ fileId, filePath, mimeType, onContentChange 
           
           // Create initial version if we parsed content
           if (initialContent) {
-            // We'll create the version after documentId is set
             setTimeout(async () => {
               try {
                 await supabase
@@ -274,13 +319,13 @@ export function useDocumentEditor({ fileId, filePath, mimeType, onContentChange 
                     version_note: "Original uploaded content",
                   });
               } catch (e) {
-                console.error("Error creating initial version:", e);
+                console.error("[DocumentEditor] Error creating initial version:", e);
               }
             }, 100);
           }
         }
       } catch (error) {
-        console.error("Error in loadOrCreateDocument:", error);
+        console.error("[DocumentEditor] Error in loadOrCreateDocument:", error);
         toast.error("Failed to load document");
       } finally {
         setIsLoading(false);
@@ -643,6 +688,40 @@ export function useDocumentEditor({ fileId, filePath, mimeType, onContentChange 
     createVersion(content, note);
   }, [content, createVersion]);
 
+  // Force reload content from the uploaded file
+  const reloadFromFile = useCallback(async () => {
+    if (!filePath || !mimeType) {
+      toast.error("No file path available to reload from");
+      return;
+    }
+    
+    console.log('[DocumentEditor] Manual reload triggered for:', filePath);
+    const parsedContent = await parseUploadedDocument();
+    
+    if (parsedContent && parsedContent.trim().length > 0) {
+      setContent(parsedContent);
+      onContentChange?.(parsedContent);
+      
+      if (documentId && user) {
+        await supabase
+          .from("drive_document_content")
+          .update({
+            content: parsedContent,
+            last_edited_by: user.id,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", documentId);
+        
+        // Create a version for the reload
+        await createVersion(parsedContent, "Reloaded from original file");
+      }
+      
+      toast.success("Document reloaded from original file");
+    } else {
+      toast.error("Could not parse content from the file");
+    }
+  }, [filePath, mimeType, documentId, user, onContentChange, createVersion, parseUploadedDocument]);
+
   // Update cursor position for presence
   const updateCursorPosition = useCallback(async (position: number) => {
     if (!fileId || !user) return;
@@ -676,5 +755,6 @@ export function useDocumentEditor({ fileId, filePath, mimeType, onContentChange 
     fetchVersions,
     updateCursorPosition,
     setContentType,
+    reloadFromFile,
   };
 }
