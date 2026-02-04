@@ -235,7 +235,7 @@ export function DataRoomFileCard({
                       file.status === "review_failed" ? "bg-brand-coral" :
                       file.status === "in_review" ? "bg-brand-teal" : "bg-brand-orange"
                     )} />
-                    <span className="text-xs font-medium truncate whitespace-nowrap">{statusDisplay.label}</span>
+                    <span className="text-xs font-medium whitespace-nowrap">{statusDisplay.label}</span>
                     <ChevronDown className="w-3 h-3 flex-shrink-0" />
                   </button>
                 </DropdownMenuTrigger>
