@@ -354,17 +354,17 @@ const ActiveTeamPanel = ({
           )}
 
           {/* Add Team Member Section */}
-          {availableMembers.length > 0 && (
-            <div className="p-4 rounded-xl bg-gradient-to-br from-primary/5 to-primary/10 border border-primary/20">
-              <div className="flex items-center gap-2.5 mb-2">
-                <div className="w-8 h-8 rounded-lg bg-primary/15 flex items-center justify-center">
-                  <Users className="w-4 h-4 text-primary" />
-                </div>
-                <h3 className="text-sm font-semibold">Add Team Member</h3>
+          <div className="p-4 rounded-xl bg-gradient-to-br from-primary/5 to-primary/10 border border-primary/20">
+            <div className="flex items-center gap-2.5 mb-2">
+              <div className="w-8 h-8 rounded-lg bg-primary/15 flex items-center justify-center">
+                <Users className="w-4 h-4 text-primary" />
               </div>
-              <p className="text-xs text-muted-foreground mb-3 leading-relaxed">
-                Add colleagues from your organization to collaborate.
-              </p>
+              <h3 className="text-sm font-semibold">Add Team Member</h3>
+            </div>
+            <p className="text-xs text-muted-foreground mb-3 leading-relaxed">
+              Add colleagues from your organization to collaborate.
+            </p>
+            {availableMembers.length > 0 ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="outline" className="w-full h-10 text-sm justify-between bg-background/60 border-border/50 hover:border-primary/50">
@@ -394,8 +394,12 @@ const ActiveTeamPanel = ({
                   ))}
                 </DropdownMenuContent>
               </DropdownMenu>
-            </div>
-          )}
+            ) : (
+              <div className="text-center py-3 rounded-lg bg-muted/30 border border-dashed border-border/50">
+                <p className="text-xs text-muted-foreground">All team members have been added</p>
+              </div>
+            )}
+          </div>
         </div>
       )}
 
