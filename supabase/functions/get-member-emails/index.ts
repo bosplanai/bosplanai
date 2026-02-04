@@ -41,19 +41,19 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Verify the token using the admin client
+    // Verify the token using getClaims for proper JWT validation
     const token = authHeader.replace("Bearer ", "");
-    const { data: userData, error: userError } = await supabaseAdmin.auth.getUser(token);
+    const { data: claimsData, error: claimsError } = await supabaseAdmin.auth.getClaims(token);
     
-    if (userError || !userData?.user) {
-      console.error("Auth error:", userError);
+    if (claimsError || !claimsData?.claims) {
+      console.error("Auth error:", claimsError);
       return new Response(
         JSON.stringify({ error: "Unauthorized" }),
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    const callerId = userData.user.id;
+    const callerId = claimsData.claims.sub as string;
 
     const { userIds, organizationId } = await req.json();
 
