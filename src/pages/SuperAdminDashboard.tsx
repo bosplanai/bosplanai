@@ -100,13 +100,13 @@ const SuperAdminDashboard = () => {
       bgColor: "bg-cyan-500/10"
     }]
   }, {
-    category: "Virtual Assistants",
-    description: "Create and manage virtual assistant accounts",
+    category: "Remote Assistants",
+    description: "Create and manage remote assistant accounts",
     icon: Bot,
     iconColor: "text-pink-400",
     items: [{
-      title: "Manage Virtual Assistants",
-      description: "Create, view, and manage all virtual assistant accounts",
+      title: "Manage Remote Assistants",
+      description: "Create, view, and manage all remote assistant accounts",
       icon: UserPlus,
       href: "/superadmin/virtual-assistants",
       color: "text-pink-500",

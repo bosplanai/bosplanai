@@ -85,7 +85,7 @@ const ManageVirtualAssistants = () => {
       setVirtualAssistants(data || []);
     } catch (error: any) {
       console.error("Error fetching VAs:", error);
-      toast.error("Failed to load virtual assistants");
+      toast.error("Failed to load remote assistants");
     } finally {
       setLoadingVAs(false);
     }
@@ -148,14 +148,14 @@ const ManageVirtualAssistants = () => {
       if (response.error) throw new Error(response.error.message);
       if (response.data?.error) throw new Error(response.data.error);
 
-      toast.success("Virtual Assistant created successfully");
+      toast.success("Remote Assistant created successfully");
       setShowPassword(response.data.tempPassword);
       setIsCreateDialogOpen(false);
       resetForm();
       fetchVirtualAssistants();
     } catch (error: any) {
       console.error("Error creating VA:", error);
-      toast.error(error.message || "Failed to create Virtual Assistant");
+      toast.error(error.message || "Failed to create Remote Assistant");
     } finally {
       setIsSubmitting(false);
     }
@@ -183,13 +183,13 @@ const ManageVirtualAssistants = () => {
       if (response.error) throw new Error(response.error.message);
       if (response.data?.error) throw new Error(response.data.error);
 
-      toast.success("Virtual Assistant updated successfully");
+      toast.success("Remote Assistant updated successfully");
       setEditingVA(null);
       resetForm();
       fetchVirtualAssistants();
     } catch (error: any) {
       console.error("Error updating VA:", error);
-      toast.error(error.message || "Failed to update Virtual Assistant");
+      toast.error(error.message || "Failed to update Remote Assistant");
     } finally {
       setIsSubmitting(false);
     }
@@ -239,8 +239,8 @@ const ManageVirtualAssistants = () => {
             <div className="flex items-center gap-3">
               <img src={bosplanLogo} alt="BosPlan" className="w-10 h-10 object-contain" />
               <div>
-                <h1 className="text-xl font-bold text-white">Virtual Assistants</h1>
-                <p className="text-sm text-slate-400">Create and manage VA accounts</p>
+                <h1 className="text-xl font-bold text-white">Remote Assistants</h1>
+                <p className="text-sm text-slate-400">Create and manage RA accounts</p>
               </div>
             </div>
             <Button
@@ -263,7 +263,7 @@ const ManageVirtualAssistants = () => {
           <div className="relative flex-1 max-w-md">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
             <Input
-              placeholder="Search virtual assistants..."
+              placeholder="Search remote assistants..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-10 bg-slate-800/50 border-slate-600 text-white placeholder:text-slate-500"
@@ -277,7 +277,7 @@ const ManageVirtualAssistants = () => {
             className="bg-pink-600 hover:bg-pink-700 text-white"
           >
             <Plus className="w-4 h-4 mr-2" />
-            Create Virtual Assistant
+            Create Remote Assistant
           </Button>
         </div>
 
@@ -336,9 +336,9 @@ const ManageVirtualAssistants = () => {
         {/* VA List */}
         <Card className="bg-slate-800/50 border-slate-700">
           <CardHeader>
-            <CardTitle className="text-white">All Virtual Assistants</CardTitle>
+            <CardTitle className="text-white">All Remote Assistants</CardTitle>
             <CardDescription className="text-slate-400">
-              Click on a VA to view and edit their details
+              Click on an RA to view and edit their details
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -349,8 +349,8 @@ const ManageVirtualAssistants = () => {
             ) : filteredVAs.length === 0 ? (
               <div className="text-center py-8">
                 <Bot className="w-12 h-12 text-slate-500 mx-auto mb-3" />
-                <p className="text-slate-400">No virtual assistants found</p>
-                <p className="text-sm text-slate-500 mt-1">Create your first VA to get started</p>
+                <p className="text-slate-400">No remote assistants found</p>
+                <p className="text-sm text-slate-500 mt-1">Create your first RA to get started</p>
               </div>
             ) : (
               <div className="overflow-x-auto">
@@ -426,10 +426,10 @@ const ManageVirtualAssistants = () => {
           <DialogHeader>
             <DialogTitle className="text-white flex items-center gap-2">
               <Bot className="w-5 h-5 text-pink-500" />
-              Create Virtual Assistant
+              Create Remote Assistant
             </DialogTitle>
             <DialogDescription className="text-slate-400">
-              Enter the details for the new virtual assistant
+              Enter the details for the new remote assistant
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleCreateVA} className="space-y-4">
@@ -612,9 +612,9 @@ const ManageVirtualAssistants = () => {
           <SheetHeader>
             <SheetTitle className="text-white flex items-center gap-2">
               <Edit className="w-5 h-5 text-pink-500" />
-              Edit Virtual Assistant
+              Edit Remote Assistant
             </SheetTitle>
-            <SheetDescription className="text-slate-400">Update the VA's details</SheetDescription>
+            <SheetDescription className="text-slate-400">Update the RA's details</SheetDescription>
           </SheetHeader>
           {editingVA && (
             <form onSubmit={handleUpdateVA} className="space-y-4 mt-6">
@@ -782,9 +782,9 @@ const ManageVirtualAssistants = () => {
       <Dialog open={!!showPassword} onOpenChange={() => setShowPassword(null)}>
         <DialogContent className="bg-slate-800 border-slate-700">
           <DialogHeader>
-            <DialogTitle className="text-white">Virtual Assistant Created</DialogTitle>
+            <DialogTitle className="text-white">Remote Assistant Created</DialogTitle>
             <DialogDescription className="text-slate-400">
-              Save the temporary password below. The VA will need to reset it on first login.
+              Save the temporary password below. The RA will need to reset it on first login.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
