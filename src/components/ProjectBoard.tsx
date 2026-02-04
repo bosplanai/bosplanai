@@ -511,7 +511,7 @@ const ProjectBoard = () => {
               </div>
               
               {/* Tab Navigation - separate row on mobile */}
-              <div className="flex justify-start sm:justify-center -mx-1 sm:mx-0 overflow-x-auto scrollbar-hide">
+              <div className="flex justify-center -mx-1 sm:mx-0 overflow-x-auto scrollbar-hide">
                 <TabNavigation activeTab={activeTab} onTabChange={setActiveTab} />
               </div>
             </div>
