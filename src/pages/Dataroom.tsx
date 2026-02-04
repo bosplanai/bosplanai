@@ -135,7 +135,7 @@ By signing below, you acknowledge that you have read, understood, and agree to b
   const [editDetailsDialogOpen, setEditDetailsDialogOpen] = useState(false);
   const [editDetailsFile, setEditDetailsFile] = useState<{ id: string; name: string; folder_id: string | null; is_restricted?: boolean; assigned_to?: string | null } | null>(null);
   const [versionHistoryDialogOpen, setVersionHistoryDialogOpen] = useState(false);
-  const [versionHistoryFile, setVersionHistoryFile] = useState<{ id: string; name: string } | null>(null);
+  const [versionHistoryFile, setVersionHistoryFile] = useState<{ id: string; name: string; rootFileId?: string } | null>(null);
   const [moveToFolderDialogOpen, setMoveToFolderDialogOpen] = useState(false);
   const [fileToMove, setFileToMove] = useState<{ id: string; name: string; folder_id: string | null } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -599,46 +599,63 @@ By signing below, you acknowledge that you have read, understood, and agree to b
     queryFn: async () => {
       if (!selectedRoom?.organization_id || !activeRoomId) return { currentFiles: [], surfacedFiles: [] };
       
-      // Fetch files in current folder (excluding deleted)
-      // Only show root files (original uploads) - versions have parent_file_id set
-      // Also include folder info for files that have been moved to folders
-      let query = supabase.from("data_room_files").select(`
+      // Fetch ALL files in the data room (excluding deleted) to find latest versions
+      const { data: allFiles, error: allFilesError } = await supabase
+        .from("data_room_files")
+        .select(`
           *,
           uploader:uploaded_by(full_name),
           folder:folder_id(id, name, is_restricted)
-        `).eq("organization_id", selectedRoom.organization_id).eq("data_room_id", activeRoomId).is("deleted_at", null).is("parent_file_id", null);
-      if (currentFolderId) {
-        query = query.eq("folder_id", currentFolderId);
-      } else {
-        query = query.is("folder_id", null);
-      }
-      const { data: currentFiles, error } = await query.order("created_at", { ascending: false });
-      if (error) throw error;
-
-      // Get version counts for all root files
-      const rootFileIds = (currentFiles || []).map(f => f.id);
-      let versionCounts: Record<string, number> = {};
+        `)
+        .eq("organization_id", selectedRoom.organization_id)
+        .eq("data_room_id", activeRoomId)
+        .is("deleted_at", null)
+        .order("version", { ascending: false });
       
-      if (rootFileIds.length > 0) {
-        const { data: versions } = await supabase
-          .from("data_room_files")
-          .select("parent_file_id")
-          .eq("data_room_id", activeRoomId)
-          .is("deleted_at", null)
-          .in("parent_file_id", rootFileIds);
+      if (allFilesError) throw allFilesError;
+      
+      // Group files by their root file (parent_file_id or self if no parent)
+      const filesByRoot: Record<string, any[]> = {};
+      (allFiles || []).forEach(file => {
+        const rootId = file.parent_file_id || file.id;
+        if (!filesByRoot[rootId]) {
+          filesByRoot[rootId] = [];
+        }
+        filesByRoot[rootId].push(file);
+      });
+      
+      // For each file family, get the latest version (highest version number)
+      // Also track the root file for folder info
+      const latestVersions: any[] = [];
+      Object.entries(filesByRoot).forEach(([rootId, versions]) => {
+        // Sort by version descending and get the latest
+        versions.sort((a, b) => (b.version || 1) - (a.version || 1));
+        const latestVersion = versions[0];
+        const rootFile = versions.find(v => !v.parent_file_id) || versions[versions.length - 1];
         
-        // Count versions for each root file (base version + child versions)
-        rootFileIds.forEach(id => {
-          const childCount = (versions || []).filter(v => v.parent_file_id === id).length;
-          versionCounts[id] = 1 + childCount; // 1 for original + child versions
+        // Use the root file's folder_id for filtering, but show latest version's content
+        latestVersions.push({
+          ...latestVersion,
+          // Keep folder_id from root file for proper folder filtering
+          folder_id: rootFile.folder_id,
+          folder: rootFile.folder,
+          // Track total version count
+          version_count: versions.length,
+          // Track root file id for version history
+          root_file_id: rootId
         });
+      });
+      
+      // Filter by current folder
+      let currentFiles: any[];
+      if (currentFolderId) {
+        currentFiles = latestVersions.filter(f => f.folder_id === currentFolderId);
+      } else {
+        currentFiles = latestVersions.filter(f => !f.folder_id);
       }
-
-      // Add version count to files
-      const filesWithVersions = (currentFiles || []).map(file => ({
-        ...file,
-        version: versionCounts[file.id] || 1
-      }));
+      
+      // Sort by created_at descending
+      currentFiles.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
       let surfacedFiles: any[] = [];
       
@@ -658,53 +675,24 @@ By signing below, you acknowledge that you have read, understood, and agree to b
         if (hiddenFolderIds.length > 0) {
           const permittedFileIds = filePermissions.map(p => p.file_id);
           
-          // Get files from hidden folders that user has explicit permission for (excluding deleted)
-          const { data: filesInHiddenFolders, error: hiddenError } = await supabase
-            .from("data_room_files")
-            .select(`
-              *,
-              uploader:uploaded_by(full_name)
-            `)
-            .eq("data_room_id", activeRoomId)
-            .is("deleted_at", null)
-            .in("id", permittedFileIds)
-            .in("folder_id", hiddenFolderIds)
-            .order("created_at", { ascending: false });
-
-          if (!hiddenError && filesInHiddenFolders && filesInHiddenFolders.length > 0) {
-            // Filter to only root files and get version counts
-            const rootSurfacedFiles = filesInHiddenFolders.filter(f => !f.parent_file_id);
-            const surfacedRootIds = rootSurfacedFiles.map(f => f.id);
-            
-            // Get version counts for surfaced files
-            const { data: surfacedVersions } = await supabase
-              .from("data_room_files")
-              .select("parent_file_id")
-              .eq("data_room_id", activeRoomId)
-              .is("deleted_at", null)
-              .in("parent_file_id", surfacedRootIds);
-            
-            const surfacedVersionCounts: Record<string, number> = {};
-            surfacedRootIds.forEach(id => {
-              const childCount = (surfacedVersions || []).filter(v => v.parent_file_id === id).length;
-              surfacedVersionCounts[id] = 1 + childCount;
-            });
-
-            // Add folder name for display context
-            surfacedFiles = rootSurfacedFiles.map(file => {
+          // Filter latest versions that are in hidden folders and user has permission for
+          surfacedFiles = latestVersions
+            .filter(file => 
+              hiddenFolderIds.includes(file.folder_id) && 
+              (permittedFileIds.includes(file.id) || permittedFileIds.includes(file.root_file_id))
+            )
+            .map(file => {
               const folder = allFolders.find(f => f.id === file.folder_id);
               return {
                 ...file,
                 folder_name: folder?.name || null,
                 is_surfaced: true,
-                version: surfacedVersionCounts[file.id] || 1,
               };
             });
-          }
         }
       }
 
-      return { currentFiles: filesWithVersions, surfacedFiles };
+      return { currentFiles, surfacedFiles };
     },
     enabled: !!organization?.id && !!activeRoomId
   });
@@ -1383,21 +1371,26 @@ By signing below, you acknowledge that you have read, understood, and agree to b
 
   // Fetch file versions
   const { data: fileVersionsData = { versions: [], originalFileName: '' }, isLoading: versionsLoading } = useQuery({
-    queryKey: ["data-room-file-versions", versionHistoryFile?.id],
+    queryKey: ["data-room-file-versions", versionHistoryFile?.id, versionHistoryFile?.rootFileId],
     queryFn: async () => {
       if (!versionHistoryFile?.id || !activeRoomId) return { versions: [], originalFileName: '' };
       
-      // Get the file family (original + all versions)
-      const { data: file } = await supabase
-        .from("data_room_files")
-        .select("id, parent_file_id")
-        .eq("id", versionHistoryFile.id)
-        .single();
+      // Use rootFileId if available, otherwise determine it
+      let rootFileId = versionHistoryFile.rootFileId;
       
-      if (!file) return { versions: [], originalFileName: '' };
-      
-      // The root file is either the parent_file_id or the current file if it has no parent
-      const rootFileId = file.parent_file_id || file.id;
+      if (!rootFileId) {
+        // Get the file family (original + all versions)
+        const { data: file } = await supabase
+          .from("data_room_files")
+          .select("id, parent_file_id")
+          .eq("id", versionHistoryFile.id)
+          .single();
+        
+        if (!file) return { versions: [], originalFileName: '' };
+        
+        // The root file is either the parent_file_id or the current file if it has no parent
+        rootFileId = file.parent_file_id || file.id;
+      }
       
       // Fetch all versions (root + children)
       const { data: versions, error } = await supabase
@@ -2233,7 +2226,7 @@ By signing below, you acknowledge that you have read, understood, and agree to b
                                     folder={folder ? { id: folder.id, name: folder.name } : null}
                                     uploaderName={uploaderName}
                                     assigneeName={assigneeName}
-                                    version={(file as any).version || 1}
+                                    version={(file as any).version_count || 1}
                                     canEdit={canEditFile(file)}
                                     canDelete={canEditFolder(file.folder_id)}
                                     isAdmin={isAdmin}
@@ -2245,7 +2238,7 @@ By signing below, you acknowledge that you have read, understood, and agree to b
                                       setMoveToFolderDialogOpen(true);
                                     }}
                                     onViewVersions={() => {
-                                      setVersionHistoryFile({ id: file.id, name: file.name });
+                                      setVersionHistoryFile({ id: file.id, name: file.name, rootFileId: (file as any).root_file_id });
                                       setVersionHistoryDialogOpen(true);
                                     }}
                                     onEditDetails={() => {
