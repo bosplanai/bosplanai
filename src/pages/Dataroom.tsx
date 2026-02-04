@@ -2232,7 +2232,7 @@ By signing below, you acknowledge that you have read, understood, and agree to b
                                     isAdmin={isAdmin}
                                     currentUserId={user?.id}
                                     onView={() => handleViewFile(file.id, file.file_path, file.name, file.mime_type)}
-                                    onDownload={() => handleDownloadFile(file.id, file.file_path, file.name, file.mime_type)}
+                                    onDownload={(format) => handleDownloadFileWithFormat(file.id, file.file_path, file.name, file.mime_type, format)}
                                     onMoveToFolder={() => {
                                       setFileToMove({ id: file.id, name: file.name, folder_id: file.folder_id });
                                       setMoveToFolderDialogOpen(true);
