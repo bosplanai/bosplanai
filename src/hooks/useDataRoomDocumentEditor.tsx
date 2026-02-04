@@ -521,11 +521,12 @@ export function useDataRoomDocumentEditor({
               const blob = new Blob([byteArray], { type: exportResult.mimeType });
 
               // Generate unique file path for version
+              // Path format: {organizationId}/{dataRoomId}/{timestamp}-{filename}
               const timestamp = Date.now();
               const baseName = currentFile.name.replace(/\.[^/.]+$/, '');
               const extension = exportResult.filename.split('.').pop() || 'docx';
               const versionFileName = `${baseName}_v${nextFileVersion}.${extension}`;
-              const versionFilePath = `${dataRoomId}/versions/${timestamp}_${versionFileName}`;
+              const versionFilePath = `${organizationId}/${dataRoomId}/${timestamp}-${versionFileName}`;
 
               // Upload to storage
               const { error: uploadError } = await supabase.storage
