@@ -119,3 +119,6 @@ verify_jwt = false
 
 [functions.export-document]
 verify_jwt = false
+
+[functions.guest-get-file-versions]
+verify_jwt = false
