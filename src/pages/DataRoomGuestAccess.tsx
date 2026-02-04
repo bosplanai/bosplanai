@@ -152,7 +152,11 @@ const DataRoomGuestAccess = () => {
 
   const acceptInvite = async (inviteToken: string) => {
     const { error } = await supabase.functions.invoke("accept-data-room-invite", {
-      body: { token: inviteToken, email: email.toLowerCase() },
+      body: { 
+        token: inviteToken, 
+        email: email.toLowerCase(),
+        origin: window.location.origin 
+      },
     });
 
     if (error) throw error;
@@ -187,10 +191,13 @@ const DataRoomGuestAccess = () => {
           .eq("id", inviteDetails.id);
       }
 
-      setStep("success");
+      // Auto-accept the invite and redirect to data room
+      await acceptInvite(token || inviteDetails.access_id || inviteDetails.id);
+      
+      // Redirect directly to the data room
+      navigate(`/guest-dataroom?accessId=${accessId || inviteDetails.access_id}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to sign NDA");
-    } finally {
       setSigning(false);
     }
   };

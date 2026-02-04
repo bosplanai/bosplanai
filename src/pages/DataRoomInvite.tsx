@@ -186,6 +186,10 @@ const DataRoomInvite = () => {
       // Store the accessId for navigation
       if (result.accessId) {
         setAccessId(result.accessId);
+        // Redirect directly to the data room
+        toast.success("Welcome! Redirecting to your data room...");
+        navigate(`/guest-dataroom?accessId=${result.accessId}`);
+        return;
       }
 
       setAccepted(true);
