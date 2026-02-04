@@ -1088,30 +1088,80 @@ By signing below, you acknowledge that you have read, understood, and agree to b
     }
   });
   const uploadMutation = useMutation({
-    mutationFn: async (file: File) => {
+    mutationFn: async (file: File): Promise<{ name: string; isVersion: boolean; version?: number }> => {
       if (!user?.id || !activeRoomId || !selectedRoom) {
         throw new Error("Not authenticated or no room selected");
       }
       // Use the data room's organization_id, not the user's current organization
       const roomOrgId = selectedRoom.organization_id;
+      
+      // Check for existing file with same name in same folder (only root files)
+      const { data: existingFiles } = await supabase
+        .from("data_room_files")
+        .select("*")
+        .eq("data_room_id", activeRoomId)
+        .eq("name", file.name)
+        .is("deleted_at", null)
+        .is("parent_file_id", null);
+      
+      // Filter by folder - either both null or both matching
+      const existingFile = existingFiles?.find(f => 
+        currentFolderId ? f.folder_id === currentFolderId : f.folder_id === null
+      );
+
       const filePath = `${roomOrgId}/${activeRoomId}/${Date.now()}-${file.name}`;
-      const {
-        error: uploadError
-      } = await supabase.storage.from("data-room-files").upload(filePath, file);
+      const { error: uploadError } = await supabase.storage.from("data-room-files").upload(filePath, file);
       if (uploadError) throw uploadError;
-      const {
-        error: dbError
-      } = await supabase.from("data_room_files").insert({
-        organization_id: roomOrgId,
-        data_room_id: activeRoomId,
-        name: file.name,
-        file_path: filePath,
-        file_size: file.size,
-        mime_type: file.type,
-        uploaded_by: user.id,
-        folder_id: currentFolderId
-      });
-      if (dbError) throw dbError;
+
+      let isVersion = false;
+      let newVersion = 1;
+
+      if (existingFile) {
+        // Create new version linked to the parent
+        const parentId = existingFile.parent_file_id || existingFile.id;
+        
+        // Get latest version number
+        const { data: allVersions } = await supabase
+          .from("data_room_files")
+          .select("version")
+          .eq("data_room_id", activeRoomId)
+          .or(`id.eq.${parentId},parent_file_id.eq.${parentId}`)
+          .is("deleted_at", null)
+          .order("version", { ascending: false })
+          .limit(1);
+        
+        newVersion = (allVersions?.[0]?.version || 1) + 1;
+        isVersion = true;
+
+        const { error: dbError } = await supabase.from("data_room_files").insert({
+          organization_id: roomOrgId,
+          data_room_id: activeRoomId,
+          name: file.name,
+          file_path: filePath,
+          file_size: file.size,
+          mime_type: file.type,
+          uploaded_by: user.id,
+          folder_id: existingFile.folder_id,
+          version: newVersion,
+          parent_file_id: parentId,
+          is_restricted: existingFile.is_restricted
+        });
+        if (dbError) throw dbError;
+      } else {
+        // Create new file
+        const { error: dbError } = await supabase.from("data_room_files").insert({
+          organization_id: roomOrgId,
+          data_room_id: activeRoomId,
+          name: file.name,
+          file_path: filePath,
+          file_size: file.size,
+          mime_type: file.type,
+          uploaded_by: user.id,
+          folder_id: currentFolderId,
+          version: 1
+        });
+        if (dbError) throw dbError;
+      }
 
       // Log activity for file upload
       await supabase.from("data_room_activity").insert({
@@ -1120,12 +1170,12 @@ By signing below, you acknowledge that you have read, understood, and agree to b
         user_id: user.id,
         user_name: profile?.full_name || user?.user_metadata?.full_name || user?.email || "Unknown",
         user_email: user?.email || "",
-        action: "file_uploaded",
-        details: { file_name: file.name, file_size: file.size, mime_type: file.type, folder_id: currentFolderId },
+        action: isVersion ? "file_version_uploaded" : "file_uploaded",
+        details: { file_name: file.name, file_size: file.size, mime_type: file.type, folder_id: currentFolderId, version: newVersion },
         is_guest: false
       });
 
-      return file.name;
+      return { name: file.name, isVersion, version: newVersion };
     },
     onError: error => {
       toast({
@@ -1152,12 +1202,12 @@ By signing below, you acknowledge that you have read, understood, and agree to b
       total: files.length,
       completed: 0
     });
-    let successCount = 0;
+    const results: { name: string; isVersion: boolean; version?: number }[] = [];
     let failCount = 0;
     for (let i = 0; i < files.length; i++) {
       try {
-        await uploadMutation.mutateAsync(files[i]);
-        successCount++;
+        const result = await uploadMutation.mutateAsync(files[i]);
+        results.push(result);
       } catch {
         failCount++;
       }
@@ -1174,15 +1224,39 @@ By signing below, you acknowledge that you have read, understood, and agree to b
     queryClient.invalidateQueries({
       queryKey: ["data-room-files"]
     });
-    if (successCount > 0 && failCount === 0) {
+    queryClient.invalidateQueries({
+      queryKey: ["data-room-file-versions"]
+    });
+
+    const newFiles = results.filter(r => !r.isVersion);
+    const versions = results.filter(r => r.isVersion);
+    
+    if (newFiles.length > 0 && versions.length > 0) {
       toast({
-        title: `${successCount} file${successCount > 1 ? "s" : ""} uploaded`,
+        title: `Uploaded ${newFiles.length} new file(s) and ${versions.length} version(s)`,
+        description: "All files processed successfully."
+      });
+    } else if (versions.length > 0) {
+      if (versions.length === 1) {
+        toast({
+          title: `${versions[0].name} uploaded as version ${versions[0].version}`,
+          description: "New version created for existing file."
+        });
+      } else {
+        toast({
+          title: `${versions.length} file version(s) uploaded`,
+          description: "New versions created for existing files."
+        });
+      }
+    } else if (newFiles.length > 0 && failCount === 0) {
+      toast({
+        title: `${newFiles.length} file${newFiles.length > 1 ? "s" : ""} uploaded`,
         description: "All files have been uploaded successfully."
       });
-    } else if (successCount > 0 && failCount > 0) {
+    } else if (newFiles.length > 0 && failCount > 0) {
       toast({
         title: "Upload completed with errors",
-        description: `${successCount} uploaded, ${failCount} failed.`,
+        description: `${newFiles.length} uploaded, ${failCount} failed.`,
         variant: "destructive"
       });
     }
