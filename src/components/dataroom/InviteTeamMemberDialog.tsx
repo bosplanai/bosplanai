@@ -41,18 +41,35 @@ const InviteTeamMemberDialog = ({
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Fetch team members from organization
+  // Fetch team members from organization via user_roles (supports multi-org users)
   const { data: teamMembers = [], isLoading: membersLoading } = useQuery({
     queryKey: ["team-members-for-dataroom", organizationId],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("profiles")
-        .select("id, full_name, job_role")
+        .from("user_roles")
+        .select(`
+          user_id,
+          profiles:user_id (
+            id,
+            full_name,
+            job_role
+          )
+        `)
         .eq("organization_id", organizationId)
-        .neq("id", currentUserId);
+        .neq("user_id", currentUserId);
 
       if (error) throw error;
-      return data as TeamMember[];
+      
+      // Extract unique profiles from user_roles
+      const members: TeamMember[] = (data || [])
+        .filter((r: any) => r.profiles)
+        .map((r: any) => ({
+          id: r.profiles.id,
+          full_name: r.profiles.full_name,
+          job_role: r.profiles.job_role,
+        }));
+      
+      return members;
     },
     enabled: open && !!organizationId,
   });
