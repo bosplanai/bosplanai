@@ -66,18 +66,18 @@ Deno.serve(async (req) => {
 
     // Reuse the admin client created at the start
 
-    // Verify caller is admin or moderator of this organization
+    // Verify caller is a member of this organization (any role)
     const { data: callerRole, error: roleError } = await supabaseAdmin
       .from("user_roles")
       .select("role")
       .eq("user_id", callerId)
       .eq("organization_id", organizationId)
-      .single();
+      .maybeSingle();
 
-    const allowedRoles = ["admin", "moderator"];
-    if (roleError || !callerRole?.role || !allowedRoles.includes(callerRole.role)) {
+    if (roleError || !callerRole) {
+      console.log("Caller not a member of organization:", { callerId, organizationId, roleError });
       return new Response(
-        JSON.stringify({ error: "Only admins and managers can view member emails" }),
+        JSON.stringify({ error: "You must be a member of this organization" }),
         { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
