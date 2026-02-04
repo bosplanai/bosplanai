@@ -39,6 +39,10 @@ import MobileHeaderMenu from "@/components/MobileHeaderMenu";
 import { DataRoomRecyclingBin } from "@/components/dataroom/DataRoomRecyclingBin";
 import { DataRoomBins } from "@/components/dataroom/DataRoomBins";
 import { useDataroomStorage, DATAROOM_STORAGE_QUERY_KEY } from "@/hooks/useDataroomStorage";
+import { DataRoomFileCard } from "@/components/dataroom/DataRoomFileCard";
+import { DataRoomVersionHistoryDialog } from "@/components/dataroom/DataRoomVersionHistoryDialog";
+import { DataRoomEditDetailsDialog } from "@/components/dataroom/DataRoomEditDetailsDialog";
+import { isEditableDocument } from "@/lib/documentUtils";
 const emailSchema = z.string().trim().email("Please enter a valid email address");
 interface PreviewFile {
   id: string;
@@ -128,6 +132,12 @@ By signing below, you acknowledge that you have read, understood, and agree to b
   const [activeTab, setActiveTab] = useState("team");
   const [lastReadTimestamp, setLastReadTimestamp] = useState<Record<string, string>>({});
   const [editFile, setEditFile] = useState<{ id: string; name: string; file_path?: string; mime_type?: string | null } | null>(null);
+  const [editDetailsDialogOpen, setEditDetailsDialogOpen] = useState(false);
+  const [editDetailsFile, setEditDetailsFile] = useState<{ id: string; name: string; folder_id: string | null; is_restricted?: boolean; assigned_to?: string | null } | null>(null);
+  const [versionHistoryDialogOpen, setVersionHistoryDialogOpen] = useState(false);
+  const [versionHistoryFile, setVersionHistoryFile] = useState<{ id: string; name: string } | null>(null);
+  const [moveToFolderDialogOpen, setMoveToFolderDialogOpen] = useState(false);
+  const [fileToMove, setFileToMove] = useState<{ id: string; name: string; folder_id: string | null } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dropZoneRef = useRef<HTMLDivElement>(null);
   const {
