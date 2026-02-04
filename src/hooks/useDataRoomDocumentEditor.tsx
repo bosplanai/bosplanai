@@ -424,7 +424,7 @@ export function useDataRoomDocumentEditor({
     };
   }, [fileId, user, onContentChange]);
 
-  // Create version
+  // Create version - saves to both document_versions AND creates a file version
   const createVersion = useCallback(
     async (contentToSave: string, note?: string) => {
       if (!documentId || !user || !fileId || !dataRoomId || !organizationId) return;
@@ -432,7 +432,20 @@ export function useDataRoomDocumentEditor({
       if (contentToSave === lastVersionContentRef.current) return;
 
       try {
-        const { data: latestVersion } = await supabase
+        // Get the current file info to create a new version
+        const { data: currentFile } = await supabase
+          .from("data_room_files")
+          .select("*")
+          .eq("id", fileId)
+          .single();
+
+        if (!currentFile) {
+          console.error("Could not find current file");
+          return;
+        }
+
+        // Get the latest document version number
+        const { data: latestDocVersion } = await supabase
           .from("data_room_document_versions")
           .select("version_number")
           .eq("document_id", documentId)
@@ -440,9 +453,10 @@ export function useDataRoomDocumentEditor({
           .limit(1)
           .maybeSingle();
 
-        const nextVersionNumber = (latestVersion?.version_number || 0) + 1;
+        const nextVersionNumber = (latestDocVersion?.version_number || 0) + 1;
 
-        const { error } = await supabase.from("data_room_document_versions").insert({
+        // Create document content version
+        const { error: docVersionError } = await supabase.from("data_room_document_versions").insert({
           document_id: documentId,
           file_id: fileId,
           data_room_id: dataRoomId,
@@ -453,9 +467,100 @@ export function useDataRoomDocumentEditor({
           version_note: note || null,
         });
 
-        if (error) {
-          console.error("Error creating version:", error);
+        if (docVersionError) {
+          console.error("Error creating document version:", docVersionError);
           return;
+        }
+
+        // Get root file ID (original file)
+        const rootFileId = currentFile.parent_file_id || fileId;
+
+        // Get all file versions to calculate next version number
+        const { data: fileVersions } = await supabase
+          .from("data_room_files")
+          .select("id")
+          .eq("data_room_id", dataRoomId)
+          .or(`id.eq.${rootFileId},parent_file_id.eq.${rootFileId}`)
+          .is("deleted_at", null);
+
+        const nextFileVersion = (fileVersions?.length || 0) + 1;
+
+        // Export document content as DOCX and create file version
+        try {
+          const { data: sessionData } = await supabase.auth.getSession();
+          const token = sessionData.session?.access_token;
+
+          if (token) {
+            // Export content to DOCX
+            const exportResponse = await fetch(
+              `https://qiikjhvzlwzysbtzhdcd.supabase.co/functions/v1/export-document`,
+              {
+                method: 'POST',
+                headers: {
+                  'Authorization': `Bearer ${token}`,
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                  content: contentToSave,
+                  format: 'docx',
+                  fileName: currentFile.name,
+                }),
+              }
+            );
+
+            const exportResult = await exportResponse.json();
+
+            if (exportResult.data && !exportResult.error) {
+              // Convert base64 to blob
+              const byteCharacters = atob(exportResult.data);
+              const byteNumbers = new Array(byteCharacters.length);
+              for (let i = 0; i < byteCharacters.length; i++) {
+                byteNumbers[i] = byteCharacters.charCodeAt(i);
+              }
+              const byteArray = new Uint8Array(byteNumbers);
+              const blob = new Blob([byteArray], { type: exportResult.mimeType });
+
+              // Generate unique file path for version
+              const timestamp = Date.now();
+              const baseName = currentFile.name.replace(/\.[^/.]+$/, '');
+              const extension = exportResult.filename.split('.').pop() || 'docx';
+              const versionFileName = `${baseName}_v${nextFileVersion}.${extension}`;
+              const versionFilePath = `${dataRoomId}/versions/${timestamp}_${versionFileName}`;
+
+              // Upload to storage
+              const { error: uploadError } = await supabase.storage
+                .from("data-room-files")
+                .upload(versionFilePath, blob, {
+                  contentType: exportResult.mimeType,
+                  upsert: false,
+                });
+
+              if (!uploadError) {
+                // Create file version entry
+                const { error: fileVersionError } = await supabase.from("data_room_files").insert({
+                  name: currentFile.name,
+                  file_path: versionFilePath,
+                  file_size: blob.size,
+                  mime_type: exportResult.mimeType,
+                  data_room_id: dataRoomId,
+                  organization_id: organizationId,
+                  folder_id: currentFile.folder_id,
+                  parent_file_id: rootFileId,
+                  uploaded_by: user.id,
+                  is_restricted: currentFile.is_restricted,
+                });
+
+                if (fileVersionError) {
+                  console.error("Error creating file version:", fileVersionError);
+                }
+              } else {
+                console.error("Error uploading version file:", uploadError);
+              }
+            }
+          }
+        } catch (exportError) {
+          console.error("Error exporting document for file version:", exportError);
+          // Continue even if file version creation fails - document version is already saved
         }
 
         // Log version creation activity
@@ -477,7 +582,8 @@ export function useDataRoomDocumentEditor({
         });
 
         lastVersionContentRef.current = contentToSave;
-        fetchVersions();
+        
+        toast.success(`Version ${nextVersionNumber} saved`);
       } catch (error) {
         console.error("Error creating version:", error);
       }

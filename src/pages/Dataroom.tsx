@@ -582,12 +582,13 @@ By signing below, you acknowledge that you have read, understood, and agree to b
       if (!organization?.id || !activeRoomId) return { currentFiles: [], surfacedFiles: [] };
       
       // Fetch files in current folder (excluding deleted)
+      // Only show root files (original uploads) - versions have parent_file_id set
       // Also include folder info for files that have been moved to folders
       let query = supabase.from("data_room_files").select(`
           *,
           uploader:uploaded_by(full_name),
           folder:folder_id(id, name, is_restricted)
-        `).eq("organization_id", organization.id).eq("data_room_id", activeRoomId).is("deleted_at", null);
+        `).eq("organization_id", organization.id).eq("data_room_id", activeRoomId).is("deleted_at", null).is("parent_file_id", null);
       if (currentFolderId) {
         query = query.eq("folder_id", currentFolderId);
       } else {
@@ -595,6 +596,31 @@ By signing below, you acknowledge that you have read, understood, and agree to b
       }
       const { data: currentFiles, error } = await query.order("created_at", { ascending: false });
       if (error) throw error;
+
+      // Get version counts for all root files
+      const rootFileIds = (currentFiles || []).map(f => f.id);
+      let versionCounts: Record<string, number> = {};
+      
+      if (rootFileIds.length > 0) {
+        const { data: versions } = await supabase
+          .from("data_room_files")
+          .select("parent_file_id")
+          .eq("data_room_id", activeRoomId)
+          .is("deleted_at", null)
+          .in("parent_file_id", rootFileIds);
+        
+        // Count versions for each root file (base version + child versions)
+        rootFileIds.forEach(id => {
+          const childCount = (versions || []).filter(v => v.parent_file_id === id).length;
+          versionCounts[id] = 1 + childCount; // 1 for original + child versions
+        });
+      }
+
+      // Add version count to files
+      const filesWithVersions = (currentFiles || []).map(file => ({
+        ...file,
+        version: versionCounts[file.id] || 1
+      }));
 
       let surfacedFiles: any[] = [];
       
@@ -628,20 +654,39 @@ By signing below, you acknowledge that you have read, understood, and agree to b
             .order("created_at", { ascending: false });
 
           if (!hiddenError && filesInHiddenFolders && filesInHiddenFolders.length > 0) {
+            // Filter to only root files and get version counts
+            const rootSurfacedFiles = filesInHiddenFolders.filter(f => !f.parent_file_id);
+            const surfacedRootIds = rootSurfacedFiles.map(f => f.id);
+            
+            // Get version counts for surfaced files
+            const { data: surfacedVersions } = await supabase
+              .from("data_room_files")
+              .select("parent_file_id")
+              .eq("data_room_id", activeRoomId)
+              .is("deleted_at", null)
+              .in("parent_file_id", surfacedRootIds);
+            
+            const surfacedVersionCounts: Record<string, number> = {};
+            surfacedRootIds.forEach(id => {
+              const childCount = (surfacedVersions || []).filter(v => v.parent_file_id === id).length;
+              surfacedVersionCounts[id] = 1 + childCount;
+            });
+
             // Add folder name for display context
-            surfacedFiles = filesInHiddenFolders.map(file => {
+            surfacedFiles = rootSurfacedFiles.map(file => {
               const folder = allFolders.find(f => f.id === file.folder_id);
               return {
                 ...file,
                 folder_name: folder?.name || null,
                 is_surfaced: true,
+                version: surfacedVersionCounts[file.id] || 1,
               };
             });
           }
         }
       }
 
-      return { currentFiles: currentFiles || [], surfacedFiles };
+      return { currentFiles: filesWithVersions, surfacedFiles };
     },
     enabled: !!organization?.id && !!activeRoomId
   });
