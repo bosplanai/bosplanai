@@ -1179,6 +1179,137 @@ By signing below, you acknowledge that you have read, understood, and agree to b
     }
   });
 
+  // Update file status mutation
+  const updateStatusMutation = useMutation({
+    mutationFn: async ({ fileId, status }: { fileId: string; status: string }) => {
+      if (!activeRoomId || !selectedRoom || !user?.id) {
+        throw new Error("Not authenticated or no room selected");
+      }
+      const { error } = await supabase
+        .from("data_room_files")
+        .update({ status } as any)
+        .eq("id", fileId);
+      if (error) throw error;
+
+      // Log activity
+      await supabase.from("data_room_activity").insert({
+        data_room_id: activeRoomId,
+        organization_id: selectedRoom.organization_id,
+        user_id: user.id,
+        user_name: profile?.full_name || user?.user_metadata?.full_name || user?.email || "Unknown",
+        user_email: user?.email || "",
+        action: "file_status_changed",
+        details: { file_id: fileId, new_status: status },
+        is_guest: false
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["data-room-files"] });
+      toast({ title: "Status updated" });
+    },
+    onError: (error) => {
+      toast({ title: "Failed to update status", description: error.message, variant: "destructive" });
+    }
+  });
+
+  // Update file details mutation
+  const updateFileDetailsMutation = useMutation({
+    mutationFn: async (data: {
+      fileId: string;
+      folder_id: string | null;
+      is_restricted: boolean;
+      assigned_to: string | null;
+    }) => {
+      if (!activeRoomId || !selectedRoom || !user?.id) {
+        throw new Error("Not authenticated or no room selected");
+      }
+      const { error } = await supabase
+        .from("data_room_files")
+        .update({
+          folder_id: data.folder_id,
+          is_restricted: data.is_restricted,
+          assigned_to: data.assigned_to
+        } as any)
+        .eq("id", data.fileId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["data-room-files"] });
+      setEditDetailsDialogOpen(false);
+      setEditDetailsFile(null);
+      toast({ title: "File details updated" });
+    },
+    onError: (error) => {
+      toast({ title: "Failed to update details", description: error.message, variant: "destructive" });
+    }
+  });
+
+  // Fetch file versions
+  const { data: fileVersions = [], isLoading: versionsLoading } = useQuery({
+    queryKey: ["data-room-file-versions", versionHistoryFile?.id],
+    queryFn: async () => {
+      if (!versionHistoryFile?.id || !activeRoomId) return [];
+      
+      // Get the file family (original + all versions)
+      const { data: file } = await supabase
+        .from("data_room_files")
+        .select("id, parent_file_id")
+        .eq("id", versionHistoryFile.id)
+        .single();
+      
+      if (!file) return [];
+      
+      // The root file is either the parent_file_id or the current file if it has no parent
+      const rootFileId = file.parent_file_id || file.id;
+      
+      // Fetch all versions (root + children)
+      const { data: versions, error } = await supabase
+        .from("data_room_files")
+        .select("*")
+        .eq("data_room_id", activeRoomId)
+        .or(`id.eq.${rootFileId},parent_file_id.eq.${rootFileId}`)
+        .is("deleted_at", null)
+        .order("version", { ascending: false });
+      
+      if (error) throw error;
+      return versions || [];
+    },
+    enabled: !!versionHistoryFile?.id && !!activeRoomId
+  });
+
+  // Fetch data room members for assignee selection
+  const { data: dataRoomMembers = [] } = useQuery({
+    queryKey: ["data-room-members-list", activeRoomId],
+    queryFn: async () => {
+      if (!activeRoomId) return [];
+      const { data, error } = await supabase
+        .from("data_room_members")
+        .select(`
+          user_id,
+          user:user_id(id, full_name)
+        `)
+        .eq("data_room_id", activeRoomId);
+      
+      if (error) throw error;
+      return (data || []).map((m: any) => ({
+        id: m.user?.id || m.user_id,
+        full_name: m.user?.full_name || "Unknown"
+      }));
+    },
+    enabled: !!activeRoomId
+  });
+
+  // Build profile map for displaying names
+  const profileMap: Record<string, string> = {};
+  files.forEach((file: any) => {
+    if (file.uploader?.full_name) {
+      profileMap[file.uploaded_by] = file.uploader.full_name;
+    }
+  });
+  dataRoomMembers.forEach((member) => {
+    profileMap[member.id] = member.full_name;
+  });
+
   // Send invite mutation
   const inviteMutation = useMutation({
     mutationFn: async (email: string) => {
@@ -1337,12 +1468,74 @@ By signing below, you acknowledge that you have read, understood, and agree to b
     }
   };
 
-  const handleDownloadFile = async (filePath: string, fileName: string) => {
-    const {
-      data
-    } = await supabase.storage.from("data-room-files").createSignedUrl(filePath, 60 * 60);
+  const handleDownloadFile = async (fileId: string, filePath: string, fileName: string, mimeType: string | null) => {
+    // For office documents, check if there's edited content to download
+    if (isEditableDocument(mimeType)) {
+      const { data: docContent, error: contentError } = await supabase
+        .from("data_room_document_content")
+        .select("content")
+        .eq("file_id", fileId)
+        .maybeSingle();
+      
+      // Check if there's meaningful edited content
+      const hasEditedContent = docContent?.content && 
+        docContent.content !== "" && 
+        docContent.content !== "<p></p>" &&
+        docContent.content !== "<p>Start editing this document...</p>" &&
+        !docContent.content.includes("Could not extract document content") &&
+        docContent.content.length > 50;
+      
+      if (hasEditedContent) {
+        try {
+          const { data: sessionData } = await supabase.auth.getSession();
+          const token = sessionData.session?.access_token;
+          
+          if (token) {
+            const response = await fetch(
+              `https://qiikjhvzlwzysbtzhdcd.supabase.co/functions/v1/export-document`,
+              {
+                method: 'POST',
+                headers: {
+                  'Authorization': `Bearer ${token}`,
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                  content: docContent.content,
+                  format: 'docx',
+                  fileName: fileName,
+                }),
+              }
+            );
+
+            const result = await response.json();
+            
+            if (!result.error && result.data) {
+              const byteCharacters = atob(result.data);
+              const byteNumbers = new Array(byteCharacters.length);
+              for (let i = 0; i < byteCharacters.length; i++) {
+                byteNumbers[i] = byteCharacters.charCodeAt(i);
+              }
+              const byteArray = new Uint8Array(byteNumbers);
+              const blob = new Blob([byteArray], { type: result.mimeType });
+              
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.href = url;
+              a.download = result.filename;
+              a.click();
+              URL.revokeObjectURL(url);
+              return;
+            }
+          }
+        } catch (error) {
+          console.error('Export error, falling back to original file:', error);
+        }
+      }
+    }
+
+    // Fall back to original file from storage
+    const { data } = await supabase.storage.from("data-room-files").createSignedUrl(filePath, 60 * 60);
     if (data?.signedUrl) {
-      // Create a temporary link and trigger download
       const link = document.createElement("a");
       link.href = data.signedUrl;
       link.download = fileName;
@@ -1703,120 +1896,62 @@ By signing below, you acknowledge that you have read, understood, and agree to b
                             </div>
                           )}
 
-                          {/* Files - Clean List */}
+                          {/* Files - Card Grid (aligned with Bosdrive) */}
                           {files.length > 0 && (
-                            <div className="space-y-1">
-                              {files.map(file => (
-                                <div key={file.id} className="p-3 rounded-lg hover:bg-muted/30 transition-all group flex items-center justify-between">
-                                  <div className="flex items-center gap-3 min-w-0 flex-1">
-                                    {file.mime_type?.startsWith("image/") ? (
-                                      <Image className="w-4 h-4 text-blue-500 flex-shrink-0" />
-                                    ) : file.mime_type === "application/pdf" ? (
-                                      <FileText className="w-4 h-4 text-red-500 flex-shrink-0" />
-                                    ) : (file.mime_type?.includes("word") || file.name?.endsWith('.docx')) ? (
-                                      <File className="w-4 h-4 text-blue-600 flex-shrink-0" />
-                                    ) : (
-                                      <FileIcon className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-                                    )}
-                                    <div className="min-w-0 flex-1">
-                                      <div className="flex items-center gap-2">
-                                        <p className="text-sm font-medium truncate">{file.name}</p>
-                                        {file.is_restricted && (
-                                          <span title="Restricted access">
-                                            <Lock className="w-3 h-3 text-amber-500 flex-shrink-0" />
-                                          </span>
-                                        )}
-                                        {/* Show folder indicator for files that have been moved to a folder */}
-                                        {/* This shows to all users so they can see where the file is saved */}
-                                        {(file as any).folder?.name && (
-                                          <span 
-                                            className="flex items-center gap-1 text-xs text-muted-foreground bg-muted/50 px-1.5 py-0.5 rounded" 
-                                            title={`Saved in folder: ${(file as any).folder.name}${(file as any).folder.is_restricted ? ' (restricted)' : ''}`}
-                                          >
-                                            {(file as any).folder.is_restricted ? (
-                                              <FolderLock className="w-3 h-3" />
-                                            ) : (
-                                              <Folder className="w-3 h-3" />
-                                            )}
-                                            <span className="truncate max-w-[100px]">{(file as any).folder.name}</span>
-                                          </span>
-                                        )}
-                                        {/* Fallback for surfaced files (with folder_name but no joined folder) */}
-                                        {!(file as any).folder?.name && (file as any).is_surfaced && (file as any).folder_name && (
-                                          <span className="flex items-center gap-1 text-xs text-muted-foreground bg-muted/50 px-1.5 py-0.5 rounded" title={`From folder: ${(file as any).folder_name} (restricted)`}>
-                                            <FolderLock className="w-3 h-3" />
-                                            <span className="truncate max-w-[100px]">{(file as any).folder_name}</span>
-                                          </span>
-                                        )}
-                                      </div>
-                                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                        <span>{(file.file_size / 1024).toFixed(1)} KB • {format(new Date(file.created_at), "MMM d")}</span>
-                                      </div>
-                                    </div>
-                                  </div>
-                                  <div className="flex items-center gap-1">
-                                    {/* Add to folder dropdown - always visible */}
-                                    <AddToFolderDropdown
-                                      fileId={file.id}
-                                      fileName={file.name}
-                                      currentFolderId={file.folder_id || null}
-                                      dataRoomId={activeRoomId || ""}
-                                      organizationId={selectedRoom?.organization_id || organization?.id || ""}
-                                      userId={user?.id || ""}
-                                      dataRoomCreatorId={selectedRoom?.created_by}
-                                    />
-                                    {/* Action buttons - show on hover */}
-                                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                      <Button 
-                                        variant="ghost" 
-                                        size="sm" 
-                                        className="h-7 w-7 p-0" 
-                                        onClick={() => {
-                                          setPermissionsFile({
-                                            id: file.id,
-                                            name: file.name,
-                                            is_restricted: file.is_restricted || false,
-                                            uploaded_by: file.uploaded_by
-                                          });
-                                          setPermissionsDialogOpen(true);
-                                        }}
-                                        title="Manage permissions"
-                                      >
-                                        <Lock className="w-3.5 h-3.5" />
-                                      </Button>
-                                      <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => handleViewFile(file.id, file.file_path, file.name, file.mime_type)} title="Preview">
-                                        <Eye className="w-3.5 h-3.5" />
-                                      </Button>
-                                      {/* Edit button - for editable documents, requires edit permission */}
-                                      {isEditableDocument(file.mime_type) && canEditFile(file) && (
-                                        <Button 
-                                          variant="ghost" 
-                                          size="sm" 
-                                          className="h-7 w-7 p-0" 
-                                          onClick={() => setEditFile({
-                                            id: file.id,
-                                            name: file.name,
-                                            file_path: file.file_path,
-                                            mime_type: file.mime_type
-                                          })}
-                                          title="Edit"
-                                        >
-                                          <Edit2 className="w-3.5 h-3.5" />
-                                        </Button>
-                                      )}
-                                      <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => handleDownloadFile(file.file_path, file.name)} title="Download">
-                                        <Download className="w-3.5 h-3.5" />
-                                      </Button>
-                                      {/* Delete button - requires folder edit permission */}
-                                      {canEditFolder(file.folder_id) && (
-                                        <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-destructive hover:text-destructive" onClick={() => deleteMutation.mutate({ id: file.id, file_path: file.file_path })} title="Delete">
-                                          <Trash2 className="w-3.5 h-3.5" />
-                                        </Button>
-                                      )}
-                                    </div>
-                                  </div>
-                                </div>
-                              ))}
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-4">
+                              {files.map(file => {
+                                const folder = (file as any).folder || allFolders.find(f => f.id === file.folder_id);
+                                const uploaderName = (file as any).uploader?.full_name || profileMap[file.uploaded_by] || "Unknown";
+                                const assigneeName = file.assigned_to ? profileMap[file.assigned_to] : undefined;
+                                const isAdmin = selectedRoom?.created_by === user?.id;
+                                
+                                return (
+                                  <DataRoomFileCard
+                                    key={file.id}
+                                    file={{
+                                      ...file,
+                                      status: (file as any).status || "not_opened",
+                                      file_category: (file as any).file_category
+                                    }}
+                                    folder={folder ? { id: folder.id, name: folder.name } : null}
+                                    uploaderName={uploaderName}
+                                    assigneeName={assigneeName}
+                                    version={(file as any).version || 1}
+                                    canEdit={canEditFile(file)}
+                                    canDelete={canEditFolder(file.folder_id)}
+                                    isAdmin={isAdmin}
+                                    currentUserId={user?.id}
+                                    onView={() => handleViewFile(file.id, file.file_path, file.name, file.mime_type)}
+                                    onDownload={() => handleDownloadFile(file.id, file.file_path, file.name, file.mime_type)}
+                                    onMoveToFolder={() => {
+                                      setFileToMove({ id: file.id, name: file.name, folder_id: file.folder_id });
+                                      setMoveToFolderDialogOpen(true);
+                                    }}
+                                    onViewVersions={() => {
+                                      setVersionHistoryFile({ id: file.id, name: file.name });
+                                      setVersionHistoryDialogOpen(true);
+                                    }}
+                                    onEditDetails={() => {
+                                      setEditDetailsFile({
+                                        id: file.id,
+                                        name: file.name,
+                                        folder_id: file.folder_id,
+                                        is_restricted: file.is_restricted,
+                                        assigned_to: file.assigned_to
+                                      });
+                                      setEditDetailsDialogOpen(true);
+                                    }}
+                                    onEditDocument={isEditableDocument(file.mime_type) ? () => setEditFile({
+                                      id: file.id,
+                                      name: file.name,
+                                      file_path: file.file_path,
+                                      mime_type: file.mime_type
+                                    }) : undefined}
+                                    onDelete={() => deleteMutation.mutate({ id: file.id, file_path: file.file_path, name: file.name })}
+                                    onStatusChange={(status) => updateStatusMutation.mutate({ fileId: file.id, status })}
+                                  />
+                                );
+                              })}
                             </div>
                           )}
                         </div>
@@ -2512,6 +2647,112 @@ By signing below, you acknowledge that you have read, understood, and agree to b
         dataRoomId={activeRoomId || ""}
         organizationId={selectedRoom?.organization_id || organization?.id || ""}
       />
+
+      {/* Version History Dialog */}
+      <DataRoomVersionHistoryDialog
+        open={versionHistoryDialogOpen}
+        onOpenChange={setVersionHistoryDialogOpen}
+        fileName={versionHistoryFile?.name || ""}
+        versions={fileVersions}
+        isLoading={versionsLoading}
+        profileMap={profileMap}
+        onView={(version) => handleViewFile(version.id, version.file_path, version.name, version.mime_type)}
+        onDownload={(version) => handleDownloadFile(version.id, version.file_path, version.name, version.mime_type)}
+        onRestore={async (version) => {
+          // Create a new version based on the restored one
+          if (!activeRoomId || !selectedRoom || !user?.id) return;
+          const newVersion = fileVersions.length > 0 ? Math.max(...fileVersions.map((v: any) => v.version || 1)) + 1 : 1;
+          const { error } = await supabase.from("data_room_files").insert({
+            ...version,
+            id: undefined,
+            version: newVersion,
+            parent_file_id: version.parent_file_id || version.id,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+            uploaded_by: user.id
+          } as any);
+          if (error) {
+            toast({ title: "Restore failed", description: error.message, variant: "destructive" });
+          } else {
+            queryClient.invalidateQueries({ queryKey: ["data-room-files"] });
+            queryClient.invalidateQueries({ queryKey: ["data-room-file-versions"] });
+            toast({ title: "Version restored", description: `Restored as version ${newVersion}` });
+          }
+        }}
+        onDelete={async (version) => {
+          const { error } = await supabase.from("data_room_files").update({ deleted_at: new Date().toISOString() }).eq("id", version.id);
+          if (error) {
+            toast({ title: "Delete failed", description: error.message, variant: "destructive" });
+          } else {
+            queryClient.invalidateQueries({ queryKey: ["data-room-files"] });
+            queryClient.invalidateQueries({ queryKey: ["data-room-file-versions"] });
+            toast({ title: "Version deleted" });
+          }
+        }}
+      />
+
+      {/* Edit Details Dialog */}
+      <DataRoomEditDetailsDialog
+        open={editDetailsDialogOpen}
+        onOpenChange={setEditDetailsDialogOpen}
+        file={editDetailsFile}
+        folders={allFolders}
+        members={dataRoomMembers}
+        onSave={(data) => {
+          if (editDetailsFile) {
+            updateFileDetailsMutation.mutate({
+              fileId: editDetailsFile.id,
+              ...data
+            });
+          }
+        }}
+        isSaving={updateFileDetailsMutation.isPending}
+      />
+
+      {/* Move to Folder Dialog */}
+      <Dialog open={moveToFolderDialogOpen} onOpenChange={setMoveToFolderDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Move to Folder</DialogTitle>
+          </DialogHeader>
+          <div className="py-4 space-y-4">
+            <Select
+              value={fileToMove?.folder_id || "uncategorized"}
+              onValueChange={(val) => {
+                if (fileToMove) {
+                  setFileToMove({ ...fileToMove, folder_id: val === "uncategorized" ? null : val });
+                }
+              }}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select folder" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="uncategorized">No folder</SelectItem>
+                {allFolders.map((folder) => (
+                  <SelectItem key={folder.id} value={folder.id}>{folder.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setMoveToFolderDialogOpen(false); setFileToMove(null); }}>Cancel</Button>
+            <Button onClick={async () => {
+              if (fileToMove) {
+                const { error } = await supabase.from("data_room_files").update({ folder_id: fileToMove.folder_id }).eq("id", fileToMove.id);
+                if (error) {
+                  toast({ title: "Move failed", description: error.message, variant: "destructive" });
+                } else {
+                  queryClient.invalidateQueries({ queryKey: ["data-room-files"] });
+                  toast({ title: "File moved" });
+                }
+                setMoveToFolderDialogOpen(false);
+                setFileToMove(null);
+              }
+            }}>Move</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       </div>
       <BetaFooter />
     </div>;
