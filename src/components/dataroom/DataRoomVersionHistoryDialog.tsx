@@ -8,6 +8,12 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
 import {
   Eye,
@@ -16,6 +22,8 @@ import {
   Trash2,
   FileText,
   Loader2,
+  FileDown,
+  ChevronDown,
 } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
@@ -37,11 +45,12 @@ interface DataRoomVersionHistoryDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   fileName: string;
+  originalFileName: string;
   versions: FileVersion[];
   isLoading?: boolean;
   profileMap?: Record<string, string>;
   onView: (version: FileVersion) => void;
-  onDownload: (version: FileVersion) => void;
+  onDownload: (version: FileVersion, format?: 'original' | 'pdf') => void;
   onRestore: (version: FileVersion) => void;
   onDelete: (version: FileVersion) => void;
   isRestoring?: boolean;
@@ -60,6 +69,7 @@ export function DataRoomVersionHistoryDialog({
   open,
   onOpenChange,
   fileName,
+  originalFileName,
   versions,
   isLoading = false,
   profileMap = {},
@@ -160,15 +170,35 @@ export function DataRoomVersionHistoryDialog({
                           >
                             <Eye className="w-4 h-4" />
                           </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8"
-                            onClick={() => onDownload(version)}
-                            title="Download"
-                          >
-                            <Download className="w-4 h-4" />
-                          </Button>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 px-2 gap-1"
+                                title="Download options"
+                              >
+                                <Download className="w-4 h-4" />
+                                <ChevronDown className="w-3 h-3" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-48">
+                              <DropdownMenuItem onClick={() => onDownload(version, 'original')} className="gap-2">
+                                <FileDown className="w-4 h-4 text-primary" />
+                                <div className="flex flex-col">
+                                  <span>Original Format</span>
+                                  <span className="text-xs text-muted-foreground">{originalFileName}</span>
+                                </div>
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => onDownload(version, 'pdf')} className="gap-2">
+                                <FileDown className="w-4 h-4 text-destructive" />
+                                <div className="flex flex-col">
+                                  <span>PDF Document</span>
+                                  <span className="text-xs text-muted-foreground">.pdf</span>
+                                </div>
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                           {!isLatest && (
                             <>
                               <Button
