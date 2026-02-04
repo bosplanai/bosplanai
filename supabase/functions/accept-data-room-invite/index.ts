@@ -139,9 +139,12 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Send confirmation email with password (not access link)
+    // Get the access_id for the guest data room link
+    const guestAccessId = invite.access_id;
+
+    // Send confirmation email with password and direct data room link
     const siteUrl = origin || "https://bosplansupabase.lovable.app";
-    const accessLink = `${siteUrl}/guest-dataroom`;
+    const directAccessLink = `${siteUrl}/guest-dataroom?accessId=${guestAccessId}`;
 
     if (resendApiKey && dataRoom) {
       try {
@@ -156,6 +159,8 @@ Deno.serve(async (req) => {
                 .container { background-color: white; border-radius: 12px; padding: 40px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
                 .header { text-align: center; margin-bottom: 30px; }
                 .header h1 { color: #0d7377; margin-bottom: 10px; font-size: 28px; }
+                .data-room-name { background: #f0fdf4; border: 1px solid #bbf7d0; padding: 16px; border-radius: 8px; margin: 20px 0; text-align: center; }
+                .data-room-name h2 { color: #166534; margin: 0; font-size: 20px; }
                 .credentials { background: linear-gradient(135deg, #0d7377 0%, #14919b 100%); color: white; padding: 24px; border-radius: 8px; margin: 24px 0; }
                 .credentials-label { font-size: 12px; opacity: 0.9; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px; }
                 .credentials-value { font-size: 18px; font-weight: bold; font-family: monospace; letter-spacing: 1px; word-break: break-all; }
@@ -167,8 +172,12 @@ Deno.serve(async (req) => {
             <body>
               <div class="container">
                 <div class="header">
-                  <h1>✅ Access Confirmed</h1>
-                  <p>You now have access to the <strong>${dataRoom.name}</strong> data room</p>
+                  <h1>✅ You've Successfully Joined!</h1>
+                  <p>You now have access to the data room</p>
+                </div>
+                
+                <div class="data-room-name">
+                  <h2>${dataRoom.name}</h2>
                 </div>
                 
                 <p style="text-align: center;">Use the following credentials to access the data room:</p>
@@ -184,8 +193,8 @@ Deno.serve(async (req) => {
                   </div>
                 </div>
                 
-                <a href="${accessLink}" class="cta-button">
-                  Access Data Room
+                <a href="${directAccessLink}" class="cta-button">
+                  Access Data Room Now
                 </a>
                 
                 <div class="warning">
@@ -194,6 +203,9 @@ Deno.serve(async (req) => {
                 
                 <div class="footer">
                   <p><strong>BosPlan</strong><br>Secure Document Sharing</p>
+                  <p style="font-size: 12px; color: #999; margin-top: 16px;">
+                    Bookmark this link for easy access: <a href="${directAccessLink}" style="color: #0d7377;">${directAccessLink}</a>
+                  </p>
                 </div>
               </div>
             </body>
@@ -209,7 +221,7 @@ Deno.serve(async (req) => {
           body: JSON.stringify({
             from: fromEmail,
             to: [email],
-            subject: `Your access credentials for ${dataRoom.name}`,
+            subject: `Welcome to ${dataRoom.name} - Your Access is Ready`,
             html: emailHtml,
           }),
         });
@@ -227,7 +239,8 @@ Deno.serve(async (req) => {
       JSON.stringify({
         success: true,
         dataRoomId: invite.data_room_id,
-        message: "Check your email for access credentials"
+        accessId: guestAccessId,
+        message: "You have successfully joined the data room"
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
