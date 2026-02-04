@@ -3,19 +3,15 @@
  * This file centralizes logic for determining editable vs view-only files
  */
 
-// MIME types for editable documents
+// MIME types for editable documents (including legacy Word/Excel for parsing)
 const EDITABLE_MIME_TYPES = [
   // Modern Word documents (.docx)
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  // Legacy Word (.doc) - now editable via parse-document
+  'application/msword',
   // Excel spreadsheets (.xlsx)
   'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-];
-
-// MIME types for legacy Office documents (view-only due to binary format)
-const LEGACY_OFFICE_MIME_TYPES = [
-  // Legacy Word (.doc)
-  'application/msword',
-  // Legacy Excel (.xls)
+  // Legacy Excel (.xls) - now editable via parse-document
   'application/vnd.ms-excel',
 ];
 
@@ -31,13 +27,12 @@ const VIEW_ONLY_MIME_TYPES = [
 // All Office document MIME types (for Google Docs viewer fallback)
 const ALL_OFFICE_MIME_TYPES = [
   ...EDITABLE_MIME_TYPES,
-  ...LEGACY_OFFICE_MIME_TYPES,
   ...VIEW_ONLY_MIME_TYPES.filter(m => m.includes('presentationml') || m.includes('powerpoint')),
 ];
 
 /**
  * Check if a file is editable in the in-app document editor
- * Editable files: .docx, .xlsx
+ * Editable files: .docx, .doc, .xlsx, .xls
  */
 export function isEditableDocument(mimeType: string | null, fileName?: string | null): boolean {
   if (!mimeType && !fileName) return false;
@@ -49,15 +44,19 @@ export function isEditableDocument(mimeType: string | null, fileName?: string | 
       return true;
     }
     // Also check for generic Office document MIME types
-    if (lowerMime.includes('wordprocessingml') || lowerMime.includes('spreadsheetml')) {
+    if (lowerMime.includes('wordprocessingml') || lowerMime.includes('spreadsheetml') ||
+        lowerMime.includes('msword') || lowerMime.includes('ms-excel')) {
       return true;
     }
   }
   
-  // Fallback to file extension check
+  // Fallback to file extension check - all Word and Excel formats are editable
   if (fileName) {
     const lowerName = fileName.toLowerCase();
-    return lowerName.endsWith('.docx') || lowerName.endsWith('.xlsx');
+    return lowerName.endsWith('.docx') || 
+           lowerName.endsWith('.doc') || 
+           lowerName.endsWith('.xlsx') || 
+           lowerName.endsWith('.xls');
   }
   
   return false;
@@ -65,32 +64,12 @@ export function isEditableDocument(mimeType: string | null, fileName?: string | 
 
 /**
  * Check if a file is a legacy Office document (.doc, .xls)
- * These can be viewed but not edited in-app
+ * Note: Legacy formats are now supported for editing via parse-document
+ * This function is kept for backward compatibility but always returns false
+ * @deprecated Legacy formats are now editable
  */
 export function isLegacyOfficeDocument(mimeType: string | null, fileName?: string | null): boolean {
-  if (!mimeType && !fileName) return false;
-  
-  // Check by MIME type
-  if (mimeType) {
-    const lowerMime = mimeType.toLowerCase();
-    if (LEGACY_OFFICE_MIME_TYPES.some(type => lowerMime === type)) {
-      return true;
-    }
-    // Check for msword or ms-excel without modern format indicators
-    if ((lowerMime.includes('msword') || lowerMime.includes('ms-excel')) && 
-        !lowerMime.includes('openxmlformats')) {
-      return true;
-    }
-  }
-  
-  // Fallback to file extension check
-  if (fileName) {
-    const lowerName = fileName.toLowerCase();
-    // Make sure we don't match .docx or .xlsx
-    return (lowerName.endsWith('.doc') && !lowerName.endsWith('.docx')) || 
-           (lowerName.endsWith('.xls') && !lowerName.endsWith('.xlsx'));
-  }
-  
+  // Legacy formats are now editable, so this always returns false
   return false;
 }
 
@@ -172,11 +151,10 @@ export function isPreviewable(mimeType: string | null, fileName?: string | null)
 /**
  * Get the document type category for display purposes
  */
-export type DocumentCategory = 'editable' | 'legacy' | 'pdf' | 'image' | 'video' | 'audio' | 'other';
+export type DocumentCategory = 'editable' | 'pdf' | 'image' | 'video' | 'audio' | 'other';
 
 export function getDocumentCategory(mimeType: string | null, fileName?: string | null): DocumentCategory {
   if (isEditableDocument(mimeType, fileName)) return 'editable';
-  if (isLegacyOfficeDocument(mimeType, fileName)) return 'legacy';
   if (isPdfDocument(mimeType, fileName)) return 'pdf';
   if (isImageFile(mimeType)) return 'image';
   if (isVideoFile(mimeType)) return 'video';
@@ -201,13 +179,6 @@ export function getFileCapabilitiesDescription(mimeType: string | null, fileName
         canView: true,
         canEdit: true,
         canDownload: true,
-      };
-    case 'legacy':
-      return {
-        canView: true,
-        canEdit: false,
-        canDownload: true,
-        editMessage: 'This is a legacy format file. Please convert to .docx or .xlsx for in-app editing.',
       };
     case 'pdf':
     case 'image':

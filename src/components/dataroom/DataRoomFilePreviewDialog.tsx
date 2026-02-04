@@ -18,9 +18,6 @@ import {
   Video,
   File,
   Edit,
-  ExternalLink,
-  RefreshCw,
-  AlertTriangle
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -29,7 +26,6 @@ import { DataRoomDocumentEditorDialog } from "./DataRoomDocumentEditorDialog";
 import { sanitizeHtml } from "@/lib/sanitize";
 import { 
   isEditableDocument as isEditableDocumentUtil, 
-  isLegacyOfficeDocument,
   isOfficeDocument 
 } from "@/lib/documentUtils";
 
@@ -80,9 +76,6 @@ const DataRoomFilePreviewDialog = ({
 
   // Check if file is editable using utility function
   const isEditableDocument = file?.mimeType ? isEditableDocumentUtil(file.mimeType, file.name) : false;
-  
-  // Check if file is legacy Office format
-  const isLegacyDocument = file?.mimeType ? isLegacyOfficeDocument(file.mimeType, file.name) : false;
   
   // Check if file is an Office document (for Google Docs viewer)
   const isOfficeDoc = file?.mimeType ? isOfficeDocument(file.mimeType, file.name) : false;
@@ -243,13 +236,6 @@ const DataRoomFilePreviewDialog = ({
                   <FileIcon className="w-5 h-5 text-muted-foreground flex-shrink-0" />
                 )}
                 <span className="font-medium truncate">{file.name}</span>
-                {/* Legacy document badge */}
-                {isLegacyDocument && (
-                  <span className="flex items-center gap-1 text-xs px-2 py-0.5 bg-amber-500/10 text-amber-700 dark:text-amber-400 rounded-full">
-                    <AlertTriangle className="w-3 h-3" />
-                    Legacy format
-                  </span>
-                )}
               </div>
               <div className="flex items-center gap-2">
                 {/* Only show Edit button for editable documents (docx, xlsx) */}
