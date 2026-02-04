@@ -1349,10 +1349,11 @@ const GuestDataRoom = () => {
                                   <Shield className="w-3.5 h-3.5" />
                                 </Button>
                               )}
+                              {/* Preview button - always visible */}
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                className="h-7 w-7 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                                className="h-7 w-7 p-0"
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   handleFilePreview(file);
@@ -1361,12 +1362,12 @@ const GuestDataRoom = () => {
                               >
                                 <Eye className="w-3.5 h-3.5" />
                               </Button>
-                              {/* Edit button for files with edit permission */}
+                              {/* Edit button for files with edit permission - always visible */}
                               {file.permission_level === "edit" && (
                                 <Button
                                   variant="ghost"
                                   size="sm"
-                                  className="h-7 w-7 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                                  className="h-7 w-7 p-0"
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     setEditFile(file);
@@ -1376,32 +1377,12 @@ const GuestDataRoom = () => {
                                   <Edit className="w-3.5 h-3.5" />
                                 </Button>
                               )}
-                              {/* Delete button for files the guest uploaded */}
-                              {file.is_own_upload && (
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="h-7 w-7 p-0 opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:text-destructive"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleDeleteFile(file);
-                                  }}
-                                  disabled={deletingFileId === file.id}
-                                  title="Delete"
-                                >
-                                  {deletingFileId === file.id ? (
-                                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                                  ) : (
-                                    <Trash2 className="w-3.5 h-3.5" />
-                                  )}
-                                </Button>
-                              )}
-                              {/* Only show download button if permission is not view-only */}
+                              {/* Download button - always visible for files with download permission */}
                               {file.permission_level !== "view" && (
                                 <Button
                                   variant="ghost"
                                   size="sm"
-                                  className="h-7 w-7 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                                  className="h-7 w-7 p-0"
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     handleDownload(file);
@@ -1413,6 +1394,26 @@ const GuestDataRoom = () => {
                                     <Loader2 className="w-3.5 h-3.5 animate-spin" />
                                   ) : (
                                     <Download className="w-3.5 h-3.5" />
+                                  )}
+                                </Button>
+                              )}
+                              {/* Delete button for files the guest uploaded */}
+                              {file.is_own_upload && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-7 w-7 p-0 text-destructive hover:text-destructive"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDeleteFile(file);
+                                  }}
+                                  disabled={deletingFileId === file.id}
+                                  title="Delete"
+                                >
+                                  {deletingFileId === file.id ? (
+                                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                  ) : (
+                                    <Trash2 className="w-3.5 h-3.5" />
                                   )}
                                 </Button>
                               )}
