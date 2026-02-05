@@ -151,7 +151,7 @@
      // Generate signed URL for the file
      const { data: signedData, error: signedError } = await supabaseAdmin
        .storage
-       .from("dataroom-files")
+       .from("data-room-files")
        .createSignedUrl(file.file_path, 3600); // 1 hour expiry
  
      if (signedError || !signedData) {
