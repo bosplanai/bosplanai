@@ -85,7 +85,7 @@
      // Get the file to verify it's in the guest's data room
      const { data: file, error: fileError } = await supabaseAdmin
        .from("data_room_files")
-       .select("id, data_room_id")
+        .select("id, data_room_id, parent_file_id")
        .eq("id", fileId)
        .is("deleted_at", null)
        .single();
@@ -97,11 +97,14 @@
        );
      }
  
-     // Fetch comments
+      // Use root file ID for comments (parent_file_id if this is a version, else file's own id)
+      const rootFileId = file.parent_file_id || file.id;
+
+      // Fetch comments for the root file
      const { data: comments, error: commentsError } = await supabaseAdmin
        .from("data_room_file_comments")
        .select("id, commenter_name, commenter_email, comment, is_guest, created_at")
-       .eq("file_id", fileId)
+        .eq("file_id", rootFileId)
        .order("created_at", { ascending: true });
  
      if (commentsError) {
