@@ -190,8 +190,15 @@
         // Get current file info for the new version
         const { data: currentFile } = await supabaseAdmin
           .from("data_room_files")
-          .select("name, file_path, mime_type, folder_id, is_restricted, uploaded_by")
+          .select("name, file_path, mime_type, folder_id, is_restricted, uploaded_by, assigned_to, assigned_guest_id")
           .eq("id", fileId)
+          .single();
+        
+        // Get root file to preserve assignment across versions
+        const { data: rootFileData } = await supabaseAdmin
+          .from("data_room_files")
+          .select("assigned_to, assigned_guest_id")
+          .eq("id", rootFileId)
           .single();
 
         if (currentFile) {
@@ -212,7 +219,7 @@
           const versionFileName = `${baseName}_v${nextFileVersion}.${extension}`;
           const versionFilePath = `${invite.organization_id}/${invite.data_room_id}/${timestamp}-${versionFileName}`;
 
-          // Create file version entry
+          // Create file version entry - preserve assignment from root file
           const { data: newFileVersion, error: fileVersionError } = await supabaseAdmin
             .from("data_room_files")
             .insert({
@@ -227,6 +234,9 @@
               uploaded_by: currentFile.uploaded_by, // Keep original uploader
               is_restricted: currentFile.is_restricted,
               version: nextFileVersion,
+              // Preserve assignment from root file across versions
+              assigned_to: rootFileData?.assigned_to || currentFile.assigned_to,
+              assigned_guest_id: rootFileData?.assigned_guest_id || currentFile.assigned_guest_id,
             })
             .select('id')
             .single();
