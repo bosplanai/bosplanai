@@ -186,10 +186,12 @@ export function DataRoomFileCard({
                   </DropdownMenuSubContent>
                 </DropdownMenuPortal>
               </DropdownMenuSub>
-              <DropdownMenuItem onClick={onMoveToFolder} className="gap-2">
-                <FolderInput className="w-4 h-4" />
-                Move to folder
-              </DropdownMenuItem>
+              {isAdmin && (
+                <DropdownMenuItem onClick={onMoveToFolder} className="gap-2">
+                  <FolderInput className="w-4 h-4" />
+                  Move to folder
+                </DropdownMenuItem>
+              )}
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={onViewVersions} className="gap-2">
                 <Clock className="w-4 h-4" />
