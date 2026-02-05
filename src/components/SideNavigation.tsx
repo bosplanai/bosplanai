@@ -11,6 +11,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import bosplanIcon from "/lovable-uploads/df46293f-eed7-4703-b275-003427891304.png";
 
 interface NavItem {
   id: string;
@@ -142,6 +143,16 @@ const SideNavigation = ({ activeItem, onItemClick }: SideNavigationProps) => {
 
   return (
     <>
+      {/* Top-left logo - fixed position */}
+      <div className="hidden md:block fixed top-4 left-4 z-50">
+        <img 
+          alt="Bosplan" 
+          className="h-8 w-auto cursor-pointer transition-transform duration-200 hover:scale-105" 
+          onClick={() => navigate(getOrgPath(""))} 
+          src={bosplanIcon} 
+        />
+      </div>
+
       {/* Desktop: vertical sidebar on the right - fixed position for true sticky behavior */}
       <div className="hidden md:flex w-16 bg-background border-l border-border flex-col items-center py-6 gap-2 fixed top-0 right-0 h-screen z-50">
         {navItems.map((item) => {
