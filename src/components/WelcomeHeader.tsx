@@ -73,7 +73,7 @@ const WelcomeHeader = ({
             <SheetContent side="right" className="w-[280px] sm:w-[320px]">
               <div className="flex flex-col gap-6 mt-8">
                 <div className="flex items-center justify-between">
-                  <img alt="BOSPLAN.COM" className="h-8 w-auto" src={smallLogoSrc} />
+                  <img alt="Bosplan" className="h-8 w-auto" src={logoSrc} />
                 </div>
                 <nav className="flex flex-col gap-4">
                   {navItems.map(item => <Link key={item.path} to={item.path} onClick={() => setMobileMenuOpen(false)} className={`text-base font-medium py-2 px-3 rounded-lg transition-colors ${isActive(item.path) ? "bg-muted text-foreground" : "text-muted-foreground hover:text-foreground hover:bg-muted/50"}`}>
