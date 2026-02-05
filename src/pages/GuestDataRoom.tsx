@@ -1465,7 +1465,10 @@ const GuestDataRoom = () => {
                         {files.map(file => {
                           const folder = allFolders.find(f => f.id === file.folder_id);
                           const uploaderName = file.uploaded_by ? (profileMap[file.uploaded_by] || "Unknown") : "Unknown";
-                          const assigneeName = file.assigned_to ? (profileMap[file.assigned_to] || undefined) : undefined;
+                          // Check for internal member assignment first, then external guest
+                          const assigneeName = file.assigned_to 
+                            ? (profileMap[file.assigned_to] || undefined) 
+                            : ((file as any).assigned_guest_id ? profileMap[(file as any).assigned_guest_id] : undefined);
 
                           return (
                             <GuestDataRoomFileCard

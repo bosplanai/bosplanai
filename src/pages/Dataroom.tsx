@@ -133,7 +133,7 @@ By signing below, you acknowledge that you have read, understood, and agree to b
   const [lastReadTimestamp, setLastReadTimestamp] = useState<Record<string, string>>({});
   const [editFile, setEditFile] = useState<{ id: string; name: string; file_path?: string; mime_type?: string | null } | null>(null);
   const [editDetailsDialogOpen, setEditDetailsDialogOpen] = useState(false);
-  const [editDetailsFile, setEditDetailsFile] = useState<{ id: string; name: string; folder_id: string | null; is_restricted?: boolean; assigned_to?: string | null } | null>(null);
+  const [editDetailsFile, setEditDetailsFile] = useState<{ id: string; name: string; folder_id: string | null; is_restricted?: boolean; assigned_to?: string | null; assigned_guest_id?: string | null } | null>(null);
   const [versionHistoryDialogOpen, setVersionHistoryDialogOpen] = useState(false);
   const [versionHistoryFile, setVersionHistoryFile] = useState<{ id: string; name: string; rootFileId?: string } | null>(null);
   const [moveToFolderDialogOpen, setMoveToFolderDialogOpen] = useState(false);
@@ -1475,6 +1475,16 @@ By signing below, you acknowledge that you have read, understood, and agree to b
     profileMap[member.id] = member.full_name;
   });
 
+  // Build guest map for displaying guest names (using invite id as key)
+  const guestMap: Record<string, string> = {};
+  invites?.forEach((invite: any) => {
+    if (invite.guest_name) {
+      guestMap[invite.id] = invite.guest_name;
+    } else if (invite.email) {
+      guestMap[invite.id] = invite.email;
+    }
+  });
+
   // Send invite mutation
   const inviteMutation = useMutation({
     mutationFn: async (email: string) => {
@@ -2239,7 +2249,10 @@ By signing below, you acknowledge that you have read, understood, and agree to b
                               {files.map(file => {
                                 const folder = (file as any).folder || allFolders.find(f => f.id === file.folder_id);
                                 const uploaderName = (file as any).uploader?.full_name || profileMap[file.uploaded_by] || "Unknown";
-                                const assigneeName = file.assigned_to ? profileMap[file.assigned_to] : undefined;
+                                // Check for internal member assignment first, then external guest
+                                const assigneeName = file.assigned_to 
+                                  ? profileMap[file.assigned_to] 
+                                  : ((file as any).assigned_guest_id ? guestMap[(file as any).assigned_guest_id] : undefined);
                                 const isAdmin = selectedRoom?.created_by === user?.id;
                                 
                                 return (
@@ -2274,7 +2287,8 @@ By signing below, you acknowledge that you have read, understood, and agree to b
                                         name: file.name,
                                         folder_id: file.folder_id,
                                         is_restricted: file.is_restricted,
-                                        assigned_to: file.assigned_to
+                                        assigned_to: file.assigned_to,
+                                        assigned_guest_id: (file as any).assigned_guest_id
                                       });
                                       setEditDetailsDialogOpen(true);
                                     }}
