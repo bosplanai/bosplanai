@@ -41,7 +41,7 @@ import {
   Shield,
   Edit
 } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase, SUPABASE_URL } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
@@ -663,7 +663,7 @@ const GuestDataRoom = () => {
         }
 
         const response = await fetch(
-          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/guest-file-upload`,
+          `${SUPABASE_URL}/functions/v1/guest-file-upload`,
           {
             method: "POST",
             body: formData,
