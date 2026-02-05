@@ -23,7 +23,6 @@ import {
   Image,
   Video,
   File,
-  Folder,
   Lock,
   User,
   Check,
@@ -207,21 +206,17 @@ export function GuestDataRoomFileCard({
         </div>
       </div>
 
-      {/* Folder and restriction badges */}
-      <div className="px-4 pb-2">
-        <div className="flex items-center gap-2 flex-wrap">
-          <Badge variant="outline" className="text-xs gap-1 bg-emerald-500/10 text-emerald-600 border-emerald-500/20">
-            <Folder className="w-3 h-3" />
-            {folder?.name || "No folder"}
-          </Badge>
-          {file.is_restricted && (
+      {/* Restriction badge - guests cannot see folders */}
+      {file.is_restricted && (
+        <div className="px-4 pb-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <Badge variant="outline" className="text-xs gap-1 bg-amber-500/10 text-amber-600 border-amber-500/20">
               <Lock className="w-3 h-3" />
               Restricted
             </Badge>
-          )}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* File info preview */}
       <div className="px-4 pb-3">
