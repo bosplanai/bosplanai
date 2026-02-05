@@ -6,11 +6,24 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useOrganization } from "@/hooks/useOrganization";
 
+const TOOL_OPTIONS = [
+  { value: "general", label: "General Feedback" },
+  { value: "tasks", label: "Tasks" },
+  { value: "projects", label: "Projects" },
+  { value: "calendar", label: "Calendar" },
+  { value: "bosdrive", label: "Bosdrive" },
+  { value: "dataroom", label: "Data Room" },
+  { value: "magic-merge", label: "Magic Merge" },
+  { value: "taskflow", label: "TaskFlow" },
+  { value: "taskpopulate", label: "TaskPopulate" },
+  { value: "virtual-assistants", label: "Remote Assistants" },
+];
 const generateMathProblem = () => {
   const num1 = Math.floor(Math.random() * 10) + 1;
   const num2 = Math.floor(Math.random() * 10) + 1;
@@ -26,6 +39,7 @@ const FeedbackForm = () => {
   const [name, setName] = useState("");
   const [organisationName, setOrganisationName] = useState("");
   const [email, setEmail] = useState("");
+  const [relatedTool, setRelatedTool] = useState("");
   const [feedback, setFeedback] = useState("");
   const [mathAnswer, setMathAnswer] = useState("");
   const [mathProblem, setMathProblem] = useState(generateMathProblem);
@@ -98,6 +112,7 @@ const FeedbackForm = () => {
           name: name.trim().slice(0, 100),
           organisation: organisationName.trim().slice(0, 100),
           email: email.trim().slice(0, 255),
+          relatedTool: relatedTool || "general",
           feedback: feedback.trim().slice(0, 2000),
         }),
       });
@@ -202,6 +217,27 @@ const FeedbackForm = () => {
                   maxLength={255}
                   required
                 />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="relatedTool">
+                  Related Tool
+                </Label>
+                <Select value={relatedTool} onValueChange={setRelatedTool}>
+                  <SelectTrigger id="relatedTool" className="w-full">
+                    <SelectValue placeholder="Select a tool (optional)" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {TOOL_OPTIONS.map((tool) => (
+                      <SelectItem key={tool.value} value={tool.value}>
+                        {tool.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  Select the tool your feedback is related to
+                </p>
               </div>
 
               <div className="space-y-2">
