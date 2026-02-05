@@ -62,7 +62,7 @@ interface GuestDataRoomFileCardProps {
   isDownloading?: boolean;
   isDeleting?: boolean;
   onView: () => void;
-  onDownload: () => void;
+  onDownload: (format?: 'original' | 'pdf') => void;
   onViewVersions: () => void;
   onEditDocument?: () => void;
   onDelete?: () => void;
@@ -145,25 +145,30 @@ export function GuestDataRoomFileCard({
                 <Eye className="w-4 h-4" />
                 View
               </DropdownMenuItem>
-              {file.permission_level === "edit" && (
-                <DropdownMenuSub>
-                  <DropdownMenuSubTrigger className="gap-2">
-                    <Download className="w-4 h-4" />
-                    Export
-                  </DropdownMenuSubTrigger>
-                  <DropdownMenuPortal>
-                    <DropdownMenuSubContent className="bg-popover">
-                      <DropdownMenuItem onClick={onDownload} className="gap-2">
-                        <FileDown className="w-4 h-4 text-primary" />
-                        <div className="flex flex-col">
-                          <span>Original Format</span>
-                          <span className="text-xs text-muted-foreground">{file.name}</span>
-                        </div>
-                      </DropdownMenuItem>
-                    </DropdownMenuSubContent>
-                  </DropdownMenuPortal>
-                </DropdownMenuSub>
-              )}
+              <DropdownMenuSub>
+                <DropdownMenuSubTrigger className="gap-2">
+                  <Download className="w-4 h-4" />
+                  Export
+                </DropdownMenuSubTrigger>
+                <DropdownMenuPortal>
+                  <DropdownMenuSubContent className="bg-popover">
+                    <DropdownMenuItem onClick={() => onDownload('original')} className="gap-2">
+                      <FileDown className="w-4 h-4 text-primary" />
+                      <div className="flex flex-col">
+                        <span>Original Format</span>
+                        <span className="text-xs text-muted-foreground">{file.name}</span>
+                      </div>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => onDownload('pdf')} className="gap-2">
+                      <FileDown className="w-4 h-4 text-destructive" />
+                      <div className="flex flex-col">
+                        <span>PDF Document</span>
+                        <span className="text-xs text-muted-foreground">.pdf</span>
+                      </div>
+                    </DropdownMenuItem>
+                  </DropdownMenuSubContent>
+                </DropdownMenuPortal>
+              </DropdownMenuSub>
               <DropdownMenuItem onClick={onViewVersions} className="gap-2">
                 <Clock className="w-4 h-4" />
                 View Versions

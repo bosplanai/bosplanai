@@ -134,3 +134,6 @@ verify_jwt = false
 
 [functions.get-guest-team-members]
 verify_jwt = false
+
+[functions.get-guest-file-download]
+verify_jwt = false
