@@ -422,7 +422,7 @@ const ActiveTeamPanel = ({
             <p className="text-xs text-muted-foreground/70 mt-1">Add team members or invite guests to collaborate</p>
           </div>
         ) : (
-          <div className="space-y-2">
+          <div className="space-y-2 max-h-[300px] overflow-y-auto">
             {/* Creator - shown first if not already in members list */}
             {creatorProfile && !isCreatorInMembers && (
               <div className="flex items-center gap-3 p-3 rounded-xl bg-card border border-primary/30 hover:border-primary/50 transition-colors">
