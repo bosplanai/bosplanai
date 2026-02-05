@@ -10,6 +10,7 @@ import { useSpecialistPlans } from "@/hooks/useSpecialistPlans";
 import { useSuperAdminSession } from "@/hooks/useSuperAdminSession";
 import bosplanLogo from "@/assets/bosplan-logo.png";
 import SuperAdminSettingsDialog from "@/components/superadmin/SuperAdminSettingsDialog";
+import CustomButtonsSection from "@/components/superadmin/CustomButtonsSection";
 const SuperAdminDashboard = () => {
   const { navigate, navigateOrg } = useOrgNavigation();
   const {
@@ -305,6 +306,11 @@ const SuperAdminDashboard = () => {
                 </div>
               </div>;
         })}
+        </div>
+
+        {/* Custom Buttons Section */}
+        <div className="mt-8">
+          <CustomButtonsSection />
         </div>
       </main>
 
