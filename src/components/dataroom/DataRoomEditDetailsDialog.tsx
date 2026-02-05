@@ -3,10 +3,9 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
-import { FileText, Folder, FolderPlus, Lock, Users, X, File, Globe } from "lucide-react";
+import { FileText, Folder, FolderPlus, Users, X, File, Globe } from "lucide-react";
 interface DataRoomFolder {
   id: string;
   name: string;
@@ -54,7 +53,6 @@ export function DataRoomEditDetailsDialog({
   isSaving = false
 }: DataRoomEditDetailsDialogProps) {
   const [folderId, setFolderId] = useState<string | null>(null);
-  const [isRestricted, setIsRestricted] = useState(false);
   const [assignedUsers, setAssignedUsers] = useState<string[]>([]);
   const [assignedGuests, setAssignedGuests] = useState<string[]>([]);
 
@@ -62,7 +60,6 @@ export function DataRoomEditDetailsDialog({
   useEffect(() => {
     if (file) {
       setFolderId(file.folder_id);
-      setIsRestricted(file.is_restricted || false);
       setAssignedUsers(file.assigned_to ? [file.assigned_to] : []);
       setAssignedGuests(file.assigned_guest_id ? [file.assigned_guest_id] : []);
     }
@@ -70,7 +67,7 @@ export function DataRoomEditDetailsDialog({
   const handleSave = () => {
     onSave({
       folder_id: folderId,
-      is_restricted: isRestricted,
+      is_restricted: false,
       assigned_to: assignedUsers.length > 0 ? assignedUsers[0] : null,
       assigned_guest_id: assignedGuests.length > 0 ? assignedGuests[0] : null
     });
@@ -130,11 +127,8 @@ export function DataRoomEditDetailsDialog({
             </div>
           </div>
 
-          {/* Restrict Access */}
-          
-
-          {/* Assign Users - Only show when NOT restricted */}
-          {!isRestricted && <div className="space-y-3 p-4 rounded-lg bg-muted/50 border border-border">
+          {/* Assign Users */}
+          <div className="space-y-3 p-4 rounded-lg bg-muted/50 border border-border">
               <div className="flex items-center gap-2">
                 <Users className="w-4 h-4 text-muted-foreground" />
                 <Label className="text-sm font-medium">Assign To (for review)</Label>
@@ -189,7 +183,7 @@ export function DataRoomEditDetailsDialog({
                       </Badge>;
             })}
                 </div>}
-            </div>}
+            </div>
         </div>
 
         <DialogFooter>
