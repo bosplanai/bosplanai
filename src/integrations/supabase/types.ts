@@ -511,6 +511,7 @@ export type Database = {
       }
       data_room_files: {
         Row: {
+          assigned_guest_id: string | null
           assigned_to: string | null
           created_at: string
           data_room_id: string
@@ -529,6 +530,7 @@ export type Database = {
           version: number
         }
         Insert: {
+          assigned_guest_id?: string | null
           assigned_to?: string | null
           created_at?: string
           data_room_id: string
@@ -547,6 +549,7 @@ export type Database = {
           version?: number
         }
         Update: {
+          assigned_guest_id?: string | null
           assigned_to?: string | null
           created_at?: string
           data_room_id?: string
@@ -565,6 +568,13 @@ export type Database = {
           version?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "data_room_files_assigned_guest_id_fkey"
+            columns: ["assigned_guest_id"]
+            isOneToOne: false
+            referencedRelation: "data_room_invites"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "data_room_files_assigned_to_fkey"
             columns: ["assigned_to"]

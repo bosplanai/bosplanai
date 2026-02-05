@@ -26,6 +26,7 @@ import {
   Users,
   X,
   File,
+  Globe,
 } from "lucide-react";
 
 interface DataRoomFolder {
@@ -39,6 +40,12 @@ interface DataRoomMember {
   email?: string;
 }
 
+interface DataRoomGuest {
+  id: string;
+  guest_name: string | null;
+  email: string;
+}
+
 interface DataRoomEditDetailsDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -48,13 +55,16 @@ interface DataRoomEditDetailsDialogProps {
     folder_id: string | null;
     is_restricted?: boolean;
     assigned_to?: string | null;
+    assigned_guest_id?: string | null;
   } | null;
   folders: DataRoomFolder[];
   members: DataRoomMember[];
+  guests?: DataRoomGuest[];
   onSave: (data: {
     folder_id: string | null;
     is_restricted: boolean;
     assigned_to: string | null;
+    assigned_guest_id: string | null;
   }) => void;
   isSaving?: boolean;
 }
@@ -65,12 +75,14 @@ export function DataRoomEditDetailsDialog({
   file,
   folders,
   members,
+  guests = [],
   onSave,
   isSaving = false,
 }: DataRoomEditDetailsDialogProps) {
   const [folderId, setFolderId] = useState<string | null>(null);
   const [isRestricted, setIsRestricted] = useState(false);
   const [assignedUsers, setAssignedUsers] = useState<string[]>([]);
+  const [assignedGuests, setAssignedGuests] = useState<string[]>([]);
 
   // Reset form when file changes
   useEffect(() => {
@@ -78,6 +90,7 @@ export function DataRoomEditDetailsDialog({
       setFolderId(file.folder_id);
       setIsRestricted(file.is_restricted || false);
       setAssignedUsers(file.assigned_to ? [file.assigned_to] : []);
+      setAssignedGuests(file.assigned_guest_id ? [file.assigned_guest_id] : []);
     }
   }, [file]);
 
@@ -86,6 +99,7 @@ export function DataRoomEditDetailsDialog({
       folder_id: folderId,
       is_restricted: isRestricted,
       assigned_to: assignedUsers.length > 0 ? assignedUsers[0] : null,
+      assigned_guest_id: assignedGuests.length > 0 ? assignedGuests[0] : null,
     });
   };
 
@@ -96,6 +110,17 @@ export function DataRoomEditDetailsDialog({
         : [...prev, userId]
     );
   };
+
+  const toggleGuest = (guestId: string) => {
+    setAssignedGuests((prev) =>
+      prev.includes(guestId)
+        ? prev.filter((id) => id !== guestId)
+        : [...prev, guestId]
+    );
+  };
+
+  // Filter guests to only show those who have signed NDA (active invites with guest_name)
+  const activeGuests = guests.filter(g => g.guest_name);
 
   if (!file) return null;
 
@@ -179,29 +204,61 @@ export function DataRoomEditDetailsDialog({
                 <Label className="text-sm font-medium">Assign To (for review)</Label>
               </div>
               <p className="text-xs text-muted-foreground">
-                Assign this document to Data Room members for review.
+                Assign this document to Data Room members or guests for review.
               </p>
-              <div className="max-h-32 overflow-y-auto space-y-2">
-                {members.length > 0 ? (
-                  members.map((member) => (
-                    <label
-                      key={member.id}
-                      className="flex items-center gap-2 text-sm cursor-pointer hover:bg-muted/50 p-1 rounded"
-                    >
-                      <Checkbox
-                        checked={assignedUsers.includes(member.id)}
-                        onCheckedChange={() => toggleUser(member.id)}
-                      />
-                      <span>{member.full_name}</span>
-                    </label>
-                  ))
-                ) : (
-                  <p className="text-xs text-muted-foreground">
-                    No team members available
-                  </p>
-                )}
-              </div>
-              {assignedUsers.length > 0 && (
+              
+              {/* Internal Members Section */}
+              {members.length > 0 && (
+                <div className="space-y-2">
+                  <p className="text-xs font-medium text-muted-foreground">Team Members</p>
+                  <div className="max-h-24 overflow-y-auto space-y-1">
+                    {members.map((member) => (
+                      <label
+                        key={member.id}
+                        className="flex items-center gap-2 text-sm cursor-pointer hover:bg-muted/50 p-1 rounded"
+                      >
+                        <Checkbox
+                          checked={assignedUsers.includes(member.id)}
+                          onCheckedChange={() => toggleUser(member.id)}
+                        />
+                        <Users className="w-3 h-3 text-muted-foreground" />
+                        <span>{member.full_name}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* External Guests Section */}
+              {activeGuests.length > 0 && (
+                <div className="space-y-2">
+                  <p className="text-xs font-medium text-muted-foreground">External Guests</p>
+                  <div className="max-h-24 overflow-y-auto space-y-1">
+                    {activeGuests.map((guest) => (
+                      <label
+                        key={guest.id}
+                        className="flex items-center gap-2 text-sm cursor-pointer hover:bg-muted/50 p-1 rounded"
+                      >
+                        <Checkbox
+                          checked={assignedGuests.includes(guest.id)}
+                          onCheckedChange={() => toggleGuest(guest.id)}
+                        />
+                        <Globe className="w-3 h-3 text-blue-500" />
+                        <span>{guest.guest_name || guest.email}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {members.length === 0 && activeGuests.length === 0 && (
+                <p className="text-xs text-muted-foreground">
+                  No team members or guests available
+                </p>
+              )}
+
+              {/* Selected badges */}
+              {(assignedUsers.length > 0 || assignedGuests.length > 0) && (
                 <div className="flex flex-wrap gap-1 pt-1">
                   {assignedUsers.map((userId) => {
                     const member = members.find((m) => m.id === userId);
@@ -211,6 +268,19 @@ export function DataRoomEditDetailsDialog({
                         <X
                           className="w-3 h-3 cursor-pointer hover:text-destructive"
                           onClick={() => toggleUser(userId)}
+                        />
+                      </Badge>
+                    );
+                  })}
+                  {assignedGuests.map((guestId) => {
+                    const guest = activeGuests.find((g) => g.id === guestId);
+                    return (
+                      <Badge key={guestId} variant="outline" className="text-xs gap-1 bg-blue-500/10 text-blue-600 border-blue-500/20">
+                        <Globe className="w-3 h-3" />
+                        {guest?.guest_name || guest?.email}
+                        <X
+                          className="w-3 h-3 cursor-pointer hover:text-destructive"
+                          onClick={() => toggleGuest(guestId)}
                         />
                       </Badge>
                     );
