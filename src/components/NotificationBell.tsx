@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { Bell, Check, CheckCheck, Trash2, FileText, ListTodo, X, AlertTriangle, AlertCircle, Users, UserX, UserCheck, Activity, TrendingUp, CheckCircle2, FolderLock, FileSignature } from "lucide-react";
+import { Bell, Check, CheckCheck, Trash2, FileText, ListTodo, X, AlertTriangle, AlertCircle, Users, UserX, UserCheck, Activity, TrendingUp, CheckCircle2, FolderLock, FileSignature, MessageSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Popover,
@@ -31,6 +31,8 @@ const NotificationIcon = ({ type }: { type: string }) => {
       return <FileText className="h-4 w-4 text-blue-500" />;
     case "data_room_invite":
       return <FolderLock className="h-4 w-4 text-emerald-500" />;
+    case "data_room_message":
+      return <MessageSquare className="h-4 w-4 text-emerald-500" />;
     case "nda_signed":
       return <FileSignature className="h-4 w-4 text-brand-teal" />;
     case "policy_expired":

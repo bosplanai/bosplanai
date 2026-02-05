@@ -193,8 +193,29 @@ By signing below, you acknowledge that you have read, understood, and agree to b
       const now = new Date().toISOString();
       localStorage.setItem(storageKey, now);
       setLastReadTimestamp(prev => ({ ...prev, [selectedRoomId]: now }));
+      
+      // Also mark data_room_message notifications as read for this room
+      const markNotificationsAsRead = async () => {
+        try {
+          const { error } = await supabase
+            .from("notifications")
+            .update({ is_read: true })
+            .eq("user_id", user.id)
+            .eq("type", "data_room_message")
+            .eq("reference_id", selectedRoomId)
+            .eq("is_read", false);
+          
+          if (!error) {
+            // Invalidate notifications query to update the bell badge
+            queryClient.invalidateQueries({ queryKey: ["notifications"] });
+          }
+        } catch (err) {
+          console.error("Failed to mark notifications as read:", err);
+        }
+      };
+      markNotificationsAsRead();
     }
-  }, [activeTab, selectedRoomId, user?.id]);
+  }, [activeTab, selectedRoomId, user?.id, queryClient]);
 
   // Subscribe to realtime messages for unread count updates
   useEffect(() => {

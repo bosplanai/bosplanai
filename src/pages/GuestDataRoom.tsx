@@ -210,6 +210,9 @@ const GuestDataRoom = () => {
   
   // Tab state for controlled component to prevent reset on re-render
   const [activeTab, setActiveTab] = useState("team");
+  
+  // Unread messages tracking for guests
+  const [lastReadTimestamp, setLastReadTimestamp] = useState<string | null>(null);
 
   // File permissions state
   const [permissionsFile, setPermissionsFile] = useState<FileItem | null>(null);
@@ -1001,8 +1004,34 @@ const GuestDataRoom = () => {
       fetchMessages();
       fetchActivity();
       fetchTeam();
+      
+      // Initialize last read timestamp from localStorage
+      const storageKey = `guest-dataroom-chat-read-${dataRoom.id}-${email.toLowerCase()}`;
+      const storedTimestamp = localStorage.getItem(storageKey);
+      if (storedTimestamp) {
+        setLastReadTimestamp(storedTimestamp);
+      }
     }
   }, [step, dataRoom]);
+
+  // Mark messages as read when Discussion tab is active
+  useEffect(() => {
+    if (activeTab === "discussion" && dataRoom && email) {
+      const storageKey = `guest-dataroom-chat-read-${dataRoom.id}-${email.toLowerCase()}`;
+      const now = new Date().toISOString();
+      localStorage.setItem(storageKey, now);
+      setLastReadTimestamp(now);
+    }
+  }, [activeTab, dataRoom?.id, email]);
+
+  // Calculate unread message count for guests
+  const unreadMessageCount = messages.filter((msg) => {
+    // Don't count own messages as unread
+    if (msg.sender_email.toLowerCase() === email.toLowerCase()) return false;
+    // Count messages newer than last read
+    if (!lastReadTimestamp) return true;
+    return new Date(msg.created_at) > new Date(lastReadTimestamp);
+  }).length;
 
   // Realtime subscription for files and folders
   useEffect(() => {
@@ -1042,6 +1071,31 @@ const GuestDataRoom = () => {
       supabase.removeChannel(channel);
     };
   }, [dataRoom?.id, currentFolderId, password, email, token]);
+
+  // Realtime subscription for chat messages
+  useEffect(() => {
+    if (!dataRoom?.id) return;
+
+    const channel = supabase
+      .channel(`guest-chat-${dataRoom.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'data_room_messages',
+          filter: `data_room_id=eq.${dataRoom.id}`,
+        },
+        () => {
+          fetchMessages();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [dataRoom?.id]);
 
   // Auto scroll chat to bottom
   useEffect(() => {
@@ -1508,9 +1562,14 @@ const GuestDataRoom = () => {
                       <Users className="w-3.5 h-3.5 mr-1.5" />
                       Active Team
                     </TabsTrigger>
-                    <TabsTrigger value="discussion" className="text-xs data-[state=active]:bg-background data-[state=active]:shadow-sm px-3">
+                    <TabsTrigger value="discussion" className="text-xs data-[state=active]:bg-background data-[state=active]:shadow-sm px-3 relative">
                       <MessageSquare className="w-3.5 h-3.5 mr-1.5" />
                       Discussion
+                      {unreadMessageCount > 0 && activeTab !== "discussion" && (
+                        <span className="ml-1.5 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 text-[10px] font-semibold rounded-full bg-destructive text-destructive-foreground">
+                          {unreadMessageCount > 99 ? "99+" : unreadMessageCount}
+                        </span>
+                      )}
                     </TabsTrigger>
                     <TabsTrigger value="activity" className="text-xs data-[state=active]:bg-background data-[state=active]:shadow-sm px-3">
                       <Activity className="w-3.5 h-3.5 mr-1.5" />

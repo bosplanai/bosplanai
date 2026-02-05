@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Bell, ListTodo, FileText, FolderLock, FileSignature, Clock, ArrowRight } from "lucide-react";
+import { Bell, ListTodo, FileText, FolderLock, FileSignature, Clock, ArrowRight, MessageSquare } from "lucide-react";
 import { formatDistanceToNow, format } from "date-fns";
 import type { Notification } from "@/hooks/useNotifications";
 import { useOrgNavigation } from "@/hooks/useOrgNavigation";
@@ -32,6 +32,8 @@ const getNotificationIcon = (type: string) => {
       return <FileText className="h-5 w-5 text-blue-500" />;
     case "data_room_invite":
       return <FolderLock className="h-5 w-5 text-emerald-500" />;
+    case "data_room_message":
+      return <MessageSquare className="h-5 w-5 text-emerald-500" />;
     case "nda_signed":
       return <FileSignature className="h-5 w-5 text-brand-teal" />;
     case "policy_expired":
@@ -54,6 +56,7 @@ const getNotificationTypeLabel = (type: string) => {
     case "file_shared": return "File Shared";
     case "file_review": return "File Review";
     case "data_room_invite": return "Data Room Invite";
+    case "data_room_message": return "New Message";
     case "nda_signed": return "NDA Signed";
     case "policy_expired": return "Policy Expired";
     default: return "Notification";
@@ -64,7 +67,7 @@ const getNavigationPath = (notification: Notification): string | null => {
   switch (notification.reference_type) {
     case "task": return "/";
     case "file": return "/drive";
-    case "data_room": return "/dataroom";
+    case "data_room": return `/dataroom?room=${notification.reference_id}`;
     default: return null;
   }
 };
