@@ -18,6 +18,7 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   FileText,
   Folder,
@@ -27,6 +28,9 @@ import {
   X,
   File,
   Globe,
+  Eye,
+  Edit2,
+  Mail,
 } from "lucide-react";
 
 interface DataRoomFolder {
@@ -46,6 +50,12 @@ interface DataRoomGuest {
   email: string;
 }
 
+interface FilePermission {
+  user_id: string | null;
+  guest_invite_id: string | null;
+  permission_level: "view" | "edit";
+}
+
 interface DataRoomEditDetailsDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -60,11 +70,15 @@ interface DataRoomEditDetailsDialogProps {
   folders: DataRoomFolder[];
   members: DataRoomMember[];
   guests?: DataRoomGuest[];
+  existingPermissions?: FilePermission[];
+  currentUserId?: string;
+  dataRoomCreatorId?: string;
   onSave: (data: {
     folder_id: string | null;
     is_restricted: boolean;
     assigned_to: string | null;
     assigned_guest_id: string | null;
+    permissions: { referenceId: string; permission: "view" | "edit"; type: "team" | "guest" }[];
   }) => void;
   isSaving?: boolean;
 }
@@ -76,6 +90,9 @@ export function DataRoomEditDetailsDialog({
   folders,
   members,
   guests = [],
+  existingPermissions = [],
+  currentUserId,
+  dataRoomCreatorId,
   onSave,
   isSaving = false,
 }: DataRoomEditDetailsDialogProps) {
@@ -83,16 +100,55 @@ export function DataRoomEditDetailsDialog({
   const [isRestricted, setIsRestricted] = useState(false);
   const [assignedUsers, setAssignedUsers] = useState<string[]>([]);
   const [assignedGuests, setAssignedGuests] = useState<string[]>([]);
+  const [selectedPermissions, setSelectedPermissions] = useState<{ referenceId: string; permission: "view" | "edit"; type: "team" | "guest" }[]>([]);
+
+  // Filter guests to only show those who have signed NDA (active invites with guest_name)
+  const activeGuests = guests.filter(g => g.guest_name);
+
+  // Build combined members list for permission selection (excluding current user)
+  const allSelectableMembers = [
+    ...members
+      .filter(m => m.id !== currentUserId)
+      .map(m => ({
+        id: m.id,
+        uniqueId: `team-${m.id}`,
+        referenceId: m.id,
+        name: m.full_name,
+        type: "team" as const,
+        isCreator: m.id === dataRoomCreatorId,
+      })),
+    ...activeGuests.map(g => ({
+      id: g.id,
+      uniqueId: `guest-${g.id}`,
+      referenceId: g.id,
+      name: g.guest_name || g.email,
+      type: "guest" as const,
+      isCreator: false,
+    })),
+  ];
 
   // Reset form when file changes
   useEffect(() => {
-    if (file) {
+    if (file && open) {
       setFolderId(file.folder_id);
       setIsRestricted(file.is_restricted || false);
       setAssignedUsers(file.assigned_to ? [file.assigned_to] : []);
       setAssignedGuests(file.assigned_guest_id ? [file.assigned_guest_id] : []);
+      
+      // Initialize permissions from existing
+      if (existingPermissions && existingPermissions.length > 0) {
+        setSelectedPermissions(
+          existingPermissions.map(p => ({
+            referenceId: p.user_id || p.guest_invite_id || '',
+            permission: p.permission_level,
+            type: p.user_id ? "team" as const : "guest" as const,
+          }))
+        );
+      } else {
+        setSelectedPermissions([]);
+      }
     }
-  }, [file]);
+  }, [file, open, existingPermissions]);
 
   const handleSave = () => {
     onSave({
@@ -100,6 +156,7 @@ export function DataRoomEditDetailsDialog({
       is_restricted: isRestricted,
       assigned_to: assignedUsers.length > 0 ? assignedUsers[0] : null,
       assigned_guest_id: assignedGuests.length > 0 ? assignedGuests[0] : null,
+      permissions: isRestricted ? selectedPermissions : [],
     });
   };
 
@@ -119,8 +176,21 @@ export function DataRoomEditDetailsDialog({
     );
   };
 
-  // Filter guests to only show those who have signed NDA (active invites with guest_name)
-  const activeGuests = guests.filter(g => g.guest_name);
+  const togglePermissionUser = (referenceId: string, type: "team" | "guest") => {
+    setSelectedPermissions((prev) => {
+      const existing = prev.find((u) => u.referenceId === referenceId);
+      if (existing) {
+        return prev.filter((u) => u.referenceId !== referenceId);
+      }
+      return [...prev, { referenceId, permission: "edit" as const, type }];
+    });
+  };
+
+  const updatePermissionLevel = (referenceId: string, permission: "view" | "edit") => {
+    setSelectedPermissions((prev) =>
+      prev.map((u) => (u.referenceId === referenceId ? { ...u, permission } : u))
+    );
+  };
 
   if (!file) return null;
 
@@ -191,9 +261,98 @@ export function DataRoomEditDetailsDialog({
             </div>
             <p className="text-xs text-muted-foreground">
               {isRestricted
-                ? "Only selected Data Room members can view this file."
+                ? "Only you and selected members can view this file."
                 : "All Data Room members can view this file."}
             </p>
+
+            {/* User selection when restricted */}
+            {isRestricted && (
+              <div className="space-y-3 pt-3 border-t border-border">
+                <div className="flex items-center gap-2">
+                  <Users className="w-4 h-4 text-muted-foreground" />
+                  <Label className="text-sm font-medium">Grant Access To</Label>
+                </div>
+
+                {allSelectableMembers.length === 0 ? (
+                  <p className="text-xs text-muted-foreground py-2">
+                    No other members in this data room.
+                  </p>
+                ) : (
+                  <ScrollArea className="h-[160px] pr-3">
+                    <div className="space-y-2">
+                      {allSelectableMembers.map((member) => {
+                        const userPermission = selectedPermissions.find((u) => u.referenceId === member.referenceId);
+                        const isSelected = !!userPermission;
+
+                        return (
+                          <div
+                            key={member.uniqueId}
+                            className="flex items-center justify-between p-2 rounded-lg hover:bg-muted/50 transition-colors"
+                          >
+                            <label className="flex items-center gap-2 cursor-pointer flex-1 min-w-0">
+                              <Checkbox
+                                checked={isSelected}
+                                onCheckedChange={() => togglePermissionUser(member.referenceId, member.type)}
+                              />
+                              <div className="flex items-center gap-1.5 min-w-0">
+                                {member.type === "guest" && (
+                                  <Mail className="w-3 h-3 text-primary flex-shrink-0" />
+                                )}
+                                <span className="text-sm truncate">{member.name}</span>
+                                {member.isCreator && (
+                                  <Badge variant="secondary" className="text-[9px] px-1 py-0 h-3.5 bg-primary/10 text-primary border-0 flex-shrink-0">
+                                    Owner
+                                  </Badge>
+                                )}
+                                {member.type === "guest" && (
+                                  <Badge variant="secondary" className="text-[9px] px-1 py-0 h-3.5 bg-primary/10 text-primary border-0 flex-shrink-0">
+                                    Guest
+                                  </Badge>
+                                )}
+                              </div>
+                            </label>
+
+                            {isSelected && (
+                              <Select
+                                value={userPermission?.permission || "edit"}
+                                onValueChange={(value: "view" | "edit") =>
+                                  updatePermissionLevel(member.referenceId, value)
+                                }
+                              >
+                                <SelectTrigger className="w-24 h-7 text-xs flex-shrink-0">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="view">
+                                    <div className="flex items-center gap-1.5">
+                                      <Eye className="w-3 h-3" />
+                                      View
+                                    </div>
+                                  </SelectItem>
+                                  <SelectItem value="edit">
+                                    <div className="flex items-center gap-1.5">
+                                      <Edit2 className="w-3 h-3" />
+                                      Edit
+                                    </div>
+                                  </SelectItem>
+                                </SelectContent>
+                              </Select>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </ScrollArea>
+                )}
+
+                {/* Selected count */}
+                {selectedPermissions.length > 0 && (
+                  <p className="text-xs text-muted-foreground">
+                    {selectedPermissions.length} member{selectedPermissions.length !== 1 ? "s" : ""} will have access
+                  </p>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Assign Users - Only show when NOT restricted */}
@@ -243,7 +402,7 @@ export function DataRoomEditDetailsDialog({
                           checked={assignedGuests.includes(guest.id)}
                           onCheckedChange={() => toggleGuest(guest.id)}
                         />
-                        <Globe className="w-3 h-3 text-blue-500" />
+                        <Globe className="w-3 h-3 text-primary" />
                         <span>{guest.guest_name || guest.email}</span>
                       </label>
                     ))}
@@ -275,7 +434,7 @@ export function DataRoomEditDetailsDialog({
                   {assignedGuests.map((guestId) => {
                     const guest = activeGuests.find((g) => g.id === guestId);
                     return (
-                      <Badge key={guestId} variant="outline" className="text-xs gap-1 bg-blue-500/10 text-blue-600 border-blue-500/20">
+                      <Badge key={guestId} variant="outline" className="text-xs gap-1 bg-primary/10 text-primary border-primary/20">
                         <Globe className="w-3 h-3" />
                         {guest?.guest_name || guest?.email}
                         <X
