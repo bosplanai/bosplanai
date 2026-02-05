@@ -106,32 +106,34 @@
        );
      }
  
-     // Check restricted file permissions
-     const rootFileId = file.parent_file_id || file.id;
-     
-     const { data: rootFile } = await supabaseAdmin
-       .from("data_room_files")
-       .select("is_restricted")
-       .eq("id", rootFileId)
-       .single();
- 
-     const isRestricted = rootFile?.is_restricted || file.is_restricted;
- 
-     if (isRestricted) {
-       const { data: permission } = await supabaseAdmin
-         .from("data_room_file_permissions")
-         .select("permission_level")
-         .eq("file_id", rootFileId)
-         .eq("guest_invite_id", invite.id)
-         .maybeSingle();
- 
-       if (!permission || permission.permission_level === "view") {
-         return new Response(
-           JSON.stringify({ error: "You do not have edit access to this restricted file" }),
-           { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-         );
-       }
-     }
+      // Check restricted file permissions - allow both view and edit for reading content
+      const rootFileId = file.parent_file_id || file.id;
+      
+      const { data: rootFile } = await supabaseAdmin
+        .from("data_room_files")
+        .select("is_restricted")
+        .eq("id", rootFileId)
+        .single();
+
+      const isRestricted = rootFile?.is_restricted || file.is_restricted;
+
+      if (isRestricted) {
+        const { data: permission } = await supabaseAdmin
+          .from("data_room_file_permissions")
+          .select("permission_level")
+          .eq("file_id", rootFileId)
+          .eq("guest_invite_id", invite.id)
+          .maybeSingle();
+
+        // For reading document content, we allow both "view" and "edit" permissions
+        // Only fully restricted files (no permission at all) should be blocked
+        if (!permission) {
+          return new Response(
+            JSON.stringify({ error: "You do not have access to this restricted file" }),
+            { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+      }
  
      // Get or create document content
      let { data: document, error: docError } = await supabaseAdmin
