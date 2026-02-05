@@ -50,8 +50,8 @@ export function WorkloadHeatmap({ workloads, onMemberClick }: WorkloadHeatmapPro
         <h3 className="font-semibold text-foreground text-base">Team Capacity & Workload</h3>
       </div>
       
-      <ScrollArea className="flex-1 -mr-2 pr-2">
-        <div className="grid gap-4 pr-2">
+      <ScrollArea className="flex-1 min-h-0">
+        <div className="grid gap-4 pr-4">
           {sortedWorkloads.map((member) => (
             <Tooltip key={member.id}>
               <TooltipTrigger asChild>
