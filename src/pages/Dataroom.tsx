@@ -639,6 +639,9 @@ By signing below, you acknowledge that you have read, understood, and agree to b
           // Keep folder_id from root file for proper folder filtering
           folder_id: rootFile.folder_id,
           folder: rootFile.folder,
+          // Keep assignment from root file - assignments persist across versions
+          assigned_to: rootFile.assigned_to,
+          assigned_guest_id: rootFile.assigned_guest_id,
           // Track total version count
           version_count: versions.length,
           // Track root file id for version history

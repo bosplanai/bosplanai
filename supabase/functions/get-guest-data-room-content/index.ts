@@ -283,11 +283,14 @@ Deno.serve(async (req) => {
       const latestVersion = versions[0];
       const rootFile = versions.find((v: any) => !v.parent_file_id) || versions[versions.length - 1];
       
-      // Use the root file's folder_id for filtering, but show latest version's content
+      // Use the root file's folder_id and assignment for filtering, but show latest version's content
       latestVersions.push({
         ...latestVersion,
         // Keep folder_id from root file for proper folder filtering
         folder_id: rootFile.folder_id,
+        // Keep assignment from root file - assignments persist across versions
+        assigned_to: rootFile.assigned_to,
+        assigned_guest_id: rootFile.assigned_guest_id,
         // Track root file id for version history
         root_file_id: rootId
       });
