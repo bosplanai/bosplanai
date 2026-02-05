@@ -443,7 +443,32 @@ const GuestDataRoom = () => {
     await fetchContent(folderId);
   };
 
-  const handleDownload = async (file: FileItem) => {
+  const handleDownload = async (file: FileItem, format?: 'original' | 'pdf') => {
+    // For PDF format, check for edited document content first
+    if (format === 'pdf') {
+      // Try to get document content from edge function or handle via print
+      const { data, error: fnError } = await supabase.functions.invoke(
+        "get-guest-file-download",
+        {
+          body: { token: token || password, email: email.toLowerCase(), fileId: file.id, mode: "preview" },
+        }
+      );
+
+      if (!fnError && data?.downloadUrl) {
+        // For PDF export, open in new window for printing
+        const printWindow = window.open(data.downloadUrl, '_blank');
+        if (printWindow) {
+          toast.success("Opening file for PDF export. Use browser's Print > Save as PDF option.");
+        } else {
+          toast.error("Could not open print window. Please allow popups.");
+        }
+      } else {
+        toast.error("Failed to prepare PDF export");
+      }
+      return;
+    }
+
+    // Original format download
     setDownloading(file.id);
     try {
       const { data, error: fnError } = await supabase.functions.invoke(
@@ -1427,7 +1452,7 @@ const GuestDataRoom = () => {
                               isDownloading={downloading === file.id}
                               isDeleting={deletingFileId === file.id}
                               onView={() => handleFilePreview(file)}
-                              onDownload={() => handleDownload(file)}
+                              onDownload={(format) => handleDownload(file, format)}
                               onViewVersions={() => fetchFileVersions({ id: file.id, name: file.name })}
                               onEditDocument={file.permission_level === "edit" ? () => setEditFile(file) : undefined}
                               onDelete={file.is_own_upload ? () => handleDeleteFile(file) : undefined}
