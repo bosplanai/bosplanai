@@ -3038,18 +3038,40 @@ By signing below, you acknowledge that you have read, understood, and agree to b
           // Create a new version based on the restored one
           if (!activeRoomId || !selectedRoom || !user?.id) return;
           const newVersion = fileVersions.length > 0 ? Math.max(...fileVersions.map((v: any) => v.version || 1)) + 1 : 1;
-          const { error } = await supabase.from("data_room_files").insert({
+          const rootFileId = version.parent_file_id || version.id;
+          
+          const { data: newFileData, error } = await supabase.from("data_room_files").insert({
             ...version,
             id: undefined,
             version: newVersion,
-            parent_file_id: version.parent_file_id || version.id,
+            parent_file_id: rootFileId,
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
             uploaded_by: user.id
-          } as any);
+          } as any).select('id').single();
+          
           if (error) {
             toast({ title: "Restore failed", description: error.message, variant: "destructive" });
           } else {
+            // Copy document content if it exists
+            if (newFileData?.id) {
+              const { data: docContent } = await supabase
+                .from("data_room_document_content")
+                .select("content, content_type")
+                .eq("file_id", version.id)
+                .single();
+              
+              if (docContent) {
+                await supabase.from("data_room_document_content").insert({
+                  file_id: newFileData.id,
+                  data_room_id: activeRoomId,
+                  organization_id: selectedRoom.organization_id,
+                  content: docContent.content,
+                  content_type: docContent.content_type,
+                });
+              }
+            }
+            
             queryClient.invalidateQueries({ queryKey: ["data-room-files"] });
             queryClient.invalidateQueries({ queryKey: ["data-room-file-versions"] });
             toast({ title: "Version restored", description: `Restored as version ${newVersion}` });

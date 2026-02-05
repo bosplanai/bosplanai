@@ -258,6 +258,7 @@ const GuestDataRoom = () => {
   const [fileVersions, setFileVersions] = useState<FileVersion[]>([]);
   const [versionProfileMap, setVersionProfileMap] = useState<Record<string, string>>({});
   const [loadingVersions, setLoadingVersions] = useState(false);
+  const [restoringVersion, setRestoringVersion] = useState(false);
 
   // Profile map for uploaders and assignees
   const [profileMap, setProfileMap] = useState<Record<string, string>>({});
@@ -996,6 +997,40 @@ const GuestDataRoom = () => {
       toast.success(`Downloading ${version.name}`);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to download version");
+    }
+  };
+
+  const handleRestoreVersion = async (version: FileVersion) => {
+    if (restoringVersion) return;
+    
+    setRestoringVersion(true);
+    try {
+      const { data, error: fnError } = await supabase.functions.invoke(
+        "guest-restore-version",
+        {
+          body: { 
+            token: token || password, 
+            email: email.toLowerCase(), 
+            versionId: version.id 
+          },
+        }
+      );
+
+      if (fnError) throw new Error(await extractFunctionErrorMessage(fnError));
+      if (data?.error) throw new Error(data.error);
+
+      toast.success(data.message || `Restored as version ${data.newVersion}`);
+      
+      // Refresh versions list and files
+      if (versionHistoryFile) {
+        await fetchFileVersions(versionHistoryFile);
+      }
+      await fetchContent(currentFolderId);
+    } catch (err) {
+      console.error("Failed to restore version:", err);
+      toast.error(err instanceof Error ? err.message : "Failed to restore version");
+    } finally {
+      setRestoringVersion(false);
     }
   };
 
@@ -2057,12 +2092,11 @@ const GuestDataRoom = () => {
         profileMap={versionProfileMap}
         onView={handleViewVersion}
         onDownload={(version) => handleDownloadVersion(version)}
-        onRestore={() => {
-          toast.info("Restore functionality is not available for guests");
-        }}
+        onRestore={handleRestoreVersion}
         onDelete={() => {
           toast.info("Delete functionality is not available for guests");
         }}
+        isRestoring={restoringVersion}
       />
     </div>
   );
