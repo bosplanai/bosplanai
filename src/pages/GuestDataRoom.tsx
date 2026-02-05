@@ -1307,15 +1307,6 @@ const GuestDataRoom = () => {
                 <div className="flex gap-2">
                   <Button
                     size="sm"
-                    variant="outline"
-                    className="h-8 text-xs"
-                    onClick={() => setShowNewFolderDialog(true)}
-                  >
-                    <FolderPlus className="w-3.5 h-3.5 mr-1.5" />
-                    New Folder
-                  </Button>
-                  <Button
-                    size="sm"
                     className="bg-emerald-500 hover:bg-emerald-600 h-8 text-xs"
                     onClick={() => fileInputRef.current?.click()}
                     disabled={uploading}
@@ -1933,51 +1924,6 @@ const GuestDataRoom = () => {
         </DialogContent>
       </Dialog>
 
-      {/* New Folder Dialog */}
-      <Dialog open={showNewFolderDialog} onOpenChange={setShowNewFolderDialog}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Create New Folder</DialogTitle>
-          </DialogHeader>
-          <div className="py-4">
-            <Label htmlFor="folder-name">Folder Name</Label>
-            <Input
-              id="folder-name"
-              value={newFolderName}
-              onChange={(e) => setNewFolderName(e.target.value)}
-              placeholder="Enter folder name"
-              className="mt-2"
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && newFolderName.trim()) {
-                  handleCreateFolder();
-                }
-              }}
-            />
-          </div>
-          <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={() => setShowNewFolderDialog(false)}>
-              Cancel
-            </Button>
-            <Button
-              onClick={handleCreateFolder}
-              disabled={creatingFolder || !newFolderName.trim()}
-              className="bg-emerald-500 hover:bg-emerald-600"
-            >
-              {creatingFolder ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-1.5 animate-spin" />
-                  Creating...
-                </>
-              ) : (
-                <>
-                  <FolderPlus className="w-4 h-4 mr-1.5" />
-                  Create Folder
-                </>
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       {/* Version History Dialog */}
       <DataRoomVersionHistoryDialog
