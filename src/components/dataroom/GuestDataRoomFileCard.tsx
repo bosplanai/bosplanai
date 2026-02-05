@@ -15,7 +15,6 @@ import {
 import {
   Eye,
   Download,
-  FolderInput,
   Clock,
   Edit3,
   Trash2,
@@ -64,7 +63,6 @@ interface GuestDataRoomFileCardProps {
   isDeleting?: boolean;
   onView: () => void;
   onDownload: () => void;
-  onMoveToFolder: () => void;
   onViewVersions: () => void;
   onEditDocument?: () => void;
   onDelete?: () => void;
@@ -106,7 +104,6 @@ export function GuestDataRoomFileCard({
   isDeleting = false,
   onView,
   onDownload,
-  onMoveToFolder,
   onViewVersions,
   onEditDocument,
   onDelete,
@@ -167,11 +164,6 @@ export function GuestDataRoomFileCard({
                   </DropdownMenuPortal>
                 </DropdownMenuSub>
               )}
-              <DropdownMenuItem onClick={onMoveToFolder} className="gap-2">
-                <FolderInput className="w-4 h-4" />
-                Move to folder
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
               <DropdownMenuItem onClick={onViewVersions} className="gap-2">
                 <Clock className="w-4 h-4" />
                 View Versions

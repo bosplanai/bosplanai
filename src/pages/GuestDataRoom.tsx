@@ -1428,9 +1428,6 @@ const GuestDataRoom = () => {
                               isDeleting={deletingFileId === file.id}
                               onView={() => handleFilePreview(file)}
                               onDownload={() => handleDownload(file)}
-                              onMoveToFolder={() => {
-                                // Open move to folder dialog - use existing dropdown logic
-                              }}
                               onViewVersions={() => fetchFileVersions({ id: file.id, name: file.name })}
                               onEditDocument={file.permission_level === "edit" ? () => setEditFile(file) : undefined}
                               onDelete={file.is_own_upload ? () => handleDeleteFile(file) : undefined}
