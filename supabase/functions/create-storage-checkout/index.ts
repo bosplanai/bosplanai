@@ -7,12 +7,11 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-// Storage tier pricing for Bosdrive
-const STORAGE_TIERS: Record<string, { gb: number; priceGbp: number; label: string }> = {
-  "1gb": { gb: 1, priceGbp: 299, label: "1 GB" },
-  "5gb": { gb: 5, priceGbp: 999, label: "5 GB" },
-  "10gb": { gb: 10, priceGbp: 1799, label: "10 GB" },
-  "50gb": { gb: 50, priceGbp: 4999, label: "50 GB" },
+// Storage tier pricing for Bosdrive (in USD cents)
+const STORAGE_TIERS: Record<string, { gb: number; priceUsd: number; label: string }> = {
+  "1gb": { gb: 1, priceUsd: 149, label: "1 GB" },        // $1.49/mo
+  "10gb": { gb: 10, priceUsd: 999, label: "10 GB" },     // $9.99/mo
+  "100gb": { gb: 100, priceUsd: 9900, label: "100 GB" }, // $99/mo
 };
 
 serve(async (req) => {
@@ -82,19 +81,19 @@ serve(async (req) => {
 
     const origin = returnOrigin || "https://bosplansupabase.lovable.app";
 
-    // Create checkout session for one-time storage purchase
+    // Create checkout session for one-time storage purchase in USD
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
       customer_email: customerId ? undefined : user.email,
       line_items: [
         {
           price_data: {
-            currency: "gbp",
+            currency: "usd",
             product_data: {
               name: `Bosdrive Storage - ${tierInfo.label}`,
               description: `One-time purchase of ${tierInfo.label} additional storage for Bosdrive`,
             },
-            unit_amount: tierInfo.priceGbp,
+            unit_amount: tierInfo.priceUsd,
           },
           quantity: 1,
         },

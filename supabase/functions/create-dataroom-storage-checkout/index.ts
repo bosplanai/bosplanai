@@ -7,12 +7,11 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-// Storage tier pricing for Data Rooms (in MB for smaller increments)
-const STORAGE_TIERS: Record<string, { mb: number; priceGbp: number; label: string }> = {
-  "100mb": { mb: 100, priceGbp: 199, label: "100 MB" },
-  "500mb": { mb: 500, priceGbp: 499, label: "500 MB" },
-  "1gb": { mb: 1024, priceGbp: 799, label: "1 GB" },
-  "5gb": { mb: 5120, priceGbp: 2499, label: "5 GB" },
+// Storage tier pricing for Data Rooms (in USD cents)
+const STORAGE_TIERS: Record<string, { mb: number; priceUsd: number; label: string }> = {
+  "100mb": { mb: 100, priceUsd: 999, label: "100 MB" },    // $9.99/mo
+  "500mb": { mb: 500, priceUsd: 1499, label: "500 MB" },   // $14.99/mo
+  "1gb": { mb: 1024, priceUsd: 2499, label: "1 GB" },      // $24.99/mo
 };
 
 serve(async (req) => {
@@ -85,19 +84,19 @@ serve(async (req) => {
     // Convert MB to GB for storage (used in metadata)
     const storageGb = tierInfo.mb / 1024;
 
-    // Create checkout session for one-time storage purchase
+    // Create checkout session for one-time storage purchase in USD
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
       customer_email: customerId ? undefined : user.email,
       line_items: [
         {
           price_data: {
-            currency: "gbp",
+            currency: "usd",
             product_data: {
               name: `Data Room Storage - ${tierInfo.label}`,
               description: `One-time purchase of ${tierInfo.label} additional storage for Data Rooms`,
             },
-            unit_amount: tierInfo.priceGbp,
+            unit_amount: tierInfo.priceUsd,
           },
           quantity: 1,
         },
