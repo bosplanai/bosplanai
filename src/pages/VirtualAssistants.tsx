@@ -118,8 +118,7 @@ const VirtualAssistants = () => {
         <div className="flex-1 flex flex-col">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-5 p-4 sm:p-6 md:p-8 bg-card/50">
-          <div className="flex items-center gap-3 sm:gap-5">
-            <img alt="Bosplan" className="h-8 w-auto cursor-pointer sm:h-10 transition-transform duration-200 hover:scale-105" onClick={() => navigate("/")} src="/lovable-uploads/df46293f-eed7-4703-b275-003427891304.png" />
+          <div className="flex items-center gap-3 sm:gap-5 pl-12 sm:pl-16 md:pl-20">
             <Button variant="ghost" size="icon" onClick={() => navigate("/")} className="shrink-0 h-9 w-9 sm:h-10 sm:w-10 rounded-xl hover:bg-secondary/80 transition-all duration-200">
               <ArrowLeft className="w-5 h-5" />
             </Button>
