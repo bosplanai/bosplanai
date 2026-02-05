@@ -98,17 +98,21 @@ const GuestFilePreviewDialog = ({
 
         if (!error && data?.document?.content) {
           const content = data.document.content;
-          if (content && content !== "<p></p>" && content !== "<p>Start editing this document...</p>") {
+          // Accept any content, including placeholder - we'll show it rather than broken Google Docs Viewer
+          if (content && content.trim() !== "" && content !== "<p></p>") {
             setDocumentContent(content);
           } else {
-            setDocumentContent(null);
+            // Set a placeholder for empty documents
+            setDocumentContent("<p class='text-muted-foreground'>This document is empty. Click 'Edit Document' to add content.</p>");
           }
         } else {
-          setDocumentContent(null);
+          // Set a placeholder when document fetch fails
+          setDocumentContent("<p class='text-muted-foreground'>Document content is loading. Click 'Edit Document' to view and edit.</p>");
         }
       } catch (err) {
         console.error("Error fetching document content:", err);
-        setDocumentContent(null);
+        // Set a placeholder on error
+        setDocumentContent("<p class='text-muted-foreground'>Unable to load document preview. Click 'Edit Document' to view.</p>");
       } finally {
         setContentLoading(false);
       }
