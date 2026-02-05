@@ -5,7 +5,6 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface TeamMemberWorkload {
   id: string;
@@ -50,8 +49,8 @@ export function WorkloadHeatmap({ workloads, onMemberClick }: WorkloadHeatmapPro
         <h3 className="font-semibold text-foreground text-base">Team Capacity & Workload</h3>
       </div>
       
-      <ScrollArea className="flex-1 min-h-0">
-        <div className="grid gap-4 pr-4">
+      <div className="flex-1 min-h-0 overflow-y-auto">
+        <div className="grid gap-4 pr-2">
           {sortedWorkloads.map((member) => (
             <Tooltip key={member.id}>
               <TooltipTrigger asChild>
@@ -122,7 +121,7 @@ export function WorkloadHeatmap({ workloads, onMemberClick }: WorkloadHeatmapPro
             </div>
           )}
         </div>
-      </ScrollArea>
+      </div>
       {/* Legend */}
       <div className="flex flex-wrap items-center gap-x-5 gap-y-2 mt-5 pt-5 border-t border-border text-sm">
         <div className="flex items-center gap-2">
