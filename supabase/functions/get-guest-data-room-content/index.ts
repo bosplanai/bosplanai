@@ -255,24 +255,53 @@ Deno.serve(async (req) => {
     
     console.log("Folders query result:", { count: folders?.length, error: foldersError, folderId });
 
-    // Get files in current directory - only root files (parent_file_id is null) to show grouped versions
-    let filesQuery = supabaseAdmin
+    // Get ALL files in the data room to properly compute latest versions
+    const { data: allFiles, error: filesError } = await supabaseAdmin
       .from("data_room_files")
       .select("id, name, file_path, file_size, mime_type, created_at, updated_at, folder_id, is_restricted, uploaded_by, version, parent_file_id, assigned_to, assigned_guest_id")
       .eq("data_room_id", dataRoom.id)
       .is("deleted_at", null)
-      .is("parent_file_id", null); // Only show root files, not version children
+      .order("version", { ascending: false });
     
-    // Use .is() for null, .eq() for actual values
+    console.log("All files query result:", { count: allFiles?.length, error: filesError });
+    
+    // Group files by their root file (parent_file_id or self if no parent)
+    const filesByRoot: Record<string, any[]> = {};
+    (allFiles || []).forEach((file: any) => {
+      const rootId = file.parent_file_id || file.id;
+      if (!filesByRoot[rootId]) {
+        filesByRoot[rootId] = [];
+      }
+      filesByRoot[rootId].push(file);
+    });
+    
+    // For each file family, get the latest version (highest version number)
+    const latestVersions: any[] = [];
+    Object.entries(filesByRoot).forEach(([rootId, versions]) => {
+      // Sort by version descending and get the latest
+      versions.sort((a, b) => (b.version || 1) - (a.version || 1));
+      const latestVersion = versions[0];
+      const rootFile = versions.find((v: any) => !v.parent_file_id) || versions[versions.length - 1];
+      
+      // Use the root file's folder_id for filtering, but show latest version's content
+      latestVersions.push({
+        ...latestVersion,
+        // Keep folder_id from root file for proper folder filtering
+        folder_id: rootFile.folder_id,
+        // Track root file id for version history
+        root_file_id: rootId
+      });
+    });
+    
+    // Filter by current folder
+    let files: any[];
     if (folderId) {
-      filesQuery = filesQuery.eq("folder_id", folderId);
+      files = latestVersions.filter(f => f.folder_id === folderId);
     } else {
-      filesQuery = filesQuery.is("folder_id", null);
+      files = latestVersions.filter(f => !f.folder_id);
     }
     
-    const { data: files, error: filesError } = await filesQuery.order("name");
-    
-    console.log("Files query result:", { count: files?.length, error: filesError, folderId });
+    console.log("Filtered files for folder:", { count: files.length, folderId });
 
     // Filter restricted files - get guest's permissions
     const fileIds = files?.map(f => f.id) || [];
