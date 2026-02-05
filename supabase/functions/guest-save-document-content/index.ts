@@ -153,35 +153,106 @@
        );
      }
  
-     // Create version if requested
-     if (createVersion) {
-       // Get next version number
-       const { data: latestVersion } = await supabaseAdmin
-         .from("data_room_document_versions")
-         .select("version_number")
-         .eq("document_id", documentId)
-         .order("version_number", { ascending: false })
-         .limit(1)
-         .maybeSingle();
- 
-       const nextVersion = (latestVersion?.version_number || 0) + 1;
- 
-       const { error: versionError } = await supabaseAdmin
-         .from("data_room_document_versions")
-         .insert({
-           document_id: documentId,
-           file_id: fileId,
-           data_room_id: invite.data_room_id,
-           organization_id: invite.organization_id,
-           content: content,
-           version_number: nextVersion,
-           version_note: versionNote || `Edited by ${invite.guest_name || normalizedEmail}`,
-         });
- 
-       if (versionError) {
-         console.error("Error creating version:", versionError);
-       }
-     }
+      // Create version if requested - this creates both document version AND file version
+      if (createVersion) {
+        // Get next document version number
+        const { data: latestDocVersion } = await supabaseAdmin
+          .from("data_room_document_versions")
+          .select("version_number")
+          .eq("document_id", documentId)
+          .order("version_number", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        const nextDocVersion = (latestDocVersion?.version_number || 0) + 1;
+
+        // Create document version record
+        const { error: docVersionError } = await supabaseAdmin
+          .from("data_room_document_versions")
+          .insert({
+            document_id: documentId,
+            file_id: fileId,
+            data_room_id: invite.data_room_id,
+            organization_id: invite.organization_id,
+            content: content,
+            version_number: nextDocVersion,
+            version_note: versionNote || `Edited by ${invite.guest_name || normalizedEmail}`,
+          });
+
+        if (docVersionError) {
+          console.error("Error creating document version:", docVersionError);
+        }
+
+        // Also create a file version entry (like internal users do)
+        // Get root file ID
+        const rootFileId = file.parent_file_id || fileId;
+
+        // Get current file info for the new version
+        const { data: currentFile } = await supabaseAdmin
+          .from("data_room_files")
+          .select("name, file_path, mime_type, folder_id, is_restricted, uploaded_by")
+          .eq("id", fileId)
+          .single();
+
+        if (currentFile) {
+          // Get all file versions to calculate next version number
+          const { data: fileVersions } = await supabaseAdmin
+            .from("data_room_files")
+            .select("id")
+            .eq("data_room_id", invite.data_room_id)
+            .or(`id.eq.${rootFileId},parent_file_id.eq.${rootFileId}`)
+            .is("deleted_at", null);
+
+          const nextFileVersion = (fileVersions?.length || 0) + 1;
+
+          // Generate version file path
+          const timestamp = Date.now();
+          const baseName = currentFile.name.replace(/\.[^/.]+$/, '');
+          const extension = currentFile.name.split('.').pop() || 'docx';
+          const versionFileName = `${baseName}_v${nextFileVersion}.${extension}`;
+          const versionFilePath = `${invite.organization_id}/${invite.data_room_id}/${timestamp}-${versionFileName}`;
+
+          // Create file version entry
+          const { data: newFileVersion, error: fileVersionError } = await supabaseAdmin
+            .from("data_room_files")
+            .insert({
+              name: currentFile.name,
+              file_path: versionFilePath, // New path for this version
+              file_size: new TextEncoder().encode(content).length,
+              mime_type: currentFile.mime_type,
+              data_room_id: invite.data_room_id,
+              organization_id: invite.organization_id,
+              folder_id: currentFile.folder_id,
+              parent_file_id: rootFileId,
+              uploaded_by: currentFile.uploaded_by, // Keep original uploader
+              is_restricted: currentFile.is_restricted,
+              version: nextFileVersion,
+            })
+            .select('id')
+            .single();
+
+          if (fileVersionError) {
+            console.error("Error creating file version:", fileVersionError);
+          } else if (newFileVersion) {
+            // Create document_content for the new version file
+            const { error: contentError } = await supabaseAdmin
+              .from("data_room_document_content")
+              .insert({
+                file_id: newFileVersion.id,
+                data_room_id: invite.data_room_id,
+                organization_id: invite.organization_id,
+                content: content,
+                content_type: "rich_text",
+              });
+
+            if (contentError) {
+              console.error("Error creating document content for version:", contentError);
+            } else {
+              console.log("Created file version:", nextFileVersion, "with document content");
+            }
+          }
+        }
+      }
  
      // Log activity
      await supabaseAdmin.from("data_room_activity").insert({
