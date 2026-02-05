@@ -258,7 +258,7 @@ Deno.serve(async (req) => {
     // Get files in current directory - only root files (parent_file_id is null) to show grouped versions
     let filesQuery = supabaseAdmin
       .from("data_room_files")
-      .select("id, name, file_path, file_size, mime_type, created_at, updated_at, folder_id, is_restricted, uploaded_by, version, parent_file_id, assigned_to")
+      .select("id, name, file_path, file_size, mime_type, created_at, updated_at, folder_id, is_restricted, uploaded_by, version, parent_file_id, assigned_to, assigned_guest_id")
       .eq("data_room_id", dataRoom.id)
       .is("deleted_at", null)
       .is("parent_file_id", null); // Only show root files, not version children
@@ -324,6 +324,9 @@ Deno.serve(async (req) => {
     const assigneeIds = [...new Set(accessibleFiles.map(f => f.assigned_to).filter(Boolean))];
     const allProfileIds = [...new Set([...uploaderIds, ...assigneeIds])];
     
+    // Also fetch guest assignee names
+    const guestAssigneeIds = [...new Set(accessibleFiles.map((f: any) => f.assigned_guest_id).filter(Boolean))];
+    
     let profileMap: Record<string, string> = {};
     if (allProfileIds.length > 0) {
       const { data: profiles } = await supabaseAdmin
@@ -336,6 +339,21 @@ Deno.serve(async (req) => {
           acc[p.id] = p.full_name;
           return acc;
         }, {} as Record<string, string>);
+      }
+    }
+    
+    // Fetch guest names for guest assignees
+    if (guestAssigneeIds.length > 0) {
+      const { data: guestInvites } = await supabaseAdmin
+        .from("data_room_invites")
+        .select("id, guest_name, email")
+        .in("id", guestAssigneeIds);
+      
+      if (guestInvites) {
+        guestInvites.forEach((g: any) => {
+          // Use invite id as key (prefixed to avoid collision with profile ids)
+          profileMap[g.id] = g.guest_name || g.email;
+        });
       }
     }
 
