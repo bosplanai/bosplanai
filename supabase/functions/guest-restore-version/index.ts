@@ -139,7 +139,6 @@ Deno.serve(async (req) => {
         uploaded_by: versionToRestore.uploaded_by, // Keep original uploader
         parent_file_id: rootFileId,
         version: newVersion,
-        status: versionToRestore.status || 'not_opened',
       })
       .select('id')
       .single();
