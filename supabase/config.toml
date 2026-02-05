@@ -137,3 +137,15 @@ verify_jwt = false
 
 [functions.get-guest-file-download]
 verify_jwt = false
+ 
+ [functions.guest-get-document-content]
+ verify_jwt = false
+ 
+ [functions.guest-save-document-content]
+ verify_jwt = false
+ 
+ [functions.get-guest-file-comments]
+ verify_jwt = false
+ 
+ [functions.guest-add-file-comment]
+ verify_jwt = false

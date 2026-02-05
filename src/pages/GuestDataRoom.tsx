@@ -1716,6 +1716,13 @@ const GuestDataRoom = () => {
         token={token || password}
         email={email}
         guestName={guestName}
+        onEditDocument={previewFile?.permissionLevel === "edit" ? () => {
+          // Find the file object and open editor
+          const fileToEdit = files.find(f => f.id === previewFile?.id);
+          if (fileToEdit) {
+            setEditFile(fileToEdit);
+          }
+        } : undefined}
       />
 
       {/* Document Editor Dialog */}
