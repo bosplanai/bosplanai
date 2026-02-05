@@ -4,6 +4,7 @@ import { Activity, RefreshCw, ArrowLeft, Users, ListTodo, AlertTriangle, CheckCi
 import OrganizationSwitcher from "@/components/OrganizationSwitcher";
 import { NotificationBell } from "@/components/NotificationBell";
 import MobileHeaderMenu from "@/components/MobileHeaderMenu";
+import HeaderLogo from "@/components/HeaderLogo";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -155,6 +156,7 @@ const TaskFlow = () => {
         <header className="bg-card border-b border-border px-4 sm:px-6 py-4 sm:py-5">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
             <div className="flex items-center gap-3 sm:gap-4">
+              <HeaderLogo />
               <Button
                 variant="ghost"
                 size="icon"

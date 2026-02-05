@@ -6,6 +6,7 @@ import SideNavigation from "@/components/SideNavigation";
 import BetaFooter from "@/components/BetaFooter";
 import OrganizationSwitcher from "@/components/OrganizationSwitcher";
 import { NotificationBell } from "@/components/NotificationBell";
+import HeaderLogo from "@/components/HeaderLogo";
 
 const Policies = () => {
   const { navigate } = useOrgNavigation();
@@ -16,6 +17,7 @@ const Policies = () => {
         <div className="flex-1 flex flex-col">
           <header className="flex items-center justify-between px-8 py-4 border-b border-border">
             <div className="flex items-center gap-4">
+              <HeaderLogo />
               <Button
                 variant="ghost"
                 size="icon"

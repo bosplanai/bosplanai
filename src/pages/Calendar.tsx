@@ -19,6 +19,7 @@ import { CalendarDays, CheckSquare, ListTodo, ArrowLeft, User, FileText, Clock, 
 import OrganizationSwitcher from '@/components/OrganizationSwitcher';
 import { NotificationBell } from '@/components/NotificationBell';
 import MobileHeaderMenu from '@/components/MobileHeaderMenu';
+import HeaderLogo from '@/components/HeaderLogo';
 import SideNavigation from '@/components/SideNavigation';
 import BetaFooter from '@/components/BetaFooter';
 import { TaskNotesDialog } from '@/components/TaskNotesDialog';
@@ -281,6 +282,7 @@ const Calendar = () => {
           <header className="bg-card border-b border-border px-4 sm:px-6 py-4 sm:py-5">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
               <div className="flex items-center gap-3 sm:gap-4">
+                <HeaderLogo />
                 <Button
                   variant="ghost"
                   size="icon"
