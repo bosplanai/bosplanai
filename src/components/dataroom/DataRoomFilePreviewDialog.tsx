@@ -121,6 +121,7 @@ const DataRoomFilePreviewDialog = ({
 
       setContentLoading(true);
       try {
+        // First try to fetch content for this specific file
         const { data, error } = await supabase
           .from("data_room_document_content")
           .select("content")
@@ -130,11 +131,44 @@ const DataRoomFilePreviewDialog = ({
         if (error) {
           console.error("Error fetching document content:", error);
           setDocumentContent(null);
-        } else if (data?.content) {
-          setDocumentContent(data.content);
-        } else {
-          setDocumentContent(null);
+          return;
         }
+
+        // Check if we have valid content
+        const hasValidContent = data?.content && 
+          data.content.trim() !== "" && 
+          data.content !== "<p></p>" &&
+          data.content !== "<p>Start editing this document...</p>";
+
+        if (hasValidContent) {
+          setDocumentContent(data.content);
+          return;
+        }
+
+        // If this is a version file (has parent), try to get content from the root/parent
+        // This handles legacy version files that were created without document content
+        const { data: fileData } = await supabase
+          .from("data_room_files")
+          .select("parent_file_id")
+          .eq("id", file.id)
+          .single();
+
+        if (fileData?.parent_file_id) {
+          // This is a version file, try to fetch content from the parent file
+          const { data: parentContent } = await supabase
+            .from("data_room_document_content")
+            .select("content")
+            .eq("file_id", fileData.parent_file_id)
+            .maybeSingle();
+
+          if (parentContent?.content && parentContent.content.trim() !== "") {
+            setDocumentContent(parentContent.content);
+            return;
+          }
+        }
+
+        // No valid content found
+        setDocumentContent(null);
       } catch (err) {
         console.error("Error fetching document content:", err);
         setDocumentContent(null);
@@ -278,6 +312,7 @@ const DataRoomFilePreviewDialog = ({
     
     setContentLoading(true);
     try {
+      // First try to fetch content for this specific file
       const { data, error } = await supabase
         .from("data_room_document_content")
         .select("content")
@@ -286,8 +321,36 @@ const DataRoomFilePreviewDialog = ({
 
       if (error) {
         console.error("Error fetching document content:", error);
-      } else if (data?.content) {
+        return;
+      }
+
+      const hasValidContent = data?.content && 
+        data.content.trim() !== "" && 
+        data.content !== "<p></p>" &&
+        data.content !== "<p>Start editing this document...</p>";
+
+      if (hasValidContent) {
         setDocumentContent(data.content);
+        return;
+      }
+
+      // Try parent file fallback
+      const { data: fileData } = await supabase
+        .from("data_room_files")
+        .select("parent_file_id")
+        .eq("id", file.id)
+        .single();
+
+      if (fileData?.parent_file_id) {
+        const { data: parentContent } = await supabase
+          .from("data_room_document_content")
+          .select("content")
+          .eq("file_id", fileData.parent_file_id)
+          .maybeSingle();
+
+        if (parentContent?.content && parentContent.content.trim() !== "") {
+          setDocumentContent(parentContent.content);
+        }
       }
     } catch (err) {
       console.error("Error fetching document content:", err);
