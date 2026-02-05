@@ -105,7 +105,7 @@ Deno.serve(async (req) => {
     // Get all versions of this file (root file + all versions with parent_file_id pointing to root)
     const { data: versions, error: versionsError } = await supabaseAdmin
       .from("data_room_files")
-      .select("id, name, version, file_path, file_size, mime_type, uploaded_by, created_at, status, parent_file_id")
+      .select("id, name, version, file_path, file_size, mime_type, uploaded_by, created_at, parent_file_id")
       .eq("data_room_id", invite.data_room_id)
       .is("deleted_at", null)
       .or(`id.eq.${rootFileId},parent_file_id.eq.${rootFileId}`)
