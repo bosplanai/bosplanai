@@ -24,6 +24,7 @@ interface GuestDataRoomDocumentEditorDialogProps {
   guestName: string;
   dataRoomId: string;
   organizationId: string;
+  onVersionSaved?: () => void;
 }
 
 interface DocumentContent {
@@ -46,6 +47,7 @@ export function GuestDataRoomDocumentEditorDialog({
   guestName,
   dataRoomId,
   organizationId,
+  onVersionSaved,
 }: GuestDataRoomDocumentEditorDialogProps) {
   const [content, setContent] = useState<string>("");
   const [contentType, setContentType] = useState<"rich_text" | "plain_text">("rich_text");
@@ -230,6 +232,8 @@ export function GuestDataRoomDocumentEditorDialog({
         setLastSaved(new Date());
         if (createVersion) {
           lastVersionContentRef.current = contentToSave;
+          // Notify parent to refresh files list so version indicator updates
+          onVersionSaved?.();
         }
         lastFetchedContentRef.current = contentToSave;
       } catch (err) {
@@ -238,7 +242,7 @@ export function GuestDataRoomDocumentEditorDialog({
         setIsSaving(false);
       }
     },
-    [documentId, file?.id, token, email]
+    [documentId, file?.id, token, email, onVersionSaved]
   );
 
   // Update content with debounced save
