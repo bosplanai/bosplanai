@@ -1767,6 +1767,7 @@ const GuestDataRoom = () => {
         guestName={guestName}
         dataRoomId={dataRoom?.id || ""}
         organizationId={dataRoom?.organizationId || ""}
+        onVersionSaved={() => fetchContent(currentFolderId)}
       />
 
       {/* File Permissions Dialog */}
