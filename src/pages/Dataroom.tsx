@@ -1344,6 +1344,7 @@ By signing below, you acknowledge that you have read, understood, and agree to b
       folder_id: string | null;
       is_restricted: boolean;
       assigned_to: string | null;
+      assigned_guest_id: string | null;
     }) => {
       if (!activeRoomId || !selectedRoom || !user?.id) {
         throw new Error("Not authenticated or no room selected");
@@ -1353,7 +1354,8 @@ By signing below, you acknowledge that you have read, understood, and agree to b
         .update({
           folder_id: data.folder_id,
           is_restricted: data.is_restricted,
-          assigned_to: data.assigned_to
+          assigned_to: data.assigned_to,
+          assigned_guest_id: data.assigned_guest_id
         })
         .eq("id", data.fileId);
       if (error) throw error;
@@ -3034,6 +3036,11 @@ By signing below, you acknowledge that you have read, understood, and agree to b
         file={editDetailsFile}
         folders={allFolders}
         members={dataRoomMembers}
+        guests={invites?.filter((invite: any) => invite.nda_signed_at).map((invite: any) => ({
+          id: invite.id,
+          guest_name: invite.guest_name,
+          email: invite.email
+        })) || []}
         onSave={(data) => {
           if (editDetailsFile) {
             updateFileDetailsMutation.mutate({
