@@ -82,7 +82,7 @@ Deno.serve(async (req) => {
     // Get data room to find the owner
     const { data: dataRoom } = await supabaseAdmin
       .from("data_rooms")
-      .select("created_by")
+      .select("created_by, created_at")
       .eq("id", invite.data_room_id)
       .single();
 
@@ -104,8 +104,25 @@ Deno.serve(async (req) => {
       console.error("Members fetch error:", membersError);
     }
 
+    // Check if owner is in members list
+    const ownerInMembers = (members || []).some(m => m.user_id === ownerId);
+    
+    // If owner is not in members, fetch their profile separately
+    let ownerProfile = null;
+    if (ownerId && !ownerInMembers) {
+      const { data: ownerData } = await supabaseAdmin
+        .from("profiles")
+        .select("full_name, job_role")
+        .eq("id", ownerId)
+        .single();
+      ownerProfile = ownerData;
+    }
+
     // Fetch user emails from auth.users for display
     const userIds = (members || []).map(m => m.user_id).filter(Boolean);
+    if (ownerId && !userIds.includes(ownerId)) {
+      userIds.push(ownerId);
+    }
     let emailMap: Record<string, string> = {};
     
     if (userIds.length > 0) {
@@ -131,7 +148,7 @@ Deno.serve(async (req) => {
     }
 
     // Format members data with owner flag and email
-    const formattedMembers = (members || []).map(m => ({
+    let formattedMembers = (members || []).map(m => ({
       id: m.id,
       user_id: m.user_id,
       role: m.role,
@@ -143,6 +160,22 @@ Deno.serve(async (req) => {
         job_role: (m.user as any)?.job_role || null,
       }
     }));
+
+    // Add owner if not already in members list
+    if (ownerId && !ownerInMembers && ownerProfile) {
+      formattedMembers.push({
+        id: `owner-${ownerId}`,
+        user_id: ownerId,
+        role: "admin",
+        is_owner: true,
+        created_at: dataRoom?.created_at || new Date().toISOString(),
+        email: emailMap[ownerId] || null,
+        user: {
+          full_name: ownerProfile.full_name || "Room Owner",
+          job_role: ownerProfile.job_role || null,
+        }
+      });
+    }
 
     // Sort members: owner first, then by name
     formattedMembers.sort((a, b) => {
