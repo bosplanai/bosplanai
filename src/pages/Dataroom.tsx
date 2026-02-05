@@ -1361,26 +1361,6 @@ By signing below, you acknowledge that you have read, understood, and agree to b
     }
   });
 
-  // Fetch file permissions for edit details dialog
-  const { data: editDetailsPermissions = [] } = useQuery({
-    queryKey: ["file-permissions-for-edit", editDetailsFile?.id],
-    queryFn: async () => {
-      if (!editDetailsFile?.id) return [];
-      const { data, error } = await supabase
-        .from("data_room_file_permissions")
-        .select("user_id, guest_invite_id, permission_level")
-        .eq("file_id", editDetailsFile.id);
-      
-      if (error) throw error;
-      return (data || []).map(p => ({
-        user_id: p.user_id,
-        guest_invite_id: p.guest_invite_id,
-        permission_level: p.permission_level as "view" | "edit"
-      }));
-    },
-    enabled: editDetailsDialogOpen && !!editDetailsFile?.id,
-  });
-
   // Update file details mutation
   const updateFileDetailsMutation = useMutation({
     mutationFn: async (data: {
@@ -1389,12 +1369,10 @@ By signing below, you acknowledge that you have read, understood, and agree to b
       is_restricted: boolean;
       assigned_to: string | null;
       assigned_guest_id: string | null;
-      permissions: { referenceId: string; permission: "view" | "edit"; type: "team" | "guest" }[];
     }) => {
       if (!activeRoomId || !selectedRoom || !user?.id) {
         throw new Error("Not authenticated or no room selected");
       }
-      // Update file details
       const { error } = await supabase
         .from("data_room_files")
         .update({
@@ -1405,55 +1383,9 @@ By signing below, you acknowledge that you have read, understood, and agree to b
         })
         .eq("id", data.fileId);
       if (error) throw error;
-
-      // Handle permissions
-      // Delete existing permissions
-      const { error: deleteError } = await supabase
-        .from("data_room_file_permissions")
-        .delete()
-        .eq("file_id", data.fileId);
-      
-      if (deleteError) throw deleteError;
-
-      // If restricted, insert new permissions (only team members supported in current schema)
-      if (data.is_restricted && data.permissions.length > 0) {
-        const teamPermissions = data.permissions
-          .filter(u => u.type === "team")
-          .map(u => ({
-            file_id: data.fileId,
-            user_id: u.referenceId,
-            permission_level: u.permission,
-          }));
-        
-        if (teamPermissions.length > 0) {
-          const { error: insertError } = await supabase
-            .from("data_room_file_permissions")
-            .insert(teamPermissions);
-          
-          if (insertError) throw insertError;
-        }
-      }
-
-      // Log activity
-      await supabase.from("data_room_activity").insert({
-        data_room_id: activeRoomId,
-        organization_id: selectedRoom.organization_id,
-        user_id: user.id,
-        user_name: profile?.full_name || "Unknown",
-        user_email: user.email || "",
-        action: "permissions_changed",
-        details: {
-          file_name: editDetailsFile?.name,
-          file_id: data.fileId,
-          is_restricted: data.is_restricted,
-          granted_to_count: data.permissions.length,
-        },
-        is_guest: false,
-      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["data-room-files"] });
-      queryClient.invalidateQueries({ queryKey: ["file-permissions-for-edit"] });
       setEditDetailsDialogOpen(false);
       setEditDetailsFile(null);
       toast({ title: "File details updated" });
@@ -3216,9 +3148,6 @@ By signing below, you acknowledge that you have read, understood, and agree to b
           guest_name: invite.guest_name,
           email: invite.email
         })) || []}
-        existingPermissions={editDetailsPermissions}
-        currentUserId={user?.id}
-        dataRoomCreatorId={selectedRoom?.created_by}
         onSave={(data) => {
           if (editDetailsFile) {
             updateFileDetailsMutation.mutate({

@@ -288,20 +288,32 @@ export function FilePermissionsDialog({
         
         if (deleteError) throw deleteError;
 
-        // Insert new permissions - only team members supported in current schema
+        // Insert new permissions - separate team members and guests
         if (selectedUsers.length > 0) {
           const teamPermissions = selectedUsers
             .filter(u => u.type === "team")
             .map(u => ({
               file_id: file.id,
               user_id: u.referenceId,
+              guest_invite_id: null,
               permission_level: u.permission,
             }));
           
-          if (teamPermissions.length > 0) {
+          const guestPermissions = selectedUsers
+            .filter(u => u.type === "guest")
+            .map(u => ({
+              file_id: file.id,
+              user_id: null,
+              guest_invite_id: u.referenceId,
+              permission_level: u.permission,
+            }));
+          
+          const allPermissions = [...teamPermissions, ...guestPermissions];
+          
+          if (allPermissions.length > 0) {
             const { error: insertError } = await supabase
               .from("data_room_file_permissions")
-              .insert(teamPermissions);
+              .insert(allPermissions);
             
             if (insertError) throw insertError;
           }
