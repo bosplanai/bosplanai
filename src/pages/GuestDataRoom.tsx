@@ -449,27 +449,86 @@ const GuestDataRoom = () => {
   };
 
   const handleDownload = async (file: FileItem, format?: 'original' | 'pdf') => {
+    const baseName = file.name.replace(/\.[^/.]+$/, '');
+    const isEditable = isEditableDocumentUtil(file.mime_type, file.name);
+
     // For PDF format, check for edited document content first
     if (format === 'pdf') {
-      // Try to get document content from edge function or handle via print
-      const { data, error: fnError } = await supabase.functions.invoke(
-        "get-guest-file-download",
-        {
-          body: { token: token || password, email: email.toLowerCase(), fileId: file.id, mode: "preview" },
-        }
-      );
+      if (isEditable) {
+        // Try to get edited document content
+        try {
+          const { data: docData, error: docError } = await supabase.functions.invoke(
+            "guest-get-document-content",
+            {
+              body: { token: token || password, email: email.toLowerCase(), fileId: file.id },
+            }
+          );
 
-      if (!fnError && data?.downloadUrl) {
-        // For PDF export, open in new window for printing
-        const printWindow = window.open(data.downloadUrl, '_blank');
-        if (printWindow) {
-          toast.success("Opening file for PDF export. Use browser's Print > Save as PDF option.");
-        } else {
-          toast.error("Could not open print window. Please allow popups.");
+          const hasEditedContent = docData?.content && 
+            docData.content !== "" && 
+            docData.content !== "<p></p>" &&
+            docData.content !== "<p>Start editing this document...</p>" &&
+            !docData.content.includes("Could not extract document content") &&
+            docData.content.length > 50;
+
+          if (hasEditedContent) {
+            // Export edited content as PDF using browser print
+            const printWindow = window.open('', '_blank');
+            if (printWindow) {
+              const printHtml = `
+                <!DOCTYPE html>
+                <html>
+                  <head>
+                    <meta charset="UTF-8">
+                    <title>${baseName}</title>
+                    <style>
+                      @media print {
+                        @page { margin: 1in; size: A4; }
+                      }
+                      body { 
+                        font-family: 'Times New Roman', Georgia, serif; 
+                        font-size: 12pt; 
+                        line-height: 1.6;
+                        color: #000;
+                        max-width: 800px;
+                        margin: 0 auto;
+                        padding: 2em;
+                      }
+                      h1 { font-size: 24pt; font-weight: bold; margin: 0.5em 0; }
+                      h2 { font-size: 18pt; font-weight: bold; margin: 0.5em 0; }
+                      h3 { font-size: 14pt; font-weight: bold; margin: 0.5em 0; }
+                      p { margin: 0.5em 0; }
+                      table { border-collapse: collapse; width: 100%; margin: 1em 0; }
+                      td, th { border: 1px solid #000; padding: 8px; }
+                      th { background: #f0f0f0; font-weight: bold; }
+                      blockquote { border-left: 3px solid #ccc; padding-left: 1em; margin: 1em 0; color: #555; }
+                      ul, ol { margin: 0.5em 0; padding-left: 2em; }
+                      img { max-width: 100%; height: auto; }
+                    </style>
+                  </head>
+                  <body>
+                    ${docData.content}
+                  </body>
+                </html>
+              `;
+              printWindow.document.write(printHtml);
+              printWindow.document.close();
+              printWindow.onload = () => {
+                printWindow.print();
+              };
+              toast.success("Print dialog opened - Select 'Save as PDF' to export");
+            } else {
+              toast.error("Could not open print window. Please allow popups.");
+            }
+            return;
+          }
+        } catch (err) {
+          console.error("Error fetching document content for PDF:", err);
         }
-      } else {
-        toast.error("Failed to prepare PDF export");
       }
+
+      // No edited content - inform user
+      toast.info("PDF export is available for edited documents. Open and edit this document first to enable PDF export.");
       return;
     }
 
