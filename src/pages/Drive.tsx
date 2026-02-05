@@ -29,6 +29,7 @@ import { Badge } from "@/components/ui/badge";
 import { DocumentEditorDialog } from "@/components/drive/DocumentEditorDialog";
 import { NotificationBell } from "@/components/NotificationBell";
 import MobileHeaderMenu from "@/components/MobileHeaderMenu";
+import HeaderLogo from "@/components/HeaderLogo";
 import BetaFooter from "@/components/BetaFooter";
 import { useDriveStorage, DRIVE_STORAGE_QUERY_KEY } from "@/hooks/useDriveStorage";
 import { 
@@ -1735,6 +1736,7 @@ const Drive = () => {
         <header className="border-b border-border/60 bg-card/80 backdrop-blur-sm px-4 sm:px-6 py-4 sm:py-5 shadow-sm">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
             <div className="flex items-center gap-3 sm:gap-4">
+              <HeaderLogo />
               <Button variant="ghost" size="icon" onClick={() => navigate("/")} className="shrink-0 h-9 w-9 sm:h-10 sm:w-10 rounded-xl hover:bg-secondary/80 transition-all duration-200">
                 <ArrowLeft className="w-5 h-5" />
               </Button>

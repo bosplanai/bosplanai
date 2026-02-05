@@ -4,7 +4,6 @@ import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, PointerSensor, T
 import { ListTodo, Search, Users, BarChart3, Coins, TrendingUp, CheckSquare, Navigation, Lightbulb, FileText, ClipboardList, LogOut, X, SearchIcon, LucideIcon, Filter, Settings, ChevronDown, Check } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandSeparator } from "./ui/command";
-import bosplanLogo from "@/assets/bosplan-logo.png";
 import { isAfter, isBefore, isToday, startOfDay, endOfDay, addDays, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from "date-fns";
 import TabNavigation from "./TabNavigation";
 import ActionBar from "./ActionBar";
@@ -17,6 +16,7 @@ import ArchiveFolder from "./ArchiveFolder";
 import ArchiveChoiceDialog from "./ArchiveChoiceDialog";
 import OrganizationSwitcher from "./OrganizationSwitcher";
 import MobileHeaderMenu from "./MobileHeaderMenu";
+import HeaderLogo from "./HeaderLogo";
 import AddTaskDialog from "./AddTaskDialog";
 import PersonalChecklistModal from "./PersonalChecklistModal";
 import TaskDraftsFolder from "./TaskDraftsFolder";
@@ -480,6 +480,7 @@ const ProjectBoard = () => {
               {/* Top row: Logo, Title, and User Actions */}
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2 sm:gap-4">
+                  <HeaderLogo />
                   <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-xl bg-gradient-to-br from-brand-green to-brand-green/70 flex items-center justify-center shadow-sm cursor-pointer transition-transform duration-200 hover:scale-105" onClick={() => navigate("/")}>
                     <ListTodo className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
                   </div>

@@ -17,6 +17,7 @@ import SideNavigation from "@/components/SideNavigation";
 import BetaFooter from "@/components/BetaFooter";
 import { NotificationBell } from "@/components/NotificationBell";
 import MobileHeaderMenu from "@/components/MobileHeaderMenu";
+import HeaderLogo from "@/components/HeaderLogo";
 import ActionBar from "@/components/ActionBar";
 import CreateTemplateDialog from "@/components/templates/CreateTemplateDialog";
 import EditTemplateDialog from "@/components/templates/EditTemplateDialog";
@@ -217,6 +218,7 @@ const Templates = () => {
         <header className="bg-card border-b border-border px-4 sm:px-6 py-4 sm:py-5">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
             <div className="flex items-center gap-3 sm:gap-4">
+              <HeaderLogo />
               <Button
                 variant="ghost"
                 size="icon"

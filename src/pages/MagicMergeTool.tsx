@@ -18,6 +18,7 @@ import SideNavigation from "@/components/SideNavigation";
 import BetaFooter from "@/components/BetaFooter";
 import { NotificationBell } from "@/components/NotificationBell";
 import MobileHeaderMenu from "@/components/MobileHeaderMenu";
+import HeaderLogo from "@/components/HeaderLogo";
 import ActionBar from "@/components/ActionBar";
 import { useTeamMembers } from "@/hooks/useTeamMembers";
 import { useOrganization } from "@/hooks/useOrganization";
@@ -380,6 +381,7 @@ End of Audit Log
         <div className="border-b border-border/60 bg-card/80 backdrop-blur-sm px-6 py-4 shadow-sm">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
+              <HeaderLogo />
               <Button variant="ghost" size="icon" onClick={() => navigate("/")} className="rounded-xl hover:bg-secondary/80 transition-all duration-200">
                 <ArrowLeft className="w-5 h-5" />
               </Button>
