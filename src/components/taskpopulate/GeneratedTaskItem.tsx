@@ -166,7 +166,6 @@ const GeneratedTaskItem = ({
           {/* Board/Destination */}
           <Select value={destination} onValueChange={handleDestinationChange}>
             <SelectTrigger className="h-7 w-auto min-w-[100px] text-xs gap-1 border-dashed">
-              <DestIcon className="w-3 h-3" />
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
