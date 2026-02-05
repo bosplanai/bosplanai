@@ -13,14 +13,7 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Lock, Users, Eye, Edit2, Loader2, X, Mail } from "lucide-react";
+import { Lock, Users, Loader2, X, Mail, Check } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
@@ -45,7 +38,7 @@ interface FilePermission {
   file_id: string;
   user_id: string | null;
   guest_invite_id: string | null;
-  permission_level: "view" | "edit";
+  permission_level: string;
   user?: {
     id: string;
     full_name: string;
@@ -83,7 +76,7 @@ export function FilePermissionsDialog({
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [isRestricted, setIsRestricted] = useState(false);
-  const [selectedUsers, setSelectedUsers] = useState<{ referenceId: string; permission: "view" | "edit"; type: "team" | "guest" }[]>([]);
+  const [selectedUsers, setSelectedUsers] = useState<{ referenceId: string; type: "team" | "guest" }[]>([]);
   const [isSaving, setIsSaving] = useState(false);
 
   // Fetch data room members - refetch when dialog opens to get latest members
@@ -240,7 +233,6 @@ export function FilePermissionsDialog({
       setSelectedUsers(
         existingPermissions.map((p) => ({
           referenceId: p.user_id || p.guest_invite_id || '',
-          permission: p.permission_level as "view" | "edit",
           type: p.user_id ? "team" as const : "guest" as const,
         }))
       );
@@ -289,6 +281,7 @@ export function FilePermissionsDialog({
         if (deleteError) throw deleteError;
 
         // Insert new permissions - separate team members and guests
+        // All permissions are 'full' access (view, edit, download, version history)
         if (selectedUsers.length > 0) {
           const teamPermissions = selectedUsers
             .filter(u => u.type === "team")
@@ -296,7 +289,7 @@ export function FilePermissionsDialog({
               file_id: file.id,
               user_id: u.referenceId,
               guest_invite_id: null,
-              permission_level: u.permission,
+              permission_level: 'full',
             }));
           
           const guestPermissions = selectedUsers
@@ -305,7 +298,7 @@ export function FilePermissionsDialog({
               file_id: file.id,
               user_id: null,
               guest_invite_id: u.referenceId,
-              permission_level: u.permission,
+              permission_level: 'full',
             }));
           
           const allPermissions = [...teamPermissions, ...guestPermissions];
@@ -367,14 +360,8 @@ export function FilePermissionsDialog({
       if (existing) {
         return prev.filter((u) => u.referenceId !== referenceId);
       }
-      return [...prev, { referenceId, permission: "view" as const, type }];
+      return [...prev, { referenceId, type }];
     });
-  };
-
-  const updateUserPermission = (referenceId: string, permission: "view" | "edit") => {
-    setSelectedUsers((prev) =>
-      prev.map((u) => (u.referenceId === referenceId ? { ...u, permission } : u))
-    );
   };
 
   const isLoading = membersLoading || permissionsLoading || guestsLoading;
@@ -442,8 +429,7 @@ export function FilePermissionsDialog({
                 <ScrollArea className="h-[200px] pr-3">
                   <div className="space-y-2">
                     {allMembers.map((member) => {
-                      const userPermission = selectedUsers.find((u) => u.referenceId === member.referenceId);
-                      const isSelected = !!userPermission;
+                      const isSelected = selectedUsers.some((u) => u.referenceId === member.referenceId);
 
                       return (
                         <div
@@ -474,30 +460,10 @@ export function FilePermissionsDialog({
                           </label>
 
                           {isSelected && (
-                            <Select
-                              value={userPermission?.permission || "view"}
-                              onValueChange={(value: "view" | "edit") =>
-                                updateUserPermission(member.referenceId, value)
-                              }
-                            >
-                              <SelectTrigger className="w-24 h-7 text-xs flex-shrink-0">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="view">
-                                  <div className="flex items-center gap-1.5">
-                                    <Eye className="w-3 h-3" />
-                                    View
-                                  </div>
-                                </SelectItem>
-                                <SelectItem value="edit">
-                                  <div className="flex items-center gap-1.5">
-                                    <Edit2 className="w-3 h-3" />
-                                    Edit
-                                  </div>
-                                </SelectItem>
-                              </SelectContent>
-                            </Select>
+                            <div className="flex items-center gap-1.5 text-xs text-muted-foreground bg-muted/50 px-2 py-1 rounded">
+                              <Check className="w-3 h-3 text-primary" />
+                              Full Access
+                            </div>
                           )}
                         </div>
                       );
@@ -514,9 +480,6 @@ export function FilePermissionsDialog({
                     return (
                       <Badge key={u.referenceId} variant="secondary" className="text-xs gap-1">
                         {member?.name || "Unknown"}
-                        <span className="text-muted-foreground">
-                          ({u.permission === "edit" ? "Edit" : "View"})
-                        </span>
                         <X
                           className="w-3 h-3 cursor-pointer hover:text-destructive"
                           onClick={() => toggleUserPermission(u.referenceId, u.type)}
