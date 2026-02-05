@@ -33,7 +33,7 @@ import {
   CheckCircle2,
   AlertCircle,
   FileDown,
-  Shield,
+  
 } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
@@ -70,7 +70,7 @@ interface DataRoomFileCardProps {
   onViewVersions: () => void;
   onEditDetails: () => void;
   onEditDocument?: () => void;
-  onManagePermissions?: () => void;
+  
   onDelete: () => void;
   onStatusChange?: (status: string) => void;
 }
@@ -124,7 +124,7 @@ export function DataRoomFileCard({
   onViewVersions,
   onEditDetails,
   onEditDocument,
-  onManagePermissions,
+  
   onDelete,
   onStatusChange,
 }: DataRoomFileCardProps) {
@@ -205,12 +205,6 @@ export function DataRoomFileCard({
                 <Settings2 className="w-4 h-4" />
                 Edit Details
               </DropdownMenuItem>
-              {onManagePermissions && (
-                <DropdownMenuItem onClick={onManagePermissions} className="gap-2">
-                  <Shield className="w-4 h-4" />
-                  Manage Permissions
-                </DropdownMenuItem>
-              )}
               {canEditDocument && canEdit && onEditDocument && (
                 <DropdownMenuItem onClick={onEditDocument} className="gap-2">
                   <Edit3 className="w-4 h-4" />

@@ -29,7 +29,7 @@ import ActiveTeamPanel from "@/components/dataroom/ActiveTeamPanel";
 import DataRoomFilePreviewDialog from "@/components/dataroom/DataRoomFilePreviewDialog";
 import { DataRoomDocumentEditorDialog } from "@/components/dataroom/DataRoomDocumentEditorDialog";
 import NdaUpdateModal from "@/components/dataroom/NdaUpdateModal";
-import { FilePermissionsDialog } from "@/components/dataroom/FilePermissionsDialog";
+
 import { FolderPermissionsDialog } from "@/components/dataroom/FolderPermissionsDialog";
 import { AddToFolderDropdown } from "@/components/dataroom/AddToFolderDropdown";
 import { useNdaResignCheck } from "@/hooks/useNdaResignCheck";
@@ -121,8 +121,6 @@ By signing below, you acknowledge that you have read, understood, and agree to b
   const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
   const [createFolderOpen, setCreateFolderOpen] = useState(false);
   const [newFolderName, setNewFolderName] = useState("");
-  const [permissionsDialogOpen, setPermissionsDialogOpen] = useState(false);
-  const [permissionsFile, setPermissionsFile] = useState<{ id: string; name: string; is_restricted: boolean; uploaded_by: string } | null>(null);
   const [folderPermissionsDialogOpen, setFolderPermissionsDialogOpen] = useState(false);
   const [permissionsFolder, setPermissionsFolder] = useState<{ id: string; name: string; is_restricted: boolean; created_by: string } | null>(null);
   const [deleteFolderDialogOpen, setDeleteFolderDialogOpen] = useState(false);
@@ -2373,16 +2371,6 @@ By signing below, you acknowledge that you have read, understood, and agree to b
                                       file_path: file.file_path,
                                       mime_type: file.mime_type
                                     }) : undefined}
-                                    onManagePermissions={file.uploaded_by === user?.id ? () => {
-                                      const rootId = (file as any).root_file_id || file.id;
-                                      setPermissionsFile({ 
-                                        id: rootId, 
-                                        name: file.name, 
-                                        is_restricted: file.is_restricted || false, 
-                                        uploaded_by: file.uploaded_by 
-                                      });
-                                      setPermissionsDialogOpen(true);
-                                    } : undefined}
                                     onDelete={() => deleteMutation.mutate({ id: file.id, file_path: file.file_path, name: file.name })}
                                     onStatusChange={(status) => updateStatusMutation.mutate({ fileId: file.id, status })}
                                   />
@@ -2913,18 +2901,6 @@ By signing below, you acknowledge that you have read, understood, and agree to b
         </DialogContent>
       </Dialog>
 
-      {/* File Permissions Dialog - manages per-file access control */}
-      <FilePermissionsDialog
-        open={permissionsDialogOpen}
-        onOpenChange={setPermissionsDialogOpen}
-        file={permissionsFile}
-        dataRoomId={activeRoomId || ""}
-        organizationId={selectedRoom?.organization_id || organization?.id || ""}
-        currentUserId={user?.id || ""}
-        dataRoomCreatorId={selectedRoom?.created_by || ""}
-        currentUserName={profile?.full_name || user?.user_metadata?.full_name || user?.email || "Unknown"}
-        currentUserEmail={user?.email || ""}
-      />
 
       {/* Folder Permissions Dialog */}
       <FolderPermissionsDialog
