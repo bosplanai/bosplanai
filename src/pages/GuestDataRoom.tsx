@@ -54,6 +54,7 @@ import GuestDataRoomDocumentEditorDialog from "@/components/dataroom/GuestDataRo
 import { GuestAddToFolderDropdown } from "@/components/dataroom/GuestAddToFolderDropdown";
 import { GuestDataRoomFileCard } from "@/components/dataroom/GuestDataRoomFileCard";
 import { DataRoomVersionHistoryDialog } from "@/components/dataroom/DataRoomVersionHistoryDialog";
+import { isEditableDocument as isEditableDocumentUtil } from "@/lib/documentUtils";
 
 interface PreviewFile {
   id: string;
@@ -492,7 +493,56 @@ const GuestDataRoom = () => {
 
   // File preview handler
   const handleFilePreview = async (file: FileItem) => {
-    // First get a signed URL for the file (using preview mode to allow view-only access)
+    // Determine file type first
+    const mimeType = file.mime_type || "";
+    let fileType: "image" | "pdf" | "video" | "document" | "other" = "other";
+    
+    if (mimeType.startsWith("image/")) {
+      fileType = "image";
+    } else if (mimeType === "application/pdf") {
+      fileType = "pdf";
+    } else if (mimeType.startsWith("video/")) {
+      fileType = "video";
+    } else if (
+      mimeType.includes("word") ||
+      mimeType.includes("document") ||
+      mimeType.includes("spreadsheet") ||
+      mimeType.includes("excel") ||
+      mimeType.includes("presentation") ||
+      mimeType.includes("powerpoint")
+    ) {
+      fileType = "document";
+    }
+
+    // Check if file is an editable document (can be viewed from document content)
+    const isEditable = isEditableDocumentUtil(mimeType, file.name);
+
+    // For editable documents, we can open preview without storage URL
+    // The preview dialog will fetch document content from database
+    if (isEditable) {
+      setPreviewFile({
+        id: file.id,
+        name: file.name,
+        url: "", // Will be populated if storage URL succeeds, but not required
+        type: fileType,
+        mimeType: file.mime_type || undefined,
+        permissionLevel: file.permission_level,
+      });
+
+      // Try to get storage URL in background for download functionality
+      supabase.functions.invoke("get-guest-file-download", {
+        body: { token: token || password, email: email.toLowerCase(), fileId: file.id, mode: "preview" },
+      }).then(({ data }) => {
+        if (data?.downloadUrl) {
+          setPreviewFile(prev => prev ? { ...prev, url: data.downloadUrl } : null);
+        }
+      }).catch(() => {
+        // Silent fail - document content will be shown instead
+      });
+      return;
+    }
+
+    // For non-editable files (images, PDFs, videos), we need the storage URL
     setDownloading(file.id);
     try {
       const { data, error: fnError } = await supabase.functions.invoke(
@@ -504,27 +554,6 @@ const GuestDataRoom = () => {
 
       if (fnError) throw new Error(await extractFunctionErrorMessage(fnError));
       if (data?.error) throw new Error(data.error);
-
-      // Determine file type
-      const mimeType = file.mime_type || "";
-      let fileType: "image" | "pdf" | "video" | "document" | "other" = "other";
-      
-      if (mimeType.startsWith("image/")) {
-        fileType = "image";
-      } else if (mimeType === "application/pdf") {
-        fileType = "pdf";
-      } else if (mimeType.startsWith("video/")) {
-        fileType = "video";
-      } else if (
-        mimeType.includes("word") ||
-        mimeType.includes("document") ||
-        mimeType.includes("spreadsheet") ||
-        mimeType.includes("excel") ||
-        mimeType.includes("presentation") ||
-        mimeType.includes("powerpoint")
-      ) {
-        fileType = "document";
-      }
 
       setPreviewFile({
         id: file.id,
