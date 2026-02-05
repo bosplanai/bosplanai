@@ -108,7 +108,7 @@ export const useTasks = () => {
 
       // Filter tasks based on per-assignee acceptance:
       // - Task appears on user's board if they have an accepted assignment
-      // - Task appears on creator's board if at least one assignee accepted
+      // - Task appears on creator's board if at least one assignee accepted OR no assignees exist
       const filteredRows = rows.filter((t: any) => {
         const assignments = t.task_assignments || [];
         const userHasAcceptedAssignment = assignments.some(
@@ -118,11 +118,12 @@ export const useTasks = () => {
           (a: any) => a.assignment_status === "accepted"
         );
         const userIsCreator = t.created_by_user_id === user.id;
+        const hasNoAssignments = assignments.length === 0;
         
         // User sees task if:
         // 1. They have personally accepted the assignment, OR
-        // 2. They created the task AND at least one person has accepted
-        return userHasAcceptedAssignment || (userIsCreator && anyAssigneeAccepted);
+        // 2. They created the task AND (at least one person has accepted OR there are no assignments)
+        return userHasAcceptedAssignment || (userIsCreator && (anyAssigneeAccepted || hasNoAssignments));
       });
 
       // Generate signed URLs for attachments
@@ -311,13 +312,14 @@ export const useTasks = () => {
         signedUrl = data.attachment_url;
       }
 
-      // Check if current user has an accepted assignment (self-assigned)
+      // Check if current user has an accepted assignment (self-assigned) OR there are no assignees
       const userHasAcceptedAssignment = allAssigneeIds.includes(user.id) && 
         allAssigneeIds.length > 0 && 
         allAssigneeIds.some(id => id === user.id);
+      const hasNoAssignees = allAssigneeIds.length === 0;
       
-      // Add to local state only if user self-assigned (accepted)
-      if (userHasAcceptedAssignment) {
+      // Add to local state if user self-assigned (accepted) OR task has no assignees (creator sees it)
+      if (userHasAcceptedAssignment || hasNoAssignees) {
         setTasks((prev) => [
           ...prev,
           {
