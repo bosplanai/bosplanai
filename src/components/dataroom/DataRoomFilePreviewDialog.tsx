@@ -146,10 +146,9 @@ const DataRoomFilePreviewDialog = ({
         }
 
         // If this is a version file (has parent), try to get content from the root/parent
-        // This handles legacy version files that were created without document content
         const { data: fileData } = await supabase
           .from("data_room_files")
-          .select("parent_file_id")
+          .select("parent_file_id, file_path, mime_type, data_room_id, organization_id")
           .eq("id", file.id)
           .single();
 
@@ -167,7 +166,45 @@ const DataRoomFilePreviewDialog = ({
           }
         }
 
-        // No valid content found
+        // No valid content found - try to parse the original file
+        if (fileData?.file_path) {
+          try {
+            const { data: sessionData } = await supabase.auth.getSession();
+            const parseResponse = await supabase.functions.invoke("parse-document", {
+              body: {
+                fileId: file.id,
+                filePath: fileData.file_path,
+                mimeType: fileData.mime_type || file.mimeType,
+                bucket: "data-room-files",
+              },
+            });
+
+            if (parseResponse.data?.content && parseResponse.data.content.trim() !== "") {
+              const parsedContent = parseResponse.data.content;
+              
+              // Store the parsed content in the database
+              const { error: insertError } = await supabase
+                .from("data_room_document_content")
+                .insert({
+                  file_id: file.id,
+                  data_room_id: fileData.data_room_id,
+                  organization_id: fileData.organization_id,
+                  content: parsedContent,
+                  content_type: "rich_text",
+                });
+
+              if (!insertError) {
+                setDocumentContent(parsedContent);
+                toast.success("Document content loaded from uploaded file");
+                return;
+              }
+            }
+          } catch (parseErr) {
+            console.error("Error parsing document:", parseErr);
+          }
+        }
+
+        // Still no content - set null (will show fallback)
         setDocumentContent(null);
       } catch (err) {
         console.error("Error fetching document content:", err);
@@ -469,6 +506,18 @@ const DataRoomFilePreviewDialog = ({
                         className="prose prose-sm max-w-none p-8"
                         dangerouslySetInnerHTML={{ __html: sanitizeHtml(documentContent) }}
                       />
+                    </div>
+                  ) : isEditableDocument ? (
+                    <div className="flex-1 flex flex-col items-center justify-center text-center p-8">
+                      <File className="w-16 h-16 text-muted-foreground/50 mb-4" />
+                      <h3 className="text-lg font-medium text-foreground mb-2">{file.name}</h3>
+                      <p className="text-sm text-muted-foreground mb-4">
+                        Could not load document preview. Click "Edit Document" to view and edit the content.
+                      </p>
+                      <Button onClick={() => setShowEditor(true)} className="gap-2">
+                        <Edit className="w-4 h-4" />
+                        Edit Document
+                      </Button>
                     </div>
                   ) : (
                     <iframe
