@@ -145,6 +145,42 @@ export type Database = {
           },
         ]
       }
+      custom_nav_buttons: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          icon: string
+          id: string
+          is_enabled: boolean
+          position: number
+          title: string
+          updated_at: string
+          url: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          icon?: string
+          id?: string
+          is_enabled?: boolean
+          position?: number
+          title: string
+          updated_at?: string
+          url: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          icon?: string
+          id?: string
+          is_enabled?: boolean
+          position?: number
+          title?: string
+          updated_at?: string
+          url?: string
+        }
+        Relationships: []
+      }
       data_room_activity: {
         Row: {
           action: string
