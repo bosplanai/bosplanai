@@ -569,22 +569,43 @@ export function useDataRoomDocumentEditor({
 
               if (!uploadError) {
                 // Create file version entry
-                const { error: fileVersionError } = await supabase.from("data_room_files").insert({
-                  name: currentFile.name,
-                  file_path: versionFilePath,
-                  file_size: blob.size,
-                  mime_type: exportResult.mimeType,
-                  data_room_id: dataRoomId,
-                  organization_id: organizationId,
-                  folder_id: currentFile.folder_id,
-                  parent_file_id: rootFileId,
-                  uploaded_by: user.id,
-                  is_restricted: currentFile.is_restricted,
-                  version: nextFileVersion,
-                });
+                const { data: newFileVersion, error: fileVersionError } = await supabase
+                  .from("data_room_files")
+                  .insert({
+                    name: currentFile.name,
+                    file_path: versionFilePath,
+                    file_size: blob.size,
+                    mime_type: exportResult.mimeType,
+                    data_room_id: dataRoomId,
+                    organization_id: organizationId,
+                    folder_id: currentFile.folder_id,
+                    parent_file_id: rootFileId,
+                    uploaded_by: user.id,
+                    is_restricted: currentFile.is_restricted,
+                    version: nextFileVersion,
+                  })
+                  .select('id')
+                  .single();
 
                 if (fileVersionError) {
                   console.error("Error creating file version:", fileVersionError);
+                } else if (newFileVersion) {
+                  // IMPORTANT: Also create document_content for the new version file
+                  // This ensures previewing the version shows the correct content
+                  const { error: contentError } = await supabase
+                    .from("data_room_document_content")
+                    .insert({
+                      file_id: newFileVersion.id,
+                      data_room_id: dataRoomId,
+                      organization_id: organizationId,
+                      content: contentToSave,
+                      content_type: "rich_text",
+                      last_edited_by: user.id,
+                    });
+
+                  if (contentError) {
+                    console.error("Error creating document content for version:", contentError);
+                  }
                 }
               } else {
                 console.error("Error uploading version file:", uploadError);
