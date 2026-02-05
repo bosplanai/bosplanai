@@ -30,7 +30,6 @@ import {
   Globe,
   Eye,
   Edit2,
-  Mail,
 } from "lucide-react";
 
 interface DataRoomFolder {
@@ -106,6 +105,7 @@ export function DataRoomEditDetailsDialog({
   const activeGuests = guests.filter(g => g.guest_name);
 
   // Build combined members list for permission selection (excluding current user)
+  // Note: Only team members are supported for file restrictions in the current schema
   const allSelectableMembers = [
     ...members
       .filter(m => m.id !== currentUserId)
@@ -117,14 +117,6 @@ export function DataRoomEditDetailsDialog({
         type: "team" as const,
         isCreator: m.id === dataRoomCreatorId,
       })),
-    ...activeGuests.map(g => ({
-      id: g.id,
-      uniqueId: `guest-${g.id}`,
-      referenceId: g.id,
-      name: g.guest_name || g.email,
-      type: "guest" as const,
-      isCreator: false,
-    })),
   ];
 
   // Reset form when file changes
@@ -295,18 +287,10 @@ export function DataRoomEditDetailsDialog({
                                 onCheckedChange={() => togglePermissionUser(member.referenceId, member.type)}
                               />
                               <div className="flex items-center gap-1.5 min-w-0">
-                                {member.type === "guest" && (
-                                  <Mail className="w-3 h-3 text-primary flex-shrink-0" />
-                                )}
                                 <span className="text-sm truncate">{member.name}</span>
                                 {member.isCreator && (
                                   <Badge variant="secondary" className="text-[9px] px-1 py-0 h-3.5 bg-primary/10 text-primary border-0 flex-shrink-0">
                                     Owner
-                                  </Badge>
-                                )}
-                                {member.type === "guest" && (
-                                  <Badge variant="secondary" className="text-[9px] px-1 py-0 h-3.5 bg-primary/10 text-primary border-0 flex-shrink-0">
-                                    Guest
                                   </Badge>
                                 )}
                               </div>

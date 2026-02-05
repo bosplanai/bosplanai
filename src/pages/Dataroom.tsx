@@ -1415,32 +1415,20 @@ By signing below, you acknowledge that you have read, understood, and agree to b
       
       if (deleteError) throw deleteError;
 
-      // If restricted, insert new permissions
+      // If restricted, insert new permissions (only team members supported in current schema)
       if (data.is_restricted && data.permissions.length > 0) {
         const teamPermissions = data.permissions
           .filter(u => u.type === "team")
           .map(u => ({
             file_id: data.fileId,
             user_id: u.referenceId,
-            guest_invite_id: null,
             permission_level: u.permission,
           }));
         
-        const guestPermissions = data.permissions
-          .filter(u => u.type === "guest")
-          .map(u => ({
-            file_id: data.fileId,
-            user_id: null,
-            guest_invite_id: u.referenceId,
-            permission_level: u.permission,
-          }));
-        
-        const allPermissions = [...teamPermissions, ...guestPermissions];
-        
-        if (allPermissions.length > 0) {
+        if (teamPermissions.length > 0) {
           const { error: insertError } = await supabase
             .from("data_room_file_permissions")
-            .insert(allPermissions);
+            .insert(teamPermissions);
           
           if (insertError) throw insertError;
         }
