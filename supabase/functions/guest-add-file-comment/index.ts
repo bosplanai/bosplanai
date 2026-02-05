@@ -86,7 +86,7 @@
      // Get the file to verify it's in the guest's data room
      const { data: file, error: fileError } = await supabaseAdmin
        .from("data_room_files")
-       .select("id, data_room_id, name")
+        .select("id, data_room_id, name, parent_file_id")
        .eq("id", fileId)
        .is("deleted_at", null)
        .single();
@@ -98,12 +98,15 @@
        );
      }
  
-     // Insert comment
+      // Use root file ID for comments (parent_file_id if this is a version, else file's own id)
+      const rootFileId = file.parent_file_id || file.id;
+
+      // Insert comment against root file
      const commenterName = invite.guest_name || normalizedEmail.split("@")[0];
      const { data: newComment, error: insertError } = await supabaseAdmin
        .from("data_room_file_comments")
        .insert({
-         file_id: fileId,
+          file_id: rootFileId,
          data_room_id: invite.data_room_id,
          organization_id: invite.organization_id,
          commenter_name: commenterName,

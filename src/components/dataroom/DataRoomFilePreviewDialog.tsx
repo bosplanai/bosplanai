@@ -81,6 +81,7 @@ const DataRoomFilePreviewDialog = ({
   const [showEditor, setShowEditor] = useState(false);
   const [documentContent, setDocumentContent] = useState<string | null>(null);
   const [contentLoading, setContentLoading] = useState(false);
+  const [rootFileId, setRootFileId] = useState<string | null>(null);
   const queryClient = useQueryClient();
 
   // Check if file is editable using utility function
@@ -88,6 +89,27 @@ const DataRoomFilePreviewDialog = ({
   
   // Check if file is an Office document (for Google Docs viewer)
   const isOfficeDoc = file?.mimeType ? isOfficeDocument(file.mimeType, file.name) : false;
+
+  // Fetch the root file ID (for versioned files, comments are stored against parent)
+  useEffect(() => {
+    const fetchRootFileId = async () => {
+      if (!file?.id) {
+        setRootFileId(null);
+        return;
+      }
+      
+      const { data: fileData } = await supabase
+        .from("data_room_files")
+        .select("id, parent_file_id")
+        .eq("id", file.id)
+        .single();
+      
+      // Use parent_file_id if exists (this is a version), otherwise use file's own id
+      setRootFileId(fileData?.parent_file_id || file.id);
+    };
+    
+    fetchRootFileId();
+  }, [file?.id]);
 
   // Fetch the latest document content for editable documents
   useEffect(() => {
@@ -133,27 +155,27 @@ const DataRoomFilePreviewDialog = ({
 
   // Fetch comments
   const { data: comments = [], isLoading: commentsLoading } = useQuery({
-    queryKey: ["data-room-file-comments", file?.id],
+    queryKey: ["data-room-file-comments", rootFileId],
     queryFn: async () => {
-      if (!file?.id) return [];
+      if (!rootFileId) return [];
       const { data, error } = await supabase
         .from("data_room_file_comments")
         .select("*")
-        .eq("file_id", file.id)
+        .eq("file_id", rootFileId)
         .order("created_at", { ascending: true });
 
       if (error) throw error;
       return data as Comment[];
     },
-    enabled: !!file?.id,
+    enabled: !!rootFileId,
   });
 
   // Add comment mutation
   const addCommentMutation = useMutation({
     mutationFn: async (comment: string) => {
-      if (!file?.id) return;
+      if (!rootFileId) return;
       const { error } = await supabase.from("data_room_file_comments").insert({
-        file_id: file.id,
+        file_id: rootFileId,
         data_room_id: dataRoomId,
         organization_id: organizationId,
         commenter_id: userId,
@@ -168,7 +190,7 @@ const DataRoomFilePreviewDialog = ({
     onSuccess: () => {
       setNewComment("");
       setShowCommentInput(false);
-      queryClient.invalidateQueries({ queryKey: ["data-room-file-comments", file?.id] });
+      queryClient.invalidateQueries({ queryKey: ["data-room-file-comments", rootFileId] });
     },
   });
 
