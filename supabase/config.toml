@@ -147,5 +147,14 @@ verify_jwt = false
  [functions.get-guest-file-comments]
  verify_jwt = false
  
- [functions.guest-add-file-comment]
- verify_jwt = false
+[functions.guest-add-file-comment]
+verify_jwt = false
+
+[functions.guest-file-upload]
+verify_jwt = false
+
+[functions.guest-restore-version]
+verify_jwt = false
+
+[functions.guest-manage-file-permissions]
+verify_jwt = false
