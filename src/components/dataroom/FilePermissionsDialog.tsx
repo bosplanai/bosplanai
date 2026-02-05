@@ -378,10 +378,9 @@ export function FilePermissionsDialog({
   };
 
   const isLoading = membersLoading || permissionsLoading || guestsLoading;
-  // User can manage permissions if they uploaded the file OR if they're the data room creator
+  // Only the file uploader can manage restrictions (per requirements)
   const isFileOwner = file?.uploaded_by === currentUserId;
-  const isDataRoomOwner = currentUserId === dataRoomCreatorId;
-  const canManagePermissions = isFileOwner || isDataRoomOwner;
+  const canManagePermissions = isFileOwner;
 
   if (!file) return null;
 
@@ -532,7 +531,7 @@ export function FilePermissionsDialog({
 
           {!canManagePermissions && (
             <p className="text-xs text-destructive bg-destructive/10 p-2 rounded">
-              Only the file uploader or data room owner can modify permissions.
+              Only the file uploader can modify permissions.
             </p>
           )}
         </div>

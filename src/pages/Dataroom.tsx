@@ -536,6 +536,7 @@ By signing below, you acknowledge that you have read, understood, and agree to b
   };
 
   // Helper function to check if user can view a file
+  // Permissions are stored against the root file, so check both current and root file IDs
   const canViewFile = (file: any): boolean => {
     // If file is not restricted, anyone in the data room can view
     if (!file.is_restricted) return true;
@@ -543,11 +544,13 @@ By signing below, you acknowledge that you have read, understood, and agree to b
     if (selectedRoom?.created_by === user?.id) return true;
     // If user uploaded the file, they can always view it
     if (file.uploaded_by === user?.id) return true;
-    // Check if user has explicit permission for this file
-    return filePermissions.some(p => p.file_id === file.id);
+    // Check if user has explicit permission for this file (check both current id and root_file_id)
+    const rootId = file.root_file_id || file.parent_file_id || file.id;
+    return filePermissions.some(p => p.file_id === file.id || p.file_id === rootId);
   };
 
   // Helper function to check if user can edit a file
+  // Permissions are stored against the root file, so check both current and root file IDs
   const canEditFile = (file: any): boolean => {
     // If file is not restricted, anyone in the data room can edit
     if (!file.is_restricted) return true;
@@ -555,8 +558,9 @@ By signing below, you acknowledge that you have read, understood, and agree to b
     if (selectedRoom?.created_by === user?.id) return true;
     // If user uploaded the file, they can always edit it
     if (file.uploaded_by === user?.id) return true;
-    // Check if user has explicit edit permission for this file
-    return filePermissions.some(p => p.file_id === file.id && p.permission_level === 'edit');
+    // Check if user has explicit edit permission for this file (check both current id and root_file_id)
+    const rootId = file.root_file_id || file.parent_file_id || file.id;
+    return filePermissions.some(p => (p.file_id === file.id || p.file_id === rootId) && p.permission_level === 'edit');
   };
 
   // Check if current user can edit in the current folder context
@@ -2369,6 +2373,16 @@ By signing below, you acknowledge that you have read, understood, and agree to b
                                       file_path: file.file_path,
                                       mime_type: file.mime_type
                                     }) : undefined}
+                                    onManagePermissions={file.uploaded_by === user?.id ? () => {
+                                      const rootId = (file as any).root_file_id || file.id;
+                                      setPermissionsFile({ 
+                                        id: rootId, 
+                                        name: file.name, 
+                                        is_restricted: file.is_restricted || false, 
+                                        uploaded_by: file.uploaded_by 
+                                      });
+                                      setPermissionsDialogOpen(true);
+                                    } : undefined}
                                     onDelete={() => deleteMutation.mutate({ id: file.id, file_path: file.file_path, name: file.name })}
                                     onStatusChange={(status) => updateStatusMutation.mutate({ fileId: file.id, status })}
                                   />
