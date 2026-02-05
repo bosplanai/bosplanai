@@ -1757,22 +1757,62 @@ By signing below, you acknowledge that you have read, understood, and agree to b
     
     // For PDF format, always export to PDF
     if (format === 'pdf') {
+      toast({ title: "Preparing PDF export...", description: "Please wait" });
+      
       // Check for edited content first
-      const { data: docContent } = await supabase
+      let { data: docContent } = await supabase
         .from("data_room_document_content")
         .select("content")
         .eq("file_id", fileId)
         .maybeSingle();
       
-      const hasEditedContent = docContent?.content && 
-        docContent.content !== "" && 
-        docContent.content !== "<p></p>" &&
-        docContent.content !== "<p>Start editing this document...</p>" &&
-        !docContent.content.includes("Could not extract document content") &&
-        docContent.content.length > 50;
+      let content = docContent?.content;
       
-      if (hasEditedContent) {
-        // Export edited content as PDF using browser print
+      // If no edited content, try to parse the original file
+      if (!content || content === "" || content === "<p></p>" || content === "<p>Start editing this document...</p>") {
+        try {
+          const { data: sessionData } = await supabase.auth.getSession();
+          const token = sessionData.session?.access_token;
+          
+          if (token && isEditableDocument(mimeType)) {
+            const parseResponse = await fetch(
+              `https://qiikjhvzlwzysbtzhdcd.supabase.co/functions/v1/parse-document`,
+              {
+                method: 'POST',
+                headers: {
+                  'Authorization': `Bearer ${token}`,
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                  fileId: fileId,
+                  filePath: filePath,
+                  mimeType: mimeType,
+                  bucket: "data-room-files",
+                }),
+              }
+            );
+
+            if (parseResponse.ok) {
+              const parseResult = await parseResponse.json();
+              if (parseResult.content && parseResult.content.trim() !== '' && parseResult.content.length > 50) {
+                content = parseResult.content;
+              }
+            }
+          }
+        } catch (parseError) {
+          console.error("Error parsing document for PDF:", parseError);
+        }
+      }
+      
+      const hasValidContent = content && 
+        content !== "" && 
+        content !== "<p></p>" &&
+        content !== "<p>Start editing this document...</p>" &&
+        !content.includes("Could not extract document content") &&
+        content.length > 50;
+      
+      if (hasValidContent) {
+        // Export content as PDF using browser print
         const printWindow = window.open('', '_blank');
         if (printWindow) {
           const printHtml = `
@@ -1807,7 +1847,7 @@ By signing below, you acknowledge that you have read, understood, and agree to b
                 </style>
               </head>
               <body>
-                ${docContent.content}
+                ${content}
               </body>
             </html>
           `;
@@ -1823,13 +1863,20 @@ By signing below, you acknowledge that you have read, understood, and agree to b
         return;
       }
       
-      // If no edited content, try to convert original file to PDF
-      // For now, inform user that PDF export is only available for edited documents
-      toast({ 
-        title: "PDF Export", 
-        description: "PDF export is available for edited documents. Open and edit this document first to enable PDF export.", 
-        variant: "default" 
-      });
+      // If we couldn't get content, show appropriate message
+      if (!isEditableDocument(mimeType)) {
+        toast({ 
+          title: "PDF Export", 
+          description: "PDF export is only available for editable documents (Word, Excel). This file can be downloaded in its original format.", 
+          variant: "default" 
+        });
+      } else {
+        toast({ 
+          title: "PDF Export Failed", 
+          description: "Could not extract document content for PDF export. Please try downloading the original format.", 
+          variant: "destructive" 
+        });
+      }
       return;
     }
     
