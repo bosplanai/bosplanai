@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
+import type { RealtimeChannel } from "@supabase/supabase-js";
 
 export interface DocumentContent {
   id: string;
@@ -65,6 +66,8 @@ export function useDataRoomDocumentEditor({
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const lastVersionContentRef = useRef<string>("");
   const versionIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const broadcastChannelRef = useRef<RealtimeChannel | null>(null);
+  const lastBroadcastTimeRef = useRef<number>(0);
 
   // Parse uploaded document content
   const parseUploadedDocument = useCallback(async (): Promise<string | null> => {
@@ -424,6 +427,34 @@ export function useDataRoomDocumentEditor({
     };
   }, [fileId, user, onContentChange]);
 
+  // Set up broadcast channel for cross-user sync (works for guests too)
+  useEffect(() => {
+    if (!fileId) return;
+
+    const channelName = `document-sync:${fileId}`;
+    const channel = supabase.channel(channelName);
+
+    channel
+      .on("broadcast", { event: "content_update" }, (payload) => {
+        const { content: newContent, userId, timestamp } = payload.payload || {};
+        
+        // Only update if from another user
+        if (userId && userId !== user?.id && newContent) {
+          console.log("[DataRoomDocEditor] Received broadcast update from:", userId);
+          setContent(newContent);
+          onContentChange?.(newContent);
+        }
+      })
+      .subscribe();
+
+    broadcastChannelRef.current = channel;
+
+    return () => {
+      channel.unsubscribe();
+      broadcastChannelRef.current = null;
+    };
+  }, [fileId, user?.id, onContentChange]);
+
   // Create version - saves to both document_versions AND creates a file version
   const createVersion = useCallback(
     async (contentToSave: string, note?: string) => {
@@ -705,11 +736,37 @@ export function useDataRoomDocumentEditor({
     [documentId, user]
   );
 
+  // Broadcast content change to all users
+  const broadcastContentChange = useCallback(
+    (newContent: string) => {
+      if (!broadcastChannelRef.current || !user) return;
+      
+      // Throttle broadcasts to max once per second
+      const now = Date.now();
+      if (now - lastBroadcastTimeRef.current < 1000) return;
+      lastBroadcastTimeRef.current = now;
+      
+      broadcastChannelRef.current.send({
+        type: "broadcast",
+        event: "content_update",
+        payload: {
+          content: newContent,
+          userId: user.id,
+          timestamp: now,
+        },
+      });
+    },
+    [user]
+  );
+
   // Update content with debounced save
   const updateContent = useCallback(
     (newContent: string) => {
       setContent(newContent);
       onContentChange?.(newContent);
+      
+      // Broadcast change to other users
+      broadcastContentChange(newContent);
 
       // Debounce save
       if (saveTimeoutRef.current) {
@@ -727,7 +784,7 @@ export function useDataRoomDocumentEditor({
         }, 2 * 60 * 1000);
       }
     },
-    [saveContent, createVersion, onContentChange]
+    [saveContent, createVersion, onContentChange, broadcastContentChange]
   );
 
   // Manual save

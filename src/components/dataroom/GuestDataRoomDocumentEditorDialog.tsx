@@ -8,6 +8,7 @@ import { X, FileText, Cloud, CloudOff, Loader2, Check, Save } from "lucide-react
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import type { RealtimeChannel } from "@supabase/supabase-js";
 
 interface GuestDataRoomDocumentEditorDialogProps {
   open: boolean;
@@ -56,6 +57,11 @@ export function GuestDataRoomDocumentEditorDialog({
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const lastVersionContentRef = useRef<string>("");
   const versionIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const broadcastChannelRef = useRef<RealtimeChannel | null>(null);
+  const lastBroadcastTimeRef = useRef<number>(0);
+  const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const lastFetchedContentRef = useRef<string>("");
+  const guestIdentifier = useRef<string>(`guest-${email}-${Date.now()}`);
 
   // Load document content when dialog opens
   useEffect(() => {
@@ -101,6 +107,94 @@ export function GuestDataRoomDocumentEditorDialog({
     loadDocument();
   }, [open, file?.id, token, email, onOpenChange]);
 
+  // Set up broadcast channel for cross-user sync
+  useEffect(() => {
+    if (!open || !file?.id) return;
+
+    const channelName = `document-sync:${file.id}`;
+    const channel = supabase.channel(channelName);
+
+    channel
+      .on("broadcast", { event: "content_update" }, (payload) => {
+        const { content: newContent, userId, timestamp } = payload.payload || {};
+        
+        // Only update if from another user (not this guest)
+        if (userId && userId !== guestIdentifier.current && newContent) {
+          console.log("[GuestDocEditor] Received broadcast update from:", userId);
+          setContent(newContent);
+          lastFetchedContentRef.current = newContent;
+        }
+      })
+      .subscribe();
+
+    broadcastChannelRef.current = channel;
+
+    return () => {
+      channel.unsubscribe();
+      broadcastChannelRef.current = null;
+    };
+  }, [open, file?.id]);
+
+  // Polling fallback for sync (every 5 seconds)
+  useEffect(() => {
+    if (!open || !file?.id || !documentId) return;
+
+    const pollForUpdates = async () => {
+      try {
+        const { data, error } = await supabase.functions.invoke(
+          "guest-get-document-content",
+          {
+            body: { token, email: email.toLowerCase(), fileId: file.id },
+          }
+        );
+
+        if (!error && data?.document) {
+          const serverContent = data.document.content;
+          // Only update if server has newer content that we didn't just write
+          if (serverContent !== lastFetchedContentRef.current && serverContent !== content) {
+            console.log("[GuestDocEditor] Polling detected updated content");
+            setContent(serverContent);
+            lastFetchedContentRef.current = serverContent;
+          }
+        }
+      } catch (err) {
+        console.error("[GuestDocEditor] Polling error:", err);
+      }
+    };
+
+    pollingIntervalRef.current = setInterval(pollForUpdates, 5000);
+
+    return () => {
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+        pollingIntervalRef.current = null;
+      }
+    };
+  }, [open, file?.id, documentId, token, email, content]);
+
+  // Broadcast content change to other users
+  const broadcastContentChange = useCallback(
+    (newContent: string) => {
+      if (!broadcastChannelRef.current) return;
+      
+      // Throttle broadcasts to max once per second
+      const now = Date.now();
+      if (now - lastBroadcastTimeRef.current < 1000) return;
+      lastBroadcastTimeRef.current = now;
+      
+      broadcastChannelRef.current.send({
+        type: "broadcast",
+        event: "content_update",
+        payload: {
+          content: newContent,
+          userId: guestIdentifier.current,
+          timestamp: now,
+        },
+      });
+    },
+    []
+  );
+
   // Save content
   const saveContent = useCallback(
     async (contentToSave: string, createVersion = false, versionNote?: string) => {
@@ -137,6 +231,7 @@ export function GuestDataRoomDocumentEditorDialog({
         if (createVersion) {
           lastVersionContentRef.current = contentToSave;
         }
+        lastFetchedContentRef.current = contentToSave;
       } catch (err) {
         console.error("Error saving:", err);
       } finally {
@@ -150,6 +245,10 @@ export function GuestDataRoomDocumentEditorDialog({
   const updateContent = useCallback(
     (newContent: string) => {
       setContent(newContent);
+      lastFetchedContentRef.current = newContent;
+      
+      // Broadcast change to other users
+      broadcastContentChange(newContent);
 
       // Debounce save
       if (saveTimeoutRef.current) {
@@ -167,7 +266,7 @@ export function GuestDataRoomDocumentEditorDialog({
         }, 2 * 60 * 1000);
       }
     },
-    [saveContent]
+    [saveContent, broadcastContentChange]
   );
 
   // Manual save
@@ -193,6 +292,9 @@ export function GuestDataRoomDocumentEditorDialog({
       if (versionIntervalRef.current) {
         clearTimeout(versionIntervalRef.current);
       }
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+      }
     };
   }, []);
 
@@ -203,6 +305,7 @@ export function GuestDataRoomDocumentEditorDialog({
       setDocumentId(null);
       setLastSaved(null);
       setIsLoading(true);
+      lastFetchedContentRef.current = "";
     }
   }, [open]);
 
