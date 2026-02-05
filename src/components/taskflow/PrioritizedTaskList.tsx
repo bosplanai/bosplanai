@@ -1,5 +1,5 @@
 import { cn } from "@/lib/utils";
-import { AlertCircle, AlertTriangle, Clock, User, FolderOpen, ArrowRight } from "lucide-react";
+import { AlertCircle, AlertTriangle, Clock, User, FolderKanban, ArrowRight, ListTodo } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { format, parseISO, differenceInDays } from "date-fns";
@@ -8,6 +8,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
 interface TaskWithRisk {
   id: string;
@@ -33,118 +34,135 @@ interface PrioritizedTaskListProps {
   onReassign?: (taskId: string) => void;
 }
 
-const getRiskBadgeVariant = (level: string) => {
-  switch (level) {
-    case "critical": return "destructive";
-    case "high": return "destructive";
-    case "medium": return "secondary";
-    default: return "outline";
-  }
+const priorityConfig: Record<string, { label: string; className: string }> = {
+  high: { label: "High", className: "bg-priority-high/10 text-priority-high" },
+  medium: { label: "Med", className: "bg-priority-medium/10 text-priority-medium" },
+  low: { label: "Low", className: "bg-priority-low/10 text-priority-low" },
 };
 
-const getRiskIcon = (level: string) => {
-  switch (level) {
-    case "critical": return <AlertCircle className="w-4 h-4" />;
-    case "high": return <AlertTriangle className="w-4 h-4" />;
-    default: return <Clock className="w-4 h-4" />;
-  }
+const riskConfig: Record<string, { label: string; className: string }> = {
+  critical: { label: "Critical", className: "bg-destructive/10 text-destructive" },
+  high: { label: "High Risk", className: "bg-brand-coral/10 text-brand-coral" },
+  medium: { label: "Medium Risk", className: "bg-brand-orange/10 text-brand-orange" },
+  low: { label: "Low Risk", className: "bg-brand-green/10 text-brand-green" },
 };
 
-const getPriorityColor = (priority: string) => {
-  switch (priority) {
-    case "high": return "text-destructive";
-    case "medium": return "text-brand-teal";
-    default: return "text-brand-green";
+const getInitials = (name: string): string => {
+  const parts = name.trim().split(/\s+/);
+  if (parts.length >= 2) {
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
   }
+  return name.substring(0, 2).toUpperCase();
+};
+
+const TaskCard = ({ 
+  task, 
+  isUrgent, 
+  onTaskClick, 
+  onReassign 
+}: { 
+  task: TaskWithRisk; 
+  isUrgent?: boolean;
+  onTaskClick?: (taskId: string) => void;
+  onReassign?: (taskId: string) => void;
+}) => {
+  const priorityInfo = priorityConfig[task.priority] || priorityConfig.medium;
+  const riskInfo = riskConfig[task.riskLevel] || riskConfig.low;
+  const isOverdue = task.due_date && differenceInDays(parseISO(task.due_date), new Date()) < 0;
+
+  return (
+    <div
+      className={cn(
+        "flex items-start gap-3.5 bg-card rounded-xl p-4 shadow-sm hover:shadow-md transition-all duration-300 ease-out cursor-pointer border border-border/40 hover:border-primary/25 group",
+        isUrgent && "border-destructive/30 bg-destructive/5"
+      )}
+      onClick={() => onTaskClick?.(task.id)}
+    >
+      <div className="flex-shrink-0 w-10 h-10 rounded-xl bg-taskIcon/90 flex items-center justify-center shadow-sm transition-transform duration-300 group-hover:scale-105">
+        <ListTodo className="w-5 h-5 text-primary" />
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 flex-wrap">
+          <p className="font-medium text-foreground text-sm leading-snug group-hover:text-primary transition-colors duration-200 truncate">
+            {task.title}
+          </p>
+          <span className={cn("font-semibold px-2 py-0.5 rounded-full flex-shrink-0 text-[0.625rem]", priorityInfo.className)}>
+            {priorityInfo.label}
+          </span>
+          <span className={cn("font-semibold px-2 py-0.5 rounded-full flex-shrink-0 text-[0.625rem]", riskInfo.className)}>
+            {riskInfo.label}
+          </span>
+        </div>
+        
+        {task.riskReason && (
+          <p className="text-muted-foreground mt-1 text-xs line-clamp-2">
+            {task.riskReason}
+          </p>
+        )}
+
+        {/* Project badge */}
+        <div className="flex items-center gap-1 mt-2">
+          <FolderKanban className="w-3 h-3 text-primary" />
+          <span className="text-xs text-primary font-medium truncate max-w-[150px]">
+            {task.project_title || "No Project"}
+          </span>
+        </div>
+
+        {/* User avatar and due date */}
+        <div className="flex items-center gap-3 mt-2">
+          {task.assigned_user_name ? (
+            <div title={`Assigned to ${task.assigned_user_name}`}>
+              <Avatar className="w-5 h-5 border-2 border-primary">
+                <AvatarFallback className="text-[8px] bg-primary/10 text-primary font-semibold">
+                  {getInitials(task.assigned_user_name)}
+                </AvatarFallback>
+              </Avatar>
+            </div>
+          ) : (
+            <div className="flex items-center gap-1 text-brand-coral">
+              <User className="w-3 h-3" />
+              <span className="text-xs">Unassigned</span>
+            </div>
+          )}
+          
+          {task.due_date && (
+            <div className={cn(
+              "flex items-center gap-1 text-xs",
+              isOverdue ? "text-destructive" : "text-muted-foreground"
+            )}>
+              <Clock className="w-3 h-3" />
+              <span>{format(parseISO(task.due_date), "MMM d")}</span>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {onReassign && (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="shrink-0 h-9 w-9 opacity-0 group-hover:opacity-100 transition-opacity"
+              onClick={(e) => {
+                e.stopPropagation();
+                onReassign(task.id);
+              }}
+            >
+              <ArrowRight className="w-4 h-4" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Reassign task</TooltipContent>
+        </Tooltip>
+      )}
+    </div>
+  );
 };
 
 export function PrioritizedTaskList({ tasks, onTaskClick, onReassign }: PrioritizedTaskListProps) {
   const criticalTasks = tasks.filter(t => t.riskLevel === "critical");
   const highRiskTasks = tasks.filter(t => t.riskLevel === "high");
   const otherTasks = tasks.filter(t => t.riskLevel !== "critical" && t.riskLevel !== "high");
-
-  const renderTaskCard = (task: TaskWithRisk, isUrgent = false) => (
-    <div
-      key={task.id}
-      className={cn(
-        "p-5 rounded-xl border transition-all hover:shadow-md cursor-pointer",
-        isUrgent 
-          ? "bg-destructive/5 border-destructive/30" 
-          : "bg-card border-border"
-      )}
-      onClick={() => onTaskClick?.(task.id)}
-    >
-      <div className="flex items-start justify-between gap-4">
-        <div className="flex-1 min-w-0 space-y-3">
-          <div className="flex flex-wrap items-center gap-2">
-            <Badge variant={getRiskBadgeVariant(task.riskLevel)} className="text-xs px-2.5 py-1">
-              {getRiskIcon(task.riskLevel)}
-              <span className="ml-1.5 capitalize">{task.riskLevel}</span>
-            </Badge>
-            <Badge variant="outline" className={cn("text-xs px-2.5 py-1", getPriorityColor(task.priority))}>
-              {task.priority} priority
-            </Badge>
-          </div>
-          
-          <h4 className="font-medium text-foreground text-base leading-snug">{task.title}</h4>
-          
-          <p className="text-sm text-muted-foreground line-clamp-2 leading-relaxed">
-            {task.riskReason}
-          </p>
-          
-          <div className="flex flex-wrap items-center gap-4 pt-1 text-sm text-muted-foreground">
-            {task.assigned_user_name ? (
-              <div className="flex items-center gap-1.5">
-                <User className="w-4 h-4" />
-                <span>{task.assigned_user_name}</span>
-              </div>
-            ) : (
-              <div className="flex items-center gap-1.5 text-brand-coral">
-                <User className="w-4 h-4" />
-                <span>Unassigned</span>
-              </div>
-            )}
-            
-            {task.project_title && (
-              <div className="flex items-center gap-1.5">
-                <FolderOpen className="w-4 h-4" />
-                <span className="truncate max-w-[140px]">{task.project_title}</span>
-              </div>
-            )}
-            
-            {task.due_date && (
-              <div className={cn(
-                "flex items-center gap-1.5",
-                differenceInDays(parseISO(task.due_date), new Date()) < 0 && "text-destructive"
-              )}>
-                <Clock className="w-4 h-4" />
-                <span>{format(parseISO(task.due_date), "MMM d")}</span>
-              </div>
-            )}
-          </div>
-        </div>
-        
-        {onReassign && (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="shrink-0 h-9 w-9"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onReassign(task.id);
-                }}
-              >
-                <ArrowRight className="w-4 h-4" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>Reassign task</TooltipContent>
-          </Tooltip>
-        )}
-      </div>
-    </div>
-  );
 
   return (
     <div className="bg-card rounded-xl border border-border p-5">
@@ -167,7 +185,9 @@ export function PrioritizedTaskList({ tasks, onTaskClick, onReassign }: Prioriti
               Critical - Immediate Attention ({criticalTasks.length})
             </h4>
             <div className="space-y-3">
-              {criticalTasks.map(task => renderTaskCard(task, true))}
+              {criticalTasks.map(task => (
+                <TaskCard key={task.id} task={task} isUrgent onTaskClick={onTaskClick} onReassign={onReassign} />
+              ))}
             </div>
           </div>
         )}
@@ -180,7 +200,9 @@ export function PrioritizedTaskList({ tasks, onTaskClick, onReassign }: Prioriti
               High Risk ({highRiskTasks.length})
             </h4>
             <div className="space-y-3">
-              {highRiskTasks.map(task => renderTaskCard(task))}
+              {highRiskTasks.map(task => (
+                <TaskCard key={task.id} task={task} onTaskClick={onTaskClick} onReassign={onReassign} />
+              ))}
             </div>
           </div>
         )}
@@ -193,7 +215,9 @@ export function PrioritizedTaskList({ tasks, onTaskClick, onReassign }: Prioriti
               Other Tasks ({otherTasks.length})
             </h4>
             <div className="space-y-3">
-              {otherTasks.slice(0, 10).map(task => renderTaskCard(task))}
+              {otherTasks.slice(0, 10).map(task => (
+                <TaskCard key={task.id} task={task} onTaskClick={onTaskClick} onReassign={onReassign} />
+              ))}
               {otherTasks.length > 10 && (
                 <p className="text-sm text-muted-foreground text-center py-3">
                   +{otherTasks.length - 10} more tasks
