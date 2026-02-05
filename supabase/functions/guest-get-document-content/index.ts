@@ -156,12 +156,12 @@
                Authorization: `Bearer ${supabaseServiceKey}`,
                "Content-Type": "application/json",
              },
-             body: JSON.stringify({
-               fileId: file.id,
-               filePath: file.file_path,
-               mimeType: file.mime_type,
-               bucket: "dataroom-files",
-             }),
+              body: JSON.stringify({
+                fileId: file.id,
+                filePath: file.file_path,
+                mimeType: file.mime_type,
+                bucket: "data-room-files",
+              }),
            }
          );
  
