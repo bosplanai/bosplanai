@@ -1,10 +1,16 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { 
   X, 
   Image, 
@@ -16,12 +22,17 @@ import {
   Plus,
   Download,
   Video,
-  File
+  File,
+  Edit,
+  FileDown,
+  ChevronDown,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { toast } from "sonner";
+import { sanitizeHtml } from "@/lib/sanitize";
+import { isEditableDocument as isEditableDocumentUtil } from "@/lib/documentUtils";
 
 interface PreviewFile {
   id: string;
@@ -47,6 +58,7 @@ interface GuestFilePreviewDialogProps {
   token: string;
   email: string;
   guestName: string;
+  onEditDocument?: () => void;
 }
 
 const GuestFilePreviewDialog = ({
@@ -55,10 +67,57 @@ const GuestFilePreviewDialog = ({
   token,
   email,
   guestName,
+  onEditDocument,
 }: GuestFilePreviewDialogProps) => {
   const [newComment, setNewComment] = useState("");
   const [showCommentInput, setShowCommentInput] = useState(false);
+  const [documentContent, setDocumentContent] = useState<string | null>(null);
+  const [contentLoading, setContentLoading] = useState(false);
   const queryClient = useQueryClient();
+
+  // Check if file is editable
+  const isEditableDocument = file?.mimeType ? isEditableDocumentUtil(file.mimeType, file.name) : false;
+  const canEdit = isEditableDocument && file?.permissionLevel === "edit";
+
+  // Fetch document content for editable documents
+  useEffect(() => {
+    const fetchDocumentContent = async () => {
+      if (!file?.id || !isEditableDocument) {
+        setDocumentContent(null);
+        return;
+      }
+
+      setContentLoading(true);
+      try {
+        const { data, error } = await supabase.functions.invoke(
+          "guest-get-document-content",
+          {
+            body: { token, email: email.toLowerCase(), fileId: file.id },
+          }
+        );
+
+        if (!error && data?.document?.content) {
+          const content = data.document.content;
+          if (content && content !== "<p></p>" && content !== "<p>Start editing this document...</p>") {
+            setDocumentContent(content);
+          } else {
+            setDocumentContent(null);
+          }
+        } else {
+          setDocumentContent(null);
+        }
+      } catch (err) {
+        console.error("Error fetching document content:", err);
+        setDocumentContent(null);
+      } finally {
+        setContentLoading(false);
+      }
+    };
+
+    if (file?.id) {
+      fetchDocumentContent();
+    }
+  }, [file?.id, isEditableDocument, token, email]);
 
   // Fetch comments via edge function
   const { data: comments = [], isLoading: commentsLoading } = useQuery({
@@ -110,8 +169,15 @@ const GuestFilePreviewDialog = ({
     }
   };
 
-  const handleDownload = () => {
-    if (file?.url) {
+  const handleDownload = (format?: "original" | "pdf") => {
+    if (!file?.url) return;
+    
+    if (format === "pdf") {
+      const printWindow = window.open(file.url, "_blank");
+      if (printWindow) {
+        toast.success("Opening file for PDF export. Use browser's Print > Save as PDF.");
+      }
+    } else {
       window.open(file.url, "_blank");
     }
   };
@@ -141,12 +207,41 @@ const GuestFilePreviewDialog = ({
                 <span className="font-medium truncate">{file.name}</span>
               </div>
               <div className="flex items-center gap-2">
-                {/* Only show download button if permission is not view-only */}
-                {file.permissionLevel !== "view" && (
-                  <Button variant="ghost" size="sm" onClick={handleDownload}>
-                    <Download className="w-4 h-4 mr-1" />
-                    Download
+                {/* Edit Document button for editable files with edit permission */}
+                {canEdit && onEditDocument && (
+                  <Button 
+                    size="sm" 
+                    onClick={() => {
+                      onClose();
+                      onEditDocument();
+                    }}
+                    className="bg-primary hover:bg-primary/90 gap-2"
+                  >
+                    <Edit className="w-4 h-4" />
+                    Edit Document
                   </Button>
+                )}
+                {/* Download dropdown */}
+                {file.permissionLevel !== "view" && (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="outline" size="sm" className="gap-1.5">
+                        <Download className="w-4 h-4" />
+                        Download
+                        <ChevronDown className="w-3 h-3" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="bg-popover">
+                      <DropdownMenuItem onClick={() => handleDownload("original")} className="gap-2">
+                        <FileDown className="w-4 h-4 text-primary" />
+                        Original Format
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => handleDownload("pdf")} className="gap-2">
+                        <FileDown className="w-4 h-4 text-destructive" />
+                        PDF Document
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 )}
                 <Button variant="ghost" size="icon" onClick={onClose}>
                   <X className="w-4 h-4" />
@@ -156,21 +251,31 @@ const GuestFilePreviewDialog = ({
 
             {/* Preview Content */}
             <div className="flex-1 overflow-auto p-6 flex items-center justify-center bg-muted/20">
-              {file.type === "image" && (
+              {contentLoading ? (
+                <div className="flex flex-col items-center justify-center gap-3">
+                  <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                  <p className="text-sm text-muted-foreground">Loading document...</p>
+                </div>
+              ) : documentContent ? (
+                <ScrollArea className="w-full h-full">
+                  <div 
+                    className="prose prose-sm dark:prose-invert max-w-4xl mx-auto p-6 bg-white dark:bg-muted/20 rounded-lg shadow-sm"
+                    dangerouslySetInnerHTML={{ __html: sanitizeHtml(documentContent) }}
+                  />
+                </ScrollArea>
+              ) : file.type === "image" ? (
                 <img
                   src={file.url}
                   alt={file.name}
                   className="max-w-full max-h-full object-contain rounded-lg shadow-lg"
                 />
-              )}
-              {file.type === "pdf" && (
+              ) : file.type === "pdf" ? (
                 <iframe
                   src={`https://docs.google.com/gview?url=${encodeURIComponent(file.url)}&embedded=true`}
                   className="w-full h-full rounded-lg border bg-white"
                   title={file.name}
                 />
-              )}
-              {file.type === "video" && (
+              ) : file.type === "video" ? (
                 <video
                   src={file.url}
                   controls
@@ -180,8 +285,7 @@ const GuestFilePreviewDialog = ({
                   <source src={file.url} />
                   Your browser does not support the video tag.
                 </video>
-              )}
-              {file.type === "document" && (
+              ) : file.type === "document" ? (
                 <div className="w-full h-full flex flex-col">
                   <iframe
                     src={`https://docs.google.com/gview?url=${encodeURIComponent(file.url)}&embedded=true`}
@@ -189,8 +293,7 @@ const GuestFilePreviewDialog = ({
                     title={file.name}
                   />
                 </div>
-              )}
-              {file.type === "other" && (
+              ) : (
                 <div className="flex flex-col items-center justify-center text-center p-8">
                   <FileIcon className="w-16 h-16 text-muted-foreground/50 mb-4" />
                   <h3 className="text-lg font-medium text-foreground mb-2">{file.name}</h3>
@@ -198,7 +301,7 @@ const GuestFilePreviewDialog = ({
                     Preview not available for this file type
                   </p>
                   {file.permissionLevel !== "view" ? (
-                    <Button onClick={handleDownload} className="gap-2">
+                    <Button onClick={() => handleDownload("original")} className="gap-2">
                       <Download className="w-4 h-4" />
                       Download File
                     </Button>
