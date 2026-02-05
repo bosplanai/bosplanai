@@ -15,7 +15,6 @@ import {
 import {
   Eye,
   Download,
-  FolderInput,
   Clock,
   Settings2,
   Edit3,
@@ -25,7 +24,6 @@ import {
   Image,
   Video,
   File,
-  Folder,
   Lock,
   User,
   Check,
@@ -33,7 +31,6 @@ import {
   CheckCircle2,
   AlertCircle,
   FileDown,
-  
 } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
@@ -45,7 +42,6 @@ interface DataRoomFile {
   file_path: string;
   file_size: number;
   mime_type: string | null;
-  folder_id: string | null;
   is_restricted?: boolean;
   uploaded_by: string;
   created_at: string;
@@ -56,7 +52,6 @@ interface DataRoomFile {
 
 interface DataRoomFileCardProps {
   file: DataRoomFile;
-  folder?: { id: string; name: string } | null;
   uploaderName?: string;
   assigneeName?: string;
   version?: number;
@@ -66,11 +61,9 @@ interface DataRoomFileCardProps {
   currentUserId?: string;
   onView: () => void;
   onDownload: (format?: 'original' | 'pdf') => void;
-  onMoveToFolder: () => void;
   onViewVersions: () => void;
   onEditDetails: () => void;
   onEditDocument?: () => void;
-  
   onDelete: () => void;
   onStatusChange?: (status: string) => void;
 }
@@ -110,7 +103,6 @@ const formatFileSize = (bytes: number): string => {
 
 export function DataRoomFileCard({
   file,
-  folder,
   uploaderName,
   assigneeName,
   version = 1,
@@ -120,11 +112,9 @@ export function DataRoomFileCard({
   currentUserId,
   onView,
   onDownload,
-  onMoveToFolder,
   onViewVersions,
   onEditDetails,
   onEditDocument,
-  
   onDelete,
   onStatusChange,
 }: DataRoomFileCardProps) {
@@ -190,12 +180,6 @@ export function DataRoomFileCard({
                   </DropdownMenuSubContent>
                 </DropdownMenuPortal>
               </DropdownMenuSub>
-              {isAdmin && (
-                <DropdownMenuItem onClick={onMoveToFolder} className="gap-2">
-                  <FolderInput className="w-4 h-4" />
-                  Move to folder
-                </DropdownMenuItem>
-              )}
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={onViewVersions} className="gap-2">
                 <Clock className="w-4 h-4" />
@@ -225,23 +209,15 @@ export function DataRoomFileCard({
         </div>
       </div>
 
-      {/* Folder and restriction badges - only show folder for creators */}
-      <div className="px-4 pb-2">
-        <div className="flex items-center gap-2 flex-wrap">
-          {isAdmin && (
-            <Badge variant="outline" className="text-xs gap-1 bg-emerald-500/10 text-emerald-600 border-emerald-500/20">
-              <Folder className="w-3 h-3" />
-              {folder?.name || "No folder"}
-            </Badge>
-          )}
-          {file.is_restricted && (
-            <Badge variant="outline" className="text-xs gap-1 bg-amber-500/10 text-amber-600 border-amber-500/20">
-              <Lock className="w-3 h-3" />
-              Restricted
-            </Badge>
-          )}
+      {/* Restriction badge */}
+      {file.is_restricted && (
+        <div className="px-4 pb-2">
+          <Badge variant="outline" className="text-xs gap-1 bg-amber-500/10 text-amber-600 border-amber-500/20">
+            <Lock className="w-3 h-3" />
+            Restricted
+          </Badge>
         </div>
-      </div>
+      )}
 
       {/* File info preview */}
       <div className="px-4 pb-3">

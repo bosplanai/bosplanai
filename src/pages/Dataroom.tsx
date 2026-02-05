@@ -2,7 +2,7 @@ import { useSearchParams } from "react-router-dom";
 import { useOrgNavigation } from "@/hooks/useOrgNavigation";
 import SideNavigation from "@/components/SideNavigation";
 import OrganizationSwitcher from "@/components/OrganizationSwitcher";
-import { Upload, FileText, Eye, Settings, Trash2, Loader2, UserPlus, X, CloudUpload, Image, FileIcon, Plus, Folder, ChevronRight, Edit2, Shield, CheckCircle, Download, FileSignature, FolderPlus, ArrowLeft, FolderLock, Activity, MessageSquare, Users, Mail, Clock, AlertTriangle, Archive, Video, File, Lock, HardDrive, ShoppingCart, Bell } from "lucide-react";
+import { Upload, FileText, Eye, Settings, Trash2, Loader2, UserPlus, X, CloudUpload, Image, FileIcon, Plus, Edit2, Shield, CheckCircle, Download, FileSignature, ArrowLeft, FolderLock, Activity, MessageSquare, Users, Mail, Clock, AlertTriangle, Archive, Video, File, Lock, HardDrive, ShoppingCart, Bell } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -30,8 +30,6 @@ import DataRoomFilePreviewDialog from "@/components/dataroom/DataRoomFilePreview
 import { DataRoomDocumentEditorDialog } from "@/components/dataroom/DataRoomDocumentEditorDialog";
 import NdaUpdateModal from "@/components/dataroom/NdaUpdateModal";
 
-import { FolderPermissionsDialog } from "@/components/dataroom/FolderPermissionsDialog";
-import { AddToFolderDropdown } from "@/components/dataroom/AddToFolderDropdown";
 import { useNdaResignCheck } from "@/hooks/useNdaResignCheck";
 import BetaFooter from "@/components/BetaFooter";
 import { NotificationBell } from "@/components/NotificationBell";
@@ -2189,23 +2187,10 @@ By signing below, you acknowledge that you have read, understood, and agree to b
                       <div className="flex items-center gap-2">
                         <FileText className="w-4 h-4 text-emerald-500" />
                         <h2 className="font-semibold">Files</h2>
-                        {currentFolderId && (
-                          <Button variant="ghost" size="sm" onClick={() => setCurrentFolderId(null)} className="h-6 px-2 text-xs text-muted-foreground">
-                            <ArrowLeft className="w-3 h-3 mr-1" />
-                            Back
-                          </Button>
-                        )}
                       </div>
                       <div className="flex gap-2">
-                        {/* Only creator can create folders */}
-                        {selectedRoom?.created_by === user?.id && (
-                          <Button variant="outline" size="sm" onClick={() => setCreateFolderOpen(true)} className="h-8 text-xs">
-                            <FolderPlus className="w-3.5 h-3.5 mr-1.5" />
-                            Folder
-                          </Button>
-                        )}
-                        {/* All members with edit access can upload files */}
-                        {canEditCurrentFolder && (
+                        {/* All members with access can upload files */}
+                        {isDataRoomMember && (
                           <>
                             <Button size="sm" className="bg-emerald-500 hover:bg-emerald-600 h-8 text-xs" onClick={() => fileInputRef.current?.click()}>
                               <Upload className="w-3.5 h-3.5 mr-1.5" />
@@ -2219,11 +2204,11 @@ By signing below, you acknowledge that you have read, understood, and agree to b
 
                     {/* Drop Zone */}
                     <div ref={dropZoneRef} onDragEnter={handleDragEnter} onDragLeave={handleDragLeave} onDragOver={handleDragOver} onDrop={handleDrop} className={cn("min-h-[300px] transition-all", isDragging && "bg-emerald-500/5")}>
-                      {foldersLoading || filesLoading ? (
+                      {filesLoading ? (
                         <div className="flex items-center justify-center h-[300px]">
                           <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
                         </div>
-                      ) : folders.length === 0 && files.length === 0 ? (
+                      ) : files.length === 0 ? (
                         <div className={cn("flex flex-col items-center justify-center h-[300px] text-muted-foreground border-2 border-dashed m-4 rounded-xl transition-colors", isDragging ? "border-emerald-500 bg-emerald-500/5" : "border-border/30")}>
                           <CloudUpload className="w-12 h-12 mb-3 opacity-30" />
                           <p className="font-medium">Drop files here or click upload</p>
@@ -2231,96 +2216,10 @@ By signing below, you acknowledge that you have read, understood, and agree to b
                         </div>
                       ) : (
                         <div className="p-4 space-y-3">
-                          {/* Folders */}
-                          {folders.length > 0 && (
-                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                              {folders.map(folder => {
-                                const hasAccess = canAccessFolder(folder);
-                                return (
-                                <div 
-                                  key={folder.id} 
-                                  className={cn(
-                                    "p-3 rounded-lg transition-all group relative",
-                                    hasAccess 
-                                      ? "bg-muted/30 hover:bg-muted/50" 
-                                      : "bg-muted/20 opacity-70"
-                                  )}
-                                >
-                                  <div 
-                                    className={cn(
-                                      "flex items-center gap-2",
-                                      hasAccess ? "cursor-pointer" : "cursor-not-allowed"
-                                    )}
-                                    onClick={() => handleFolderClick(folder)}
-                                  >
-                                    {hasAccess ? (
-                                      <Folder className="w-4 h-4 text-amber-500" />
-                                    ) : (
-                                      <FolderLock className="w-4 h-4 text-muted-foreground" />
-                                    )}
-                                    <span className={cn(
-                                      "text-sm font-medium truncate flex-1",
-                                      !hasAccess && "text-muted-foreground"
-                                    )}>{folder.name}</span>
-                                    {folder.is_restricted && (
-                                      <span title={hasAccess ? "Restricted access" : "No access"}>
-                                        <Lock className={cn(
-                                          "w-3 h-3 flex-shrink-0",
-                                          hasAccess ? "text-amber-500" : "text-muted-foreground"
-                                        )} />
-                                      </span>
-                                    )}
-                                  </div>
-                                  {/* Folder action buttons - show on hover */}
-                                  <div className="absolute top-1 right-1 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity bg-background/90 rounded-md px-0.5">
-                                    {/* Only show folder management for data room creator */}
-                                    {selectedRoom?.created_by === user?.id && (
-                                      <>
-                                        <Button 
-                                          variant="ghost" 
-                                          size="sm" 
-                                          className="h-6 w-6 p-0" 
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            setPermissionsFolder({
-                                              id: folder.id,
-                                              name: folder.name,
-                                              is_restricted: folder.is_restricted || false,
-                                              created_by: folder.created_by
-                                            });
-                                            setFolderPermissionsDialogOpen(true);
-                                          }}
-                                          title="Manage folder access"
-                                        >
-                                          <Lock className="w-3 h-3" />
-                                        </Button>
-                                        <Button 
-                                          variant="ghost" 
-                                          size="sm" 
-                                          className="h-6 w-6 p-0 text-destructive hover:text-destructive hover:bg-destructive/10" 
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            setFolderToDelete({ id: folder.id, name: folder.name });
-                                            setDeleteFolderDialogOpen(true);
-                                          }}
-                                          title="Delete folder"
-                                        >
-                                          <Trash2 className="w-3 h-3" />
-                                        </Button>
-                                      </>
-                                    )}
-                                  </div>
-                                </div>
-                                );
-                              })}
-                            </div>
-                          )}
-
-                          {/* Files - Card Grid (aligned with Bosdrive) */}
+                          {/* Files - Card Grid */}
                           {files.length > 0 && (
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                               {files.map(file => {
-                                const folder = (file as any).folder || allFolders.find(f => f.id === file.folder_id);
                                 const uploaderName = (file as any).uploader?.full_name || profileMap[file.uploaded_by] || "Unknown";
                                 // Check for internal member assignment first, then external guest
                                 const assigneeName = file.assigned_to 
@@ -2336,20 +2235,15 @@ By signing below, you acknowledge that you have read, understood, and agree to b
                                       status: (file as any).status || "not_opened",
                                       file_category: (file as any).file_category
                                     }}
-                                    folder={folder ? { id: folder.id, name: folder.name } : null}
                                     uploaderName={uploaderName}
                                     assigneeName={assigneeName}
                                     version={(file as any).version_count || 1}
                                     canEdit={canEditFile(file)}
-                                    canDelete={canEditFolder(file.folder_id)}
+                                    canDelete={isAdmin || file.uploaded_by === user?.id}
                                     isAdmin={isAdmin}
                                     currentUserId={user?.id}
                                     onView={() => handleViewFile(file.id, file.file_path, file.name, file.mime_type)}
                                     onDownload={(format) => handleDownloadFileWithFormat(file.id, file.file_path, file.name, file.mime_type, format)}
-                                    onMoveToFolder={() => {
-                                      setFileToMove({ id: file.id, name: file.name, folder_id: file.folder_id });
-                                      setMoveToFolderDialogOpen(true);
-                                    }}
                                     onViewVersions={() => {
                                       setVersionHistoryFile({ id: file.id, name: file.name, rootFileId: (file as any).root_file_id });
                                       setVersionHistoryDialogOpen(true);
@@ -2358,7 +2252,7 @@ By signing below, you acknowledge that you have read, understood, and agree to b
                                       setEditDetailsFile({
                                         id: file.id,
                                         name: file.name,
-                                        folder_id: file.folder_id,
+                                        folder_id: null,
                                         is_restricted: file.is_restricted,
                                         assigned_to: file.assigned_to,
                                         assigned_guest_id: (file as any).assigned_guest_id
@@ -2439,8 +2333,8 @@ By signing below, you acknowledge that you have read, understood, and agree to b
                 {/* Dashboard Header */}
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                   <div className="flex items-center gap-4">
-                    <div className="p-3 rounded-xl bg-emerald-500/10">
-                      <Folder className="w-6 h-6 text-emerald-500" />
+                  <div className="p-3 rounded-xl bg-emerald-500/10">
+                      <FolderLock className="w-6 h-6 text-emerald-500" />
                     </div>
                     <div>
                       <h2 className="text-xl font-semibold text-foreground">Data Rooms Dashboard</h2>
@@ -2542,7 +2436,7 @@ By signing below, you acknowledge that you have read, understood, and agree to b
                                     Created {format(new Date(room.created_at), "MMM d, yyyy")}
                                   </p>
                                 </div>
-                                <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:text-emerald-500 transition-colors shrink-0 mt-1" />
+                                <ArrowLeft className="w-4 h-4 text-muted-foreground group-hover:text-emerald-500 transition-colors shrink-0 mt-1" />
                               </div>
 
                               {/* Room Description */}
@@ -2577,7 +2471,7 @@ By signing below, you acknowledge that you have read, understood, and agree to b
                             <div className="px-4 py-2.5 bg-emerald-500/5 border-t border-emerald-500/10 opacity-0 group-hover:opacity-100 transition-opacity">
                               <p className="text-xs text-emerald-600 dark:text-emerald-400 font-medium flex items-center">
                                 Click to open
-                                <ChevronRight className="w-3.5 h-3.5 ml-1" />
+                                <ArrowLeft className="w-3.5 h-3.5 ml-1" />
                               </p>
                             </div>
                           </Card>
@@ -2901,18 +2795,6 @@ By signing below, you acknowledge that you have read, understood, and agree to b
         </DialogContent>
       </Dialog>
 
-
-      {/* Folder Permissions Dialog */}
-      <FolderPermissionsDialog
-        open={folderPermissionsDialogOpen}
-        onOpenChange={setFolderPermissionsDialogOpen}
-        folder={permissionsFolder}
-        dataRoomId={activeRoomId || ""}
-        organizationId={selectedRoom?.organization_id || organization?.id || ""}
-        currentUserId={user?.id || ""}
-        currentUserName={profile?.full_name || user?.user_metadata?.full_name || user?.email || "Unknown"}
-        currentUserEmail={user?.email || ""}
-      />
 
       {/* Delete Folder Confirmation Dialog */}
       <Dialog open={deleteFolderDialogOpen} onOpenChange={setDeleteFolderDialogOpen}>

@@ -14,10 +14,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { 
   Loader2, 
-  Folder, 
   FileText, 
   Download, 
-  ChevronRight, 
   Home,
   Lock,
   Image,
@@ -27,7 +25,6 @@ import {
   Upload,
   CloudUpload,
   ArrowLeft,
-  FolderPlus,
   FolderLock,
   MessageSquare,
   Activity,
@@ -51,7 +48,6 @@ import { cn } from "@/lib/utils";
 import bosplanLogo from "@/assets/bosplan-logo.png";
 import GuestFilePreviewDialog from "@/components/dataroom/GuestFilePreviewDialog";
 import GuestDataRoomDocumentEditorDialog from "@/components/dataroom/GuestDataRoomDocumentEditorDialog";
-import { GuestAddToFolderDropdown } from "@/components/dataroom/GuestAddToFolderDropdown";
 import { GuestDataRoomFileCard } from "@/components/dataroom/GuestDataRoomFileCard";
 import { DataRoomVersionHistoryDialog } from "@/components/dataroom/DataRoomVersionHistoryDialog";
 import { isEditableDocument as isEditableDocumentUtil } from "@/lib/documentUtils";
@@ -1248,7 +1244,7 @@ const GuestDataRoom = () => {
       case "file_viewed": return <Eye className="w-4 h-4 text-amber-500" />;
       case "file_edited":
       case "version_created": return <FileSignature className="w-4 h-4 text-blue-500" />;
-      case "file_moved": return <FolderPlus className="w-4 h-4 text-amber-500" />;
+      case "file_moved": return <FileText className="w-4 h-4 text-amber-500" />;
       case "nda_signed": return <FileSignature className="w-4 h-4 text-emerald-500" />;
       case "file_deleted":
       case "invite_revoked": return <Trash2 className="w-4 h-4 text-destructive" />;
@@ -1567,7 +1563,7 @@ const GuestDataRoom = () => {
                         <ArrowLeft className="w-3 h-3 mr-1" />
                         Back
                       </Button>
-                      <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                      <ArrowLeft className="w-4 h-4 text-muted-foreground" />
                       <span className="text-foreground font-medium">
                         {breadcrumbs.length > 0 ? breadcrumbs[breadcrumbs.length - 1].name : "Files"}
                       </span>
@@ -1615,7 +1611,7 @@ const GuestDataRoom = () => {
                             onClick={() => handleFolderClick(folder.id)}
                           >
                             <div className="flex items-center gap-2">
-                              <Folder className="w-4 h-4 text-amber-500" />
+                              <FolderLock className="w-4 h-4 text-amber-500" />
                               <span className="text-sm font-medium truncate">{folder.name}</span>
                             </div>
                           </div>
