@@ -127,7 +127,8 @@ export function DataRoomFileCard({
 }: DataRoomFileCardProps) {
   const statusDisplay = STATUS_DISPLAY[file.status || "not_opened"] || STATUS_DISPLAY.not_opened;
   const canEditDocument = isEditableDocument(file.mime_type, file.name);
-  const canDeleteFile = canDelete || isAdmin || file.uploaded_by === currentUserId;
+  // Only the file uploader or room creator can delete files
+  const canDeleteFile = isAdmin || file.uploaded_by === currentUserId;
 
   return (
     <Card className="overflow-hidden hover:shadow-md transition-all duration-200 bg-card border-border/60">
