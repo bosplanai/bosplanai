@@ -452,11 +452,13 @@ const GuestDataRoom = () => {
     const baseName = file.name.replace(/\.[^/.]+$/, '');
     const isEditable = isEditableDocumentUtil(file.mime_type, file.name);
 
-    // For PDF format, check for edited document content first
+    // For PDF format, get document content (either edited or parsed from original)
     if (format === 'pdf') {
       if (isEditable) {
-        // Try to get edited document content
+        // Try to get document content (edge function parses original if no edited content exists)
         try {
+          toast.info("Preparing PDF export...");
+          
           const { data: docData, error: docError } = await supabase.functions.invoke(
             "guest-get-document-content",
             {
@@ -464,15 +466,24 @@ const GuestDataRoom = () => {
             }
           );
 
-          const hasEditedContent = docData?.content && 
-            docData.content !== "" && 
-            docData.content !== "<p></p>" &&
-            docData.content !== "<p>Start editing this document...</p>" &&
-            !docData.content.includes("Could not extract document content") &&
-            docData.content.length > 50;
+          if (docError) {
+            console.error("Error fetching document content:", docError);
+            toast.error("Failed to prepare PDF export. Please try again.");
+            return;
+          }
 
-          if (hasEditedContent) {
-            // Export edited content as PDF using browser print
+          // Access the content from the document object (edge function returns { document: {...} })
+          const content = docData?.document?.content || docData?.content;
+          
+          const hasValidContent = content && 
+            content !== "" && 
+            content !== "<p></p>" &&
+            content !== "<p>Start editing this document...</p>" &&
+            !content.includes("Could not extract document content") &&
+            content.length > 50;
+
+          if (hasValidContent) {
+            // Export content as PDF using browser print
             const printWindow = window.open('', '_blank');
             if (printWindow) {
               const printHtml = `
@@ -507,7 +518,7 @@ const GuestDataRoom = () => {
                     </style>
                   </head>
                   <body>
-                    ${docData.content}
+                    ${content}
                   </body>
                 </html>
               `;
@@ -521,14 +532,19 @@ const GuestDataRoom = () => {
               toast.error("Could not open print window. Please allow popups.");
             }
             return;
+          } else {
+            toast.error("Could not extract document content for PDF export. Please try downloading the original format.");
+            return;
           }
         } catch (err) {
           console.error("Error fetching document content for PDF:", err);
+          toast.error("Failed to prepare PDF export. Please try again.");
+          return;
         }
       }
 
-      // No edited content - inform user
-      toast.info("PDF export is available for edited documents. Open and edit this document first to enable PDF export.");
+      // Non-editable files (PDFs, images) - inform user
+      toast.info("PDF export is only available for editable documents (Word, Excel). This file can be downloaded in its original format.");
       return;
     }
 
