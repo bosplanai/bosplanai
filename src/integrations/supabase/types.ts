@@ -487,25 +487,28 @@ export type Database = {
           created_at: string
           created_by: string | null
           file_id: string
+          guest_invite_id: string | null
           id: string
           permission_level: string
-          user_id: string
+          user_id: string | null
         }
         Insert: {
           created_at?: string
           created_by?: string | null
           file_id: string
+          guest_invite_id?: string | null
           id?: string
           permission_level?: string
-          user_id: string
+          user_id?: string | null
         }
         Update: {
           created_at?: string
           created_by?: string | null
           file_id?: string
+          guest_invite_id?: string | null
           id?: string
           permission_level?: string
-          user_id?: string
+          user_id?: string | null
         }
         Relationships: [
           {
@@ -527,6 +530,13 @@ export type Database = {
             columns: ["file_id"]
             isOneToOne: false
             referencedRelation: "data_room_files"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "data_room_file_permissions_guest_invite_id_fkey"
+            columns: ["guest_invite_id"]
+            isOneToOne: false
+            referencedRelation: "data_room_invites"
             referencedColumns: ["id"]
           },
           {
