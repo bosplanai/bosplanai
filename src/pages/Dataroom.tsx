@@ -769,22 +769,73 @@ By signing below, you acknowledge that you have read, understood, and agree to b
     enabled: !!activeRoomId
   });
 
-  // Export signatures to CSV
-  const exportSignaturesToCsv = () => {
+  // Export signatures to PDF
+  const exportSignaturesToPdf = () => {
     if (ndaSignatures.length === 0) return;
-    const headers = ["Signer Name", "Email", "Signed At", "IP Address"];
-    const rows = ndaSignatures.map((sig: any) => [sig.signer_name, sig.signer_email, format(new Date(sig.signed_at), "yyyy-MM-dd HH:mm:ss"), sig.ip_address || "N/A"]);
-    const csvContent = [`NDA Signature Log - ${selectedRoom?.name}`, `Exported: ${format(new Date(), "yyyy-MM-dd HH:mm:ss")}`, "", headers.join(","), ...rows.map(row => row.map(cell => `"${cell}"`).join(","))].join("\n");
-    const blob = new Blob([csvContent], {
-      type: "text/csv;charset=utf-8;"
-    });
-    const link = document.createElement("a");
-    const url = URL.createObjectURL(blob);
-    link.setAttribute("href", url);
-    link.setAttribute("download", `nda-signatures-${selectedRoom?.name?.replace(/\s+/g, "-").toLowerCase()}-${format(new Date(), "yyyy-MM-dd")}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+      toast({ title: "Pop-up blocked", description: "Please allow pop-ups to export PDF", variant: "destructive" });
+      return;
+    }
+
+    const signaturesHtml = ndaSignatures.map((sig: any) => `
+      <tr>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">${sig.signer_name}</td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">${sig.signer_email}</td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">${format(new Date(sig.signed_at), "MMM d, yyyy 'at' h:mm a")}</td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">${sig.ip_address || "N/A"}</td>
+      </tr>
+    `).join('');
+
+    const htmlContent = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>NDA Signatures - ${selectedRoom?.name}</title>
+        <style>
+          @page { size: A4; margin: 20mm; }
+          body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #1f2937; line-height: 1.6; padding: 40px; }
+          .header { margin-bottom: 30px; border-bottom: 2px solid #10b981; padding-bottom: 20px; }
+          .header h1 { margin: 0 0 8px 0; font-size: 24px; color: #111827; }
+          .header p { margin: 0; color: #6b7280; font-size: 14px; }
+          table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+          th { background: #f9fafb; padding: 12px; text-align: left; font-weight: 600; border-bottom: 2px solid #e5e7eb; color: #374151; }
+          .footer { margin-top: 40px; padding-top: 20px; border-top: 1px solid #e5e7eb; font-size: 12px; color: #9ca3af; }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <h1>NDA Signature Log</h1>
+          <p><strong>Data Room:</strong> ${selectedRoom?.name}</p>
+          <p><strong>Exported:</strong> ${format(new Date(), "MMMM d, yyyy 'at' h:mm a")}</p>
+          <p><strong>Total Signatures:</strong> ${ndaSignatures.length}</p>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>Signer Name</th>
+              <th>Email</th>
+              <th>Signed At</th>
+              <th>IP Address</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${signaturesHtml}
+          </tbody>
+        </table>
+        <div class="footer">
+          <p>This document was automatically generated from ${selectedRoom?.name} Data Room.</p>
+        </div>
+      </body>
+      </html>
+    `;
+
+    printWindow.document.write(htmlContent);
+    printWindow.document.close();
+    printWindow.onload = () => {
+      printWindow.print();
+    };
   };
   const defaultNdaContent = `NON-DISCLOSURE AGREEMENT
 
@@ -2789,9 +2840,9 @@ By signing below, you acknowledge that you have read, understood, and agree to b
             <Button variant="outline" onClick={() => setSignaturesOpen(false)}>
               Close
             </Button>
-            {ndaSignatures.length > 0 && <Button className="bg-emerald-500 hover:bg-emerald-600" onClick={exportSignaturesToCsv}>
+            {ndaSignatures.length > 0 && <Button className="bg-emerald-500 hover:bg-emerald-600" onClick={exportSignaturesToPdf}>
                 <Download className="w-4 h-4 mr-2" />
-                Export CSV
+                Export PDF
               </Button>}
           </DialogFooter>
         </DialogContent>
