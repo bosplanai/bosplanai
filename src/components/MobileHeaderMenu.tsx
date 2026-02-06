@@ -32,21 +32,28 @@ const MobileHeaderMenu = () => {
       setOpen(false);
       return;
     }
-    await setActiveOrganization(org.id);
-    await refetch();
+    
+    // Close the sheet immediately for better perceived performance
     setOpen(false);
     
-    if (org.slug) {
+    // Calculate the new path first
+    let newPath = `/${org.slug}`;
+    if (currentOrg?.slug) {
       const currentPath = location.pathname;
-      const currentOrgSlug = currentOrg?.slug;
-      let subPath = "";
-      
-      if (currentOrgSlug && currentPath.startsWith(`/${currentOrgSlug}`)) {
-        subPath = currentPath.slice(`/${currentOrgSlug}`.length);
+      if (currentPath.startsWith(`/${currentOrg.slug}`)) {
+        const subPath = currentPath.slice(`/${currentOrg.slug}`.length);
+        newPath = `/${org.slug}${subPath}`;
       }
-      
-      navigate(`/${org.slug}${subPath}`);
     }
+    
+    // Set the active organization
+    await setActiveOrganization(org.id);
+    
+    // Refetch organization data (won't show loading state)
+    await refetch();
+    
+    // Navigate after data is ready
+    navigate(newPath);
   };
 
   const handleSettingsClick = () => {

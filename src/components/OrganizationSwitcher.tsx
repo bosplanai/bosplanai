@@ -36,24 +36,28 @@ const OrganizationSwitcher = () => {
       setOpen(false);
       return;
     }
-    // Set the active organization and refetch data
-    await setActiveOrganization(org.id);
-    await refetch();
+    
+    // Close the popover immediately for better perceived performance
     setOpen(false);
-    // Navigate to the same path under the new org
-    if (org.slug) {
-      // Extract the path after the current org slug and preserve it
+    
+    // Calculate the new path first
+    let newPath = `/${org.slug}`;
+    if (currentOrg?.slug) {
       const currentPath = location.pathname;
-      const currentOrgSlug = currentOrg?.slug;
-      let subPath = "";
-      
-      if (currentOrgSlug && currentPath.startsWith(`/${currentOrgSlug}`)) {
-        // Remove the current org slug to get the sub-path (e.g., /team, /settings)
-        subPath = currentPath.slice(`/${currentOrgSlug}`.length);
+      if (currentPath.startsWith(`/${currentOrg.slug}`)) {
+        const subPath = currentPath.slice(`/${currentOrg.slug}`.length);
+        newPath = `/${org.slug}${subPath}`;
       }
-      
-      navigate(`/${org.slug}${subPath}`);
     }
+    
+    // Set the active organization - this updates localStorage and triggers storage event
+    await setActiveOrganization(org.id);
+    
+    // Refetch organization data (this won't show loading state anymore)
+    await refetch();
+    
+    // Navigate to the new path - this happens after data is ready
+    navigate(newPath);
   };
 
   const handleCreateClick = () => {
