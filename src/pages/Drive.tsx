@@ -2171,8 +2171,8 @@ const Drive = () => {
                                   Legacy format (view only)
                                 </DropdownMenuItem>
                               )}
-                              {/* Delete: Admins can delete any file, others can only delete their own */}
-                              {(isAdmin || file.uploaded_by === user?.id) && (
+                              {/* Delete: Admins and Managers can delete any file, Team can only delete their own */}
+                              {(isAdmin || isMember || file.uploaded_by === user?.id) && (
                                 <DropdownMenuItem onClick={() => deleteFileMutation.mutate(file.id)} className="gap-2 text-destructive focus:text-destructive">
                                   <Trash2 className="w-4 h-4" />
                                   Delete
