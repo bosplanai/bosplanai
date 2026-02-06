@@ -3022,7 +3022,7 @@ By signing below, you acknowledge that you have read, understood, and agree to b
             .is("deleted_at", null)
             .order("version", { ascending: false })
             .limit(1)
-            .single();
+            .maybeSingle();
           
           const { data: newFileData, error } = await supabase.from("data_room_files").insert({
             ...version,
@@ -3039,24 +3039,28 @@ By signing below, you acknowledge that you have read, understood, and agree to b
           if (error) {
             toast({ title: "Restore failed", description: error.message, variant: "destructive" });
           } else {
-            // Copy document content if it exists
+            // Copy document content if it exists - use maybeSingle to handle missing content gracefully
             if (newFileData?.id) {
               const { data: docContent } = await supabase
                 .from("data_room_document_content")
                 .select("content, content_type")
                 .eq("file_id", version.id)
-                .single();
+                .maybeSingle();
               
-              if (docContent) {
+              if (docContent?.content) {
                 await supabase.from("data_room_document_content").insert({
                   file_id: newFileData.id,
                   data_room_id: activeRoomId,
                   organization_id: selectedRoom.organization_id,
                   content: docContent.content,
-                  content_type: docContent.content_type,
+                  content_type: docContent.content_type || 'rich_text',
                 });
               }
             }
+            
+            // Close dialog and refresh data
+            setVersionHistoryDialogOpen(false);
+            setVersionHistoryFile(null);
             
             queryClient.invalidateQueries({ queryKey: ["data-room-files"] });
             queryClient.invalidateQueries({ queryKey: ["data-room-file-versions"] });
