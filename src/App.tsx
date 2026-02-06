@@ -288,7 +288,7 @@ const AdminRoute = ({ children }: { children: React.ReactNode }) => {
 const MemberRoute = ({ children }: { children: React.ReactNode }) => {
   const { user, loading: authLoading } = useAuth();
   const { profile, organization, loading: orgLoading } = useOrganization();
-  const { isAdmin, role, loading: roleLoading } = useUserRole();
+  const { isAdmin, isMember, loading: roleLoading } = useUserRole();
   
   // Track if we've completed initial load
   const hasCompletedInitialLoad = useRef(false);
@@ -316,8 +316,8 @@ const MemberRoute = ({ children }: { children: React.ReactNode }) => {
     return <Navigate to="/auth" replace />;
   }
 
-  // Allow admin or member roles
-  if (!isAdmin && role !== "member") {
+  // Allow admin or member (manager) roles
+  if (!isAdmin && !isMember) {
     return <Navigate to="/access-denied" replace />;
   }
 
