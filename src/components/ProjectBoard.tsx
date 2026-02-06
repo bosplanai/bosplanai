@@ -279,11 +279,13 @@ const ProjectBoard = () => {
     completeTasks
   } = useMemo(() => {
     const filtered = tasks.filter(task => {
-      // For team members (viewers), show assigned operational/strategic tasks on the product tab
+      // Show assigned operational/strategic tasks on the product tab for non-admin users (viewers and managers)
+      // Admins see tasks on their original boards; assigned non-admins see them on Product Management
       const isAssignedToTask = task.task_assignments?.some(a => a.user_id === user?.id) || task.assigned_user_id === user?.id;
       const isOpsOrStrategicTask = task.category === "operational" || task.category === "strategic";
+      const isCreator = task.created_by_user_id === user?.id;
       const matchesCategory = task.category === activeTab || 
-        (activeTab === "product" && isViewer && isOpsOrStrategicTask && isAssignedToTask);
+        (activeTab === "product" && !isAdmin && isOpsOrStrategicTask && isAssignedToTask && !isCreator);
       const matchesSearch = debouncedSearchQuery.trim() === "" || task.title.toLowerCase().includes(debouncedSearchQuery.toLowerCase());
       const matchesPriority = priorityFilter === "all" || task.priority === priorityFilter;
       const matchesSubcategory = !showSubcategoryFilter || subcategoryFilter === "all" || task.subcategory === subcategoryFilter;
