@@ -41,18 +41,29 @@ serve(async (req) => {
       throw new Error("Session ID is required");
     }
 
-    console.log("Verifying storage purchase:", { sessionId, userId: user.id });
+    console.log("Verifying storage subscription:", { sessionId, userId: user.id });
 
     const stripe = new Stripe(stripeKey, { apiVersion: "2023-10-16" });
 
-    // Retrieve the checkout session
-    const session = await stripe.checkout.sessions.retrieve(sessionId);
+    // Retrieve the checkout session with subscription expanded
+    const session = await stripe.checkout.sessions.retrieve(sessionId, {
+      expand: ['subscription'],
+    });
 
-    if (session.payment_status !== "paid") {
-      throw new Error("Payment not completed");
+    // Check if this is a subscription checkout
+    if (session.mode !== "subscription") {
+      throw new Error("Invalid session mode - expected subscription");
     }
 
-    if (session.metadata?.type !== "storage_purchase" || session.metadata?.product !== "drive") {
+    // Check subscription status
+    const subscription = session.subscription as Stripe.Subscription | null;
+    if (!subscription || (subscription.status !== "active" && subscription.status !== "trialing")) {
+      throw new Error("Subscription not active");
+    }
+
+    // Check metadata - support both old "storage_purchase" and new "storage_subscription" types
+    const metadataType = session.metadata?.type;
+    if ((metadataType !== "storage_subscription" && metadataType !== "storage_purchase") || session.metadata?.product !== "drive") {
       throw new Error("Invalid session type");
     }
 
@@ -72,27 +83,27 @@ serve(async (req) => {
       .maybeSingle();
 
     if (existingPurchase) {
-      console.log("Purchase already processed:", sessionId);
+      console.log("Subscription already processed:", sessionId);
       return new Response(
-        JSON.stringify({ success: true, message: "Purchase already processed", storageGb }),
+        JSON.stringify({ success: true, message: "Subscription already processed", storageGb }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
       );
     }
 
-    // Record the purchase
+    // Record the subscription purchase
     const { error: purchaseError } = await supabase.from("storage_purchases").insert({
       organization_id: organizationId,
       user_id: user.id,
       stripe_session_id: sessionId,
-      price_id: "one-time-storage",
+      price_id: typeof subscription === 'object' ? subscription.id : "monthly-storage-subscription",
       storage_gb: storageGb,
       amount_cents: session.amount_total || 0,
       status: "completed",
     });
 
     if (purchaseError) {
-      console.error("Error recording purchase:", purchaseError);
-      throw new Error("Failed to record purchase");
+      console.error("Error recording subscription:", purchaseError);
+      throw new Error("Failed to record subscription");
     }
 
     // Update organization storage - upsert to add to existing or create new
@@ -120,23 +131,24 @@ serve(async (req) => {
       throw new Error("Failed to update storage");
     }
 
-    console.log("Storage purchase verified and applied:", {
+    console.log("Storage subscription verified and applied:", {
       organizationId,
       addedGb: storageGb,
       newTotalGb: newTotalStorage,
+      subscriptionId: typeof subscription === 'object' ? subscription.id : 'unknown',
     });
 
     return new Response(
       JSON.stringify({ 
         success: true, 
-        message: "Storage added successfully",
+        message: "Storage subscription activated successfully",
         storageGb,
         totalStorageGb: newTotalStorage,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
     );
   } catch (error: unknown) {
-    console.error("Error verifying storage purchase:", error);
+    console.error("Error verifying storage subscription:", error);
     const errorMessage = error instanceof Error ? error.message : "Unknown error";
     return new Response(JSON.stringify({ success: false, error: errorMessage }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },

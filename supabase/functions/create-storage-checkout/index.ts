@@ -81,7 +81,7 @@ serve(async (req) => {
 
     const origin = returnOrigin || "https://bosplanv4.lovable.app";
 
-    // Create checkout session for one-time storage purchase in USD
+    // Create checkout session for monthly recurring storage subscription in USD
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
       customer_email: customerId ? undefined : user.email,
@@ -91,18 +91,30 @@ serve(async (req) => {
             currency: "usd",
             product_data: {
               name: `Bosdrive Storage - ${tierInfo.label}`,
-              description: `One-time purchase of ${tierInfo.label} additional storage for Bosdrive`,
+              description: `Monthly subscription for ${tierInfo.label} additional storage for Bosdrive`,
             },
             unit_amount: tierInfo.priceUsd,
+            recurring: {
+              interval: "month",
+            },
           },
           quantity: 1,
         },
       ],
-      mode: "payment",
+      mode: "subscription",
       success_url: `${origin}/payment-success?session_id={CHECKOUT_SESSION_ID}&storage_purchase=success&product=drive&org_id=${organizationId}&org_slug=${orgData.slug}`,
       cancel_url: `${origin}/${orgData.slug}/drive?storage_purchase=canceled`,
+      subscription_data: {
+        metadata: {
+          type: "storage_subscription",
+          product: "drive",
+          organizationId,
+          userId: user.id,
+          storageGb: tierInfo.gb.toString(),
+        },
+      },
       metadata: {
-        type: "storage_purchase",
+        type: "storage_subscription",
         product: "drive",
         organizationId,
         userId: user.id,
