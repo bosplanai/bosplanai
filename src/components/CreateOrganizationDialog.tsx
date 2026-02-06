@@ -49,7 +49,6 @@ const CreateOrganizationDialog = ({ open, onOpenChange }: CreateOrganizationDial
   const [orgName, setOrgName] = useState("");
   const [employeeSize, setEmployeeSize] = useState("");
   const [jobRole, setJobRole] = useState("");
-  const [phoneNumber, setPhoneNumber] = useState("");
   const [isCreating, setIsCreating] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -57,7 +56,6 @@ const CreateOrganizationDialog = ({ open, onOpenChange }: CreateOrganizationDial
     setOrgName("");
     setEmployeeSize("");
     setJobRole("");
-    setPhoneNumber("");
     setErrors({});
   };
 
@@ -80,11 +78,6 @@ const CreateOrganizationDialog = ({ open, onOpenChange }: CreateOrganizationDial
     if (!jobRole.trim()) {
       newErrors.jobRole = "Job role is required";
     }
-
-    if (!phoneNumber.trim()) {
-      newErrors.phoneNumber = "Phone number is required";
-    }
-
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
       return;
@@ -96,7 +89,7 @@ const CreateOrganizationDialog = ({ open, onOpenChange }: CreateOrganizationDial
         _org_name: orgName.trim(),
         _employee_size: employeeSize,
         _job_role: jobRole.trim(),
-        _phone_number: phoneNumber.trim(),
+        _phone_number: "N/A",
       });
 
       if (error) throw error;
@@ -192,19 +185,6 @@ const CreateOrganizationDialog = ({ open, onOpenChange }: CreateOrganizationDial
             )}
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="phoneNumber">Phone Number</Label>
-            <Input
-              id="phoneNumber"
-              value={phoneNumber}
-              onChange={(e) => setPhoneNumber(e.target.value)}
-              placeholder="+1 234 567 8900"
-              className={errors.phoneNumber ? "border-destructive" : ""}
-            />
-            {errors.phoneNumber && (
-              <p className="text-sm text-destructive">{errors.phoneNumber}</p>
-            )}
-          </div>
         </div>
 
         <DialogFooter>
