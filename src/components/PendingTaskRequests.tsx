@@ -18,6 +18,7 @@ interface PendingTaskRequestsProps {
   teamMembers: TeamMember[];
   currentUserId: string | undefined;
   onTaskAccepted?: () => void;
+  organizationId?: string;
 }
 
 const priorityConfig = {
@@ -26,8 +27,8 @@ const priorityConfig = {
   low: { label: "Low", className: "bg-priority-low/10 text-priority-low" },
 };
 
-const PendingTaskRequests = ({ teamMembers, currentUserId, onTaskAccepted }: PendingTaskRequestsProps) => {
-  const { pendingRequests, loading, acceptTask, declineTask, reassignTask } = useTaskRequests();
+const PendingTaskRequests = ({ teamMembers, currentUserId, onTaskAccepted, organizationId }: PendingTaskRequestsProps) => {
+  const { pendingRequests, loading, acceptTask, declineTask, reassignTask } = useTaskRequests(organizationId);
   const [isOpen, setIsOpen] = useState(true);
   const [selectedRequest, setSelectedRequest] = useState<TaskRequest | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);

@@ -26,7 +26,7 @@ export interface TaskRequest {
   organization_id: string;
 }
 
-export const useTaskRequests = () => {
+export const useTaskRequests = (organizationId?: string) => {
   const [pendingRequests, setPendingRequests] = useState<TaskRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
@@ -34,9 +34,6 @@ export const useTaskRequests = () => {
   const queryClient = useQueryClient();
 
   const fetchPendingRequests = async () => {
-    // Don't gate this by a selected/active organization.
-    // Users can belong to multiple orgs (via user_roles) even if their profile.organization_id
-    // points somewhere else; RLS will correctly scope what they can see.
     if (!user) {
       setPendingRequests([]);
       setLoading(false);
@@ -77,13 +74,14 @@ export const useTaskRequests = () => {
 
       if (error) throw error;
 
-      // Filter out draft/deleted tasks and transform data
-      // Note: We don't filter by current organization since users may have task requests
-      // from multiple organizations they belong to via user_roles
+      // Filter out draft/deleted tasks and filter by organization if provided
       const requests: TaskRequest[] = (data || [])
         .filter((item: any) => {
           const task = item.task;
-          return task && !task.is_draft && !task.deleted_at;
+          if (!task || task.is_draft || task.deleted_at) return false;
+          // Filter by organization if organizationId is provided
+          if (organizationId && task.organization_id !== organizationId) return false;
+          return true;
         })
         .map((item: any) => ({
           id: item.id,
@@ -117,7 +115,7 @@ export const useTaskRequests = () => {
 
   useEffect(() => {
     fetchPendingRequests();
-  }, [user]);
+  }, [user, organizationId]);
 
   // Real-time subscription for task assignment changes
   useEffect(() => {

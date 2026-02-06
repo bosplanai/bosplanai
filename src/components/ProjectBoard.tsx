@@ -645,8 +645,8 @@ const ProjectBoard = () => {
           {loading ? <div className="flex items-center justify-center h-64">
               <div className="text-muted-foreground animate-pulse">Loading tasks...</div>
             </div> : <div className="space-y-4 sm:space-y-6 w-full overflow-hidden">
-              {/* Pending Task Requests Section */}
-              <PendingTaskRequests teamMembers={allTeamMembers} currentUserId={user?.id} onTaskAccepted={refetch} />
+              {/* Pending Task Requests Section - scoped to current organization */}
+              <PendingTaskRequests teamMembers={allTeamMembers} currentUserId={user?.id} onTaskAccepted={refetch} organizationId={organization?.id} />
               
               {/* Task Columns */}
               <div className="flex flex-col md:flex-row gap-3 sm:gap-4 md:gap-6 w-full overflow-hidden">
