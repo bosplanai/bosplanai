@@ -652,10 +652,11 @@ const ProjectBoard = () => {
               {todoTasks.map(task => {
                   const IconComponent = iconMap[task.icon] || ListTodo;
                   // Team (viewer) users cannot change assignment normally, but all users can reassign tasks assigned to them
-                  const canAssign = canAssignTasks && activeTab === "product";
+                  // Full Access (admin) can assign on any board, others only on product
+                  const canAssign = canAssignTasks && (isAdmin || activeTab === "product");
                   // Any user can reassign a task that is currently assigned to them
                   const isCurrentAssignee = task.assigned_user_id === user?.id;
-                  const canReassignAssignedTask = isCurrentAssignee && activeTab === "product";
+                  const canReassignAssignedTask = isCurrentAssignee && (isAdmin || activeTab === "product");
                   
                   // Determine if current user can edit this task
                   // Viewer: Cannot edit tasks at all (can only move their assigned tasks)
@@ -691,10 +692,11 @@ const ProjectBoard = () => {
                 {completeTasks.map(task => {
                   const IconComponent = iconMap[task.icon] || ListTodo;
                   // Team (viewer) users cannot change assignment normally, but all users can reassign tasks assigned to them
-                  const canAssign = canAssignTasks && activeTab === "product";
+                  // Full Access (admin) can assign on any board, others only on product
+                  const canAssign = canAssignTasks && (isAdmin || activeTab === "product");
                   // Any user can reassign a task that is currently assigned to them
                   const isCurrentAssignee = task.assigned_user_id === user?.id;
-                  const canReassignAssignedTask = isCurrentAssignee && activeTab === "product";
+                  const canReassignAssignedTask = isCurrentAssignee && (isAdmin || activeTab === "product");
                   
                   // Determine if current user can edit this task
                   const isOwnTask = task.created_by_user_id === user?.id || task.assigned_user_id === user?.id;
