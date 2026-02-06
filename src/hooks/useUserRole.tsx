@@ -114,7 +114,7 @@ export const UserRoleProvider = ({ children }: { children: ReactNode }) => {
   // Manager: Can create tasks, edit their own tasks, assign tasks
   // Admin: Full CRUD on all boards
   const canCreateTasks = role === "member" || role === "admin";
-  const canDeleteTasks = role === "admin";
+  const canDeleteTasks = role === "member" || role === "admin";
   const canEditOwnTasks = role === "member" || role === "admin";
   const canEditAllTasks = role === "admin";
   const canAssignTasks = role === "member" || role === "admin";
