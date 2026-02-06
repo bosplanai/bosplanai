@@ -1036,26 +1036,30 @@ const Drive = () => {
       
       if (insertError) throw insertError;
       
-      // Copy document content if it exists
+      // Copy document content if it exists - use maybeSingle to handle missing content gracefully
       if (newFileData?.id) {
         const { data: docContent } = await supabase
           .from("drive_document_content")
           .select("content, content_type")
           .eq("file_id", versionToRestore.id)
-          .single();
+          .maybeSingle();
         
-        if (docContent) {
+        if (docContent?.content) {
           await supabase.from("drive_document_content").insert({
             file_id: newFileData.id,
             content: docContent.content,
-            content_type: docContent.content_type,
+            content_type: docContent.content_type || 'rich_text',
           });
         }
       }
       
-      return { restoredFromVersion: versionToRestore.version, newVersion };
+      return { restoredFromVersion: versionToRestore.version, newVersion, newFileId: newFileData?.id };
     },
     onSuccess: (result) => {
+      // Close the version dialog first to prevent stale UI
+      setVersionDialogFile(null);
+      
+      // Then invalidate and refetch all relevant queries
       queryClient.invalidateQueries({ queryKey: ["drive-files"], refetchType: 'all' });
       queryClient.invalidateQueries({ queryKey: ["file-versions"], refetchType: 'all' });
       queryClient.invalidateQueries({ queryKey: ["drive-folder-counts"], refetchType: 'all' });

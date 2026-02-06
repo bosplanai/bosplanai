@@ -152,13 +152,14 @@ Deno.serve(async (req) => {
     }
 
     // If the version has document content, copy it to the new version
+    // Use maybeSingle to handle cases where no document content exists
     const { data: docContent } = await supabaseAdmin
       .from("data_room_document_content")
       .select("content, content_type")
       .eq("file_id", versionId)
-      .single();
+      .maybeSingle();
 
-    if (docContent && newVersionData) {
+    if (docContent?.content && newVersionData) {
       await supabaseAdmin
         .from("data_room_document_content")
         .insert({
@@ -166,7 +167,7 @@ Deno.serve(async (req) => {
           data_room_id: invite.data_room_id,
           organization_id: invite.organization_id,
           content: docContent.content,
-          content_type: docContent.content_type,
+          content_type: docContent.content_type || 'rich_text',
         });
     }
 
