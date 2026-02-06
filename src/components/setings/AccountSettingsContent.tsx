@@ -106,7 +106,7 @@ const AccountSettingsContent = () => {
 
     setIsUpdatingEmail(true);
     try {
-      const redirectUrl = "https://bosplansupabase.lovable.app/";
+      const redirectUrl = `${window.location.origin}/`;
       const { error } = await supabase.auth.updateUser(
         { email: email.trim() },
         { emailRedirectTo: redirectUrl }
