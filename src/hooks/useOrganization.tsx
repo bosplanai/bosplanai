@@ -1,4 +1,4 @@
-import { useState, useEffect, createContext, useContext, ReactNode, useCallback } from "react";
+import { useState, useEffect, createContext, useContext, ReactNode, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "./useAuth";
 
@@ -38,13 +38,23 @@ export const OrganizationProvider = ({ children }: { children: ReactNode }) => {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
+  
+  // Track if this is the initial load vs a refetch
+  const isInitialLoad = useRef(true);
 
   const fetchOrganizationData = useCallback(async () => {
     if (!user) {
       setOrganization(null);
       setProfile(null);
       setLoading(false);
+      isInitialLoad.current = false;
       return;
+    }
+
+    // Only show loading state on initial load, not on refetch
+    // This prevents flickering when switching organizations
+    if (isInitialLoad.current) {
+      setLoading(true);
     }
 
     try {
@@ -112,10 +122,12 @@ export const OrganizationProvider = ({ children }: { children: ReactNode }) => {
       console.error("Error fetching organization data:", error);
     } finally {
       setLoading(false);
+      isInitialLoad.current = false;
     }
   }, [user]);
 
   useEffect(() => {
+    isInitialLoad.current = true;
     fetchOrganizationData();
   }, [fetchOrganizationData]);
 

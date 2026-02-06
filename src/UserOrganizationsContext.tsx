@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from "react";
+import { createContext, useContext, useState, useEffect, useCallback, ReactNode, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -30,12 +30,21 @@ export const UserOrganizationsProvider = ({ children }: { children: ReactNode })
   });
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
+  
+  // Track if this is the initial load vs a refetch
+  const isInitialLoad = useRef(true);
 
   const fetchUserOrganizations = useCallback(async () => {
     if (!user) {
       setOrganizations([]);
       setLoading(false);
+      isInitialLoad.current = false;
       return;
+    }
+
+    // Only show loading state on initial load, not on refetch
+    if (isInitialLoad.current) {
+      setLoading(true);
     }
 
     try {
@@ -82,6 +91,7 @@ export const UserOrganizationsProvider = ({ children }: { children: ReactNode })
       setOrganizations([]);
     } finally {
       setLoading(false);
+      isInitialLoad.current = false;
     }
   }, [user, activeOrgId]);
 
@@ -96,6 +106,7 @@ export const UserOrganizationsProvider = ({ children }: { children: ReactNode })
   }, []);
 
   useEffect(() => {
+    isInitialLoad.current = true;
     fetchUserOrganizations();
   }, [fetchUserOrganizations]);
 
