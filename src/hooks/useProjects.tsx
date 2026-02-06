@@ -36,6 +36,7 @@ export const useProjects = () => {
         .select("*")
         .eq("organization_id", organization.id)
         .is("archived_at", null)
+        .is("deleted_at", null)
         .order("position", { ascending: true });
 
       if (error) throw error;
@@ -77,18 +78,18 @@ export const useProjects = () => {
         },
         (payload) => {
           if (payload.eventType === 'INSERT') {
-            const newProject = payload.new as Project & { archived_at?: string | null };
-            // Only add if not archived and not already in list
-            if (newProject.archived_at) return;
+            const newProject = payload.new as Project & { archived_at?: string | null; deleted_at?: string | null };
+            // Only add if not archived, not deleted, and not already in list
+            if (newProject.archived_at || newProject.deleted_at) return;
             setProjects((prev) => {
               // Prevent duplicates
               if (prev.some(p => p.id === newProject.id)) return prev;
               return [...prev, newProject as Project].sort((a, b) => a.position - b.position);
             });
           } else if (payload.eventType === 'UPDATE') {
-            const updatedProject = payload.new as Project & { archived_at?: string | null };
-            // Remove if archived, otherwise update
-            if (updatedProject.archived_at) {
+            const updatedProject = payload.new as Project & { archived_at?: string | null; deleted_at?: string | null };
+            // Remove if archived or deleted, otherwise update
+            if (updatedProject.archived_at || updatedProject.deleted_at) {
               setProjects((prev) => prev.filter((p) => p.id !== updatedProject.id));
             } else {
               setProjects((prev) =>
@@ -190,15 +191,17 @@ export const useProjects = () => {
 
   const deleteProject = async (id: string) => {
     try {
+      // Soft delete - set deleted_at timestamp
       const { error } = await supabase
         .from("projects")
-        .delete()
+        .update({ deleted_at: new Date().toISOString() })
         .eq("id", id);
 
       if (error) throw error;
       setProjects((prev) => prev.filter((p) => p.id !== id));
       toast({
-        title: "Project deleted",
+        title: "Project moved to recycle bin",
+        description: "The project can be restored within 30 days",
       });
     } catch (error: any) {
       toast({
