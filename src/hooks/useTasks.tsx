@@ -3,6 +3,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "./useAuth";
 import { useOrganization } from "./useOrganization";
+import { useUserRole } from "./useUserRole";
 import { useToast } from "./use-toast";
 
 export type TaskPriority = "high" | "medium" | "low";
@@ -61,19 +62,22 @@ export const useTasks = () => {
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
   const { profile, organization } = useOrganization();
+  const { isAdmin } = useUserRole();
   const { toast } = useToast();
   
   // Refs to avoid stale closures in realtime subscription
   const userRef = useRef(user);
   const profileRef = useRef(profile);
   const organizationRef = useRef(organization);
+  const isAdminRef = useRef(isAdmin);
   
   // Keep refs updated
   useEffect(() => {
     userRef.current = user;
     profileRef.current = profile;
     organizationRef.current = organization;
-  }, [user, profile, organization]);
+    isAdminRef.current = isAdmin;
+  }, [user, profile, organization, isAdmin]);
 
   // Helper to generate signed URL from file path
   const getSignedUrl = async (filePath: string): Promise<string | null> => {
@@ -121,11 +125,14 @@ export const useTasks = () => {
       // Defensive: supabase-js should return an array here, but if it doesn't,
       // avoid crashing and incorrectly showing a load error.
       const rows = Array.isArray(data) ? data : [];
+      
+      // Get current admin status from ref
+      const currentIsAdmin = isAdminRef.current;
 
-      // Filter tasks based on per-assignee acceptance:
-      // - Task appears on user's board if they have an accepted assignment
-      // - Task appears on creator's board if at least one assignee accepted OR no assignees exist
-      const filteredRows = rows.filter((t: any) => {
+      // Filter tasks based on user role:
+      // - Full Access (admin) users see ALL tasks in the organization - no filtering
+      // - Manager/Team users see tasks based on per-assignee acceptance rules
+      const filteredRows = currentIsAdmin ? rows : rows.filter((t: any) => {
         const assignments = t.task_assignments || [];
         const userHasAcceptedAssignment = assignments.some(
           (a: any) => a.user_id === currentUser.id && a.assignment_status === "accepted"
@@ -136,7 +143,7 @@ export const useTasks = () => {
         const userIsCreator = t.created_by_user_id === currentUser.id;
         const hasNoAssignments = assignments.length === 0;
         
-        // User sees task if:
+        // Non-admin user sees task if:
         // 1. They have personally accepted the assignment, OR
         // 2. They created the task AND (at least one person has accepted OR there are no assignments)
         return userHasAcceptedAssignment || (userIsCreator && (anyAssigneeAccepted || hasNoAssignments));
@@ -211,7 +218,7 @@ export const useTasks = () => {
 
   useEffect(() => {
     fetchTasks();
-  }, [user, profile, organization, fetchTasks]);
+  }, [user, profile, organization, isAdmin, fetchTasks]);
 
   // Real-time subscription for task changes to keep all assignees in sync
   useEffect(() => {
