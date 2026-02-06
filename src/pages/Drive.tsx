@@ -321,7 +321,6 @@ const Drive = () => {
   const [folderFilter, setFolderFilter] = useState<string>("all");
   const [assigneeFilter, setAssigneeFilter] = useState<string>("all");
   const [sortOrder, setSortOrder] = useState<SortOrder>("newest");
-  const [viewMode, setViewMode] = useState<"all" | "shared">("all");
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [selectedFiles, setSelectedFiles] = useState<Set<string>>(new Set());
   const [createFolderOpen, setCreateFolderOpen] = useState(false);
@@ -357,7 +356,6 @@ const Drive = () => {
   const [editFileFolderId, setEditFileFolderId] = useState<string | null>(null);
   const [editFileAssignedTo, setEditFileAssignedTo] = useState<string | null>(null);
   const [editFileCategory, setEditFileCategory] = useState<string>("general");
-  const [editFileIsRestricted, setEditFileIsRestricted] = useState(false);
   const [editFileAssignedUsers, setEditFileAssignedUsers] = useState<string[]>([]);
 
   // File preview state
@@ -618,46 +616,6 @@ const Drive = () => {
     enabled: !!versionDialogFile
   });
 
-  // Fetch "Shared with me" files - restricted files where user has access + files assigned to user for review
-  const {
-    data: sharedWithMeFiles = []
-  } = useQuery({
-    queryKey: ["shared-with-me-files", organization?.id, user?.id],
-    queryFn: async () => {
-      if (!organization?.id || !user?.id) return [];
-
-      // Fetch files where user has been granted access (restricted files)
-      const {
-        data: accessGrants
-      } = await supabase.from("drive_file_access").select("file_id").eq("granted_to", user.id);
-      const sharedFileIds = accessGrants?.map(a => a.file_id) || [];
-
-      // Fetch files assigned to user for review (non-restricted files)
-      const {
-        data: assignedFiles
-      } = await supabase.from("drive_files").select("*").eq("organization_id", organization.id).eq("assigned_to", user.id).is("deleted_at", null);
-
-      // Fetch the restricted files user has access to
-      let restrictedSharedFiles: DriveFile[] = [];
-      if (sharedFileIds.length > 0) {
-        const {
-          data
-        } = await supabase.from("drive_files").select("*").in("id", sharedFileIds).is("deleted_at", null);
-        restrictedSharedFiles = (data || []) as DriveFile[];
-      }
-
-      // Combine and deduplicate
-      const allSharedFiles = [...restrictedSharedFiles, ...(assignedFiles || [])];
-      const uniqueFiles = allSharedFiles.reduce((acc, file) => {
-        if (!acc.find(f => f.id === file.id)) {
-          acc.push(file as DriveFile);
-        }
-        return acc;
-      }, [] as DriveFile[]);
-      return uniqueFiles;
-    },
-    enabled: !!organization?.id && !!user?.id
-  });
 
   // Fetch all file shares for the organization
 
@@ -865,7 +823,7 @@ const Drive = () => {
           } : p));
           let newFileId: string | undefined;
           if (existingFile) {
-            // Create new version linked to the parent
+            // Create new version linked to the parent - preserve assignee and status from existing file
             const parentId = existingFile.parent_file_id || existingFile.id;
             const newVersion = existingFile.version + 1;
             const {
@@ -881,11 +839,11 @@ const Drive = () => {
               uploaded_by: user.id,
               version: newVersion,
               parent_file_id: parentId,
-              status: "not_opened",
-              file_category: fileCategory,
-              is_restricted: isRestricted,
-              requires_signature: fileCategory === "contract" && requiresSignature,
-              assigned_to: assignedUsers.length > 0 ? assignedUsers[0] : null
+              status: existingFile.status, // Preserve status from existing file
+              file_category: existingFile.file_category || fileCategory,
+              is_restricted: existingFile.is_restricted || false,
+              requires_signature: existingFile.requires_signature || false,
+              assigned_to: existingFile.assigned_to // Preserve assignee from existing file
             }).select("id").single();
             if (dbError) throw dbError;
             newFileId = insertedFile?.id;
@@ -1043,8 +1001,18 @@ const Drive = () => {
       const latestVersion = latestVersions?.[0]?.version || 1;
       const newVersion = latestVersion + 1;
       
+      // Get the latest file's assignee and status to preserve them
+      const { data: latestFile } = await supabase
+        .from("drive_files")
+        .select("assigned_to, status")
+        .or(`id.eq.${parentId},parent_file_id.eq.${parentId}`)
+        .is("deleted_at", null)
+        .order("version", { ascending: false })
+        .limit(1)
+        .single();
+      
       // Create a new version entry that references the restored file's file_path
-      const { error: insertError } = await supabase
+      const { data: newFileData, error: insertError } = await supabase
         .from("drive_files")
         .insert({
           organization_id: organization.id,
@@ -1056,15 +1024,34 @@ const Drive = () => {
           uploaded_by: user.id,
           version: newVersion,
           parent_file_id: parentId,
-          status: "not_opened",
+          status: latestFile?.status || versionToRestore.status || "not_opened",
           file_category: versionToRestore.file_category,
           is_restricted: versionToRestore.is_restricted,
           requires_signature: versionToRestore.requires_signature,
-          assigned_to: versionToRestore.assigned_to,
+          assigned_to: latestFile?.assigned_to || versionToRestore.assigned_to,
           description: versionToRestore.description
-        });
+        })
+        .select('id')
+        .single();
       
       if (insertError) throw insertError;
+      
+      // Copy document content if it exists
+      if (newFileData?.id) {
+        const { data: docContent } = await supabase
+          .from("drive_document_content")
+          .select("content, content_type")
+          .eq("file_id", versionToRestore.id)
+          .single();
+        
+        if (docContent) {
+          await supabase.from("drive_document_content").insert({
+            file_id: newFileData.id,
+            content: docContent.content,
+            content_type: docContent.content_type,
+          });
+        }
+      }
       
       return { restoredFromVersion: versionToRestore.version, newVersion };
     },
@@ -1324,8 +1311,7 @@ const Drive = () => {
       description,
       folder_id,
       assigned_to,
-      file_category,
-      is_restricted
+      file_category
     }: {
       fileId: string;
       name: string;
@@ -1333,7 +1319,6 @@ const Drive = () => {
       folder_id: string | null;
       assigned_to: string | null;
       file_category: string;
-      is_restricted: boolean;
     }) => {
       const {
         error
@@ -1342,8 +1327,7 @@ const Drive = () => {
         description,
         folder_id,
         assigned_to,
-        file_category,
-        is_restricted
+        file_category
       }).eq("id", fileId);
       if (error) throw error;
     },
@@ -1385,7 +1369,6 @@ const Drive = () => {
     setEditFileFolderId(file.folder_id);
     setEditFileAssignedTo(file.assigned_to);
     setEditFileCategory(file.file_category || "general");
-    setEditFileIsRestricted(file.is_restricted || false);
     setEditFileAssignedUsers(file.assigned_to ? [file.assigned_to] : []);
     setEditFileDialogOpen(true);
   };
@@ -1669,12 +1652,12 @@ const Drive = () => {
   // Filter and sort files by search query and recent activity
   const searchLower = searchQuery.toLowerCase().trim();
 
-  // Use shared files when in shared view mode, otherwise use regular files
-  const baseFiles = viewMode === "shared" ? sharedWithMeFiles : files;
+  // Use regular files
+  const baseFiles = files;
   const recentFiles = [...baseFiles].filter(file => !searchLower || file.name.toLowerCase().includes(searchLower)).sort((a, b) => getRecentActivity(b) - getRecentActivity(a));
 
-  // Filter folders by search query (only show in "all" view)
-  const filteredFolders = viewMode === "all" ? folders.filter(folder => !searchLower || folder.name.toLowerCase().includes(searchLower)) : [];
+  // Filter folders by search query
+  const filteredFolders = folders.filter(folder => !searchLower || folder.name.toLowerCase().includes(searchLower));
   const toggleFileSelection = (fileId: string) => {
     const newSelected = new Set(selectedFiles);
     if (newSelected.has(fileId)) newSelected.delete(fileId);else newSelected.add(fileId);
@@ -1848,30 +1831,8 @@ const Drive = () => {
             </Button>
           </div>
 
-          {/* View Mode Toggle */}
-          <div className="flex items-center gap-2 mb-6 sm:mb-8">
-            <Button variant={viewMode === "all" ? "default" : "outline"} onClick={() => {
-                setViewMode("all");
-                setCurrentFolderId(null);
-              }} className={`gap-2 rounded-full transition-all duration-300 text-xs sm:text-sm ${viewMode === "all" ? "bg-primary text-primary-foreground dark:text-black" : "hover:bg-secondary"}`}>
-              <HardDrive className="w-4 h-4" />
-              <span>All Files</span>
-            </Button>
-            <Button variant={viewMode === "shared" ? "default" : "outline"} onClick={() => {
-                setViewMode("shared");
-                setCurrentFolderId(null);
-                setFolderFilter("all");
-              }} className={`gap-2 rounded-full transition-all duration-300 text-xs sm:text-sm ${viewMode === "shared" ? "bg-brand-teal text-white" : "hover:bg-secondary"}`}>
-              <Users className="w-4 h-4" />
-              <span>Shared with me</span>
-              {sharedWithMeFiles.length > 0 && viewMode !== "shared" && <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">
-                  {sharedWithMeFiles.length}
-                </Badge>}
-            </Button>
-          </div>
-
-          {/* Filters Section - only show in "all" view */}
-          {viewMode === "all" && <Card className="p-4 sm:p-6 mb-6 sm:mb-8 bg-card border border-border/40 shadow-sm rounded-2xl">
+          {/* Filters Section */}
+          <Card className="p-4 sm:p-6 mb-6 sm:mb-8 bg-card border border-border/40 shadow-sm rounded-2xl">
             <div className="flex items-center gap-2 mb-4 sm:mb-5">
               <ArrowUpDown className="w-4 h-4 sm:w-5 sm:h-5 text-[#8CC646]" />
               <h2 className="text-base sm:text-lg font-semibold text-foreground">Filters</h2>
@@ -1977,7 +1938,7 @@ const Drive = () => {
                 </DropdownMenu>}
               </div>
             </div>
-          </Card>}
+          </Card>
 
           {/* Bulk Action Bar */}
           {selectedFiles.size > 0 && <div className="mb-6 p-4 bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-800 rounded-lg flex items-center justify-between">
@@ -2112,38 +2073,21 @@ const Drive = () => {
           {/* Files Section */}
           <div>
             <div className="flex items-center gap-2 mb-4">
-              {viewMode === "shared" ? <>
-                  <Users className="w-5 h-5 text-brand-teal" />
-                  <h2 className="text-lg font-semibold text-foreground">Shared with me</h2>
-                </> : <>
-                  <Clock className="w-5 h-5 text-brand-coral" />
-                  <h2 className="text-lg font-semibold text-foreground">All Files</h2>
-                </>}
+              <Clock className="w-5 h-5 text-brand-coral" />
+              <h2 className="text-lg font-semibold text-foreground">All Files</h2>
               <span className="text-sm text-muted-foreground">({recentFiles.length})</span>
             </div>
 
-            {viewMode === "shared" && <p className="text-sm text-muted-foreground mb-4">
-                Files that have been shared with you or assigned to you for review.
-              </p>}
-
             {recentFiles.length === 0 ? <Card className="p-12 text-center">
-                {viewMode === "shared" ? <>
-                    <Users className="w-16 h-16 mx-auto mb-4 text-muted-foreground/50" />
-                    <h2 className="text-xl font-semibold text-foreground mb-2">No Shared Files</h2>
-                    <p className="text-muted-foreground mb-6 max-w-md mx-auto">
-                      Files shared with you or assigned for review will appear here.
-                    </p>
-                  </> : <>
-                    <HardDrive className="w-16 h-16 mx-auto mb-4 text-muted-foreground/50" />
-                    <h2 className="text-xl font-semibold text-foreground mb-2">No Files Yet</h2>
-                    <p className="text-muted-foreground mb-6 max-w-md mx-auto">
-                      Upload files to store and share them with your team.
-                    </p>
-                    <Button className="bg-primary hover:bg-primary/90 text-primary-foreground" onClick={() => setUploadDialogOpen(true)}>
-                      <Upload className="w-4 h-4 mr-2" />
-                      Upload Your First File
-                    </Button>
-                  </>}
+                <HardDrive className="w-16 h-16 mx-auto mb-4 text-muted-foreground/50" />
+                <h2 className="text-xl font-semibold text-foreground mb-2">No Files Yet</h2>
+                <p className="text-muted-foreground mb-6 max-w-md mx-auto">
+                  Upload files to store and share them with your team.
+                </p>
+                <Button className="bg-primary hover:bg-primary/90 text-primary-foreground" onClick={() => setUploadDialogOpen(true)}>
+                  <Upload className="w-4 h-4 mr-2" />
+                  Upload Your First File
+                </Button>
               </Card> : <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {recentFiles.map(file => {
                   const statusDisplay = STATUS_DISPLAY[file.status] || STATUS_DISPLAY.not_opened;
@@ -2242,10 +2186,6 @@ const Drive = () => {
                             <Folder className="w-3 h-3" />
                             {folder ? folder.name : file.file_category === "template" ? "Template Library" : "No folder"}
                           </Badge>
-                          {file.is_restricted && <Badge variant="outline" className="text-xs gap-1 bg-amber-500/10 text-amber-600 border-amber-500/20">
-                              <Lock className="w-3 h-3" />
-                              Restricted
-                            </Badge>}
                           {file.file_category && CATEGORY_DISPLAY[file.file_category] && (() => {
                           const category = CATEGORY_DISPLAY[file.file_category!];
                           const CategoryIcon = category.icon;
@@ -2258,17 +2198,6 @@ const Drive = () => {
                               <PenLine className="w-3 h-3" />
                               {file.signature_status === 'signed' ? 'Signed' : 'Awaiting Signature'}
                             </Badge>}
-                          {/* Share type indicator for shared view */}
-                          {viewMode === "shared" && <>
-                              {file.is_restricted && <Badge variant="outline" className="text-xs gap-1 bg-purple-500/10 text-purple-600 border-purple-500/20">
-                                  <Lock className="w-3 h-3" />
-                                  Shared Access
-                                </Badge>}
-                              {file.assigned_to === user?.id && !file.is_restricted && <Badge variant="outline" className="text-xs gap-1 bg-brand-teal/10 text-brand-teal border-brand-teal/20">
-                                  <Eye className="w-3 h-3" />
-                                  For Review
-                                </Badge>}
-                            </>}
                         </div>
                       </div>
 
@@ -2664,86 +2593,65 @@ const Drive = () => {
               </Select>
             </div>
 
-            {/* Restrict Access */}
+            {/* Assign Users */}
             <div className="space-y-3 p-4 rounded-lg bg-muted/50 border border-border">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Lock className="w-4 h-4 text-muted-foreground" />
-                  <Label className="text-sm font-medium">Restrict Access</Label>
-                </div>
-                <Switch
-                  checked={editFileIsRestricted}
-                  onCheckedChange={setEditFileIsRestricted}
-                />
+              <div className="flex items-center gap-2">
+                <Users className="w-4 h-4 text-muted-foreground" />
+                <Label className="text-sm font-medium">Assign To (for review)</Label>
               </div>
               <p className="text-xs text-muted-foreground">
-                {editFileIsRestricted 
-                  ? "Only selected members can view this file."
-                  : "All organization members can view this file."}
+                Assign this document to team members for review.
               </p>
-            </div>
-
-            {/* Assign Users - Only show when NOT restricted */}
-            {!editFileIsRestricted && (
-              <div className="space-y-3 p-4 rounded-lg bg-muted/50 border border-border">
-                <div className="flex items-center gap-2">
-                  <Users className="w-4 h-4 text-muted-foreground" />
-                  <Label className="text-sm font-medium">Assign To (for review)</Label>
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Assign this document to team members for review.
-                </p>
-                <div className="max-h-32 overflow-y-auto space-y-2">
-                  {teamMembers.length > 0 ? (
-                    teamMembers.map((member) => (
-                      <label
-                        key={member.id}
-                        className="flex items-center gap-2 text-sm cursor-pointer hover:bg-muted/50 p-1 rounded"
-                      >
-                        <Checkbox
-                          checked={editFileAssignedUsers.includes(member.id)}
-                          onCheckedChange={() => {
-                            setEditFileAssignedUsers(prev =>
-                              prev.includes(member.id)
-                                ? prev.filter(id => id !== member.id)
-                                : [...prev, member.id]
-                            );
-                            // Update single assigned_to field
-                            const newList = editFileAssignedUsers.includes(member.id)
-                              ? editFileAssignedUsers.filter(id => id !== member.id)
-                              : [...editFileAssignedUsers, member.id];
+              <div className="max-h-32 overflow-y-auto space-y-2">
+                {teamMembers.length > 0 ? (
+                  teamMembers.map((member) => (
+                    <label
+                      key={member.id}
+                      className="flex items-center gap-2 text-sm cursor-pointer hover:bg-muted/50 p-1 rounded"
+                    >
+                      <Checkbox
+                        checked={editFileAssignedUsers.includes(member.id)}
+                        onCheckedChange={() => {
+                          setEditFileAssignedUsers(prev =>
+                            prev.includes(member.id)
+                              ? prev.filter(id => id !== member.id)
+                              : [...prev, member.id]
+                          );
+                          // Update single assigned_to field
+                          const newList = editFileAssignedUsers.includes(member.id)
+                            ? editFileAssignedUsers.filter(id => id !== member.id)
+                            : [...editFileAssignedUsers, member.id];
+                          setEditFileAssignedTo(newList.length > 0 ? newList[0] : null);
+                        }}
+                      />
+                      <span>{member.full_name}</span>
+                    </label>
+                  ))
+                ) : (
+                  <p className="text-xs text-muted-foreground">No team members available</p>
+                )}
+              </div>
+              {editFileAssignedUsers.length > 0 && (
+                <div className="flex flex-wrap gap-1 pt-1">
+                  {editFileAssignedUsers.map((userId) => {
+                    const member = teamMembers.find(m => m.id === userId);
+                    return (
+                      <Badge key={userId} variant="secondary" className="text-xs gap-1">
+                        {member?.full_name}
+                        <X 
+                          className="w-3 h-3 cursor-pointer hover:text-destructive" 
+                          onClick={() => {
+                            setEditFileAssignedUsers(prev => prev.filter(id => id !== userId));
+                            const newList = editFileAssignedUsers.filter(id => id !== userId);
                             setEditFileAssignedTo(newList.length > 0 ? newList[0] : null);
                           }}
                         />
-                        <span>{member.full_name}</span>
-                      </label>
-                    ))
-                  ) : (
-                    <p className="text-xs text-muted-foreground">No team members available</p>
-                  )}
+                      </Badge>
+                    );
+                  })}
                 </div>
-                {editFileAssignedUsers.length > 0 && (
-                  <div className="flex flex-wrap gap-1 pt-1">
-                    {editFileAssignedUsers.map((userId) => {
-                      const member = teamMembers.find(m => m.id === userId);
-                      return (
-                        <Badge key={userId} variant="secondary" className="text-xs gap-1">
-                          {member?.full_name}
-                          <X 
-                            className="w-3 h-3 cursor-pointer hover:text-destructive" 
-                            onClick={() => {
-                              setEditFileAssignedUsers(prev => prev.filter(id => id !== userId));
-                              const newList = editFileAssignedUsers.filter(id => id !== userId);
-                              setEditFileAssignedTo(newList.length > 0 ? newList[0] : null);
-                            }}
-                          />
-                        </Badge>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            )}
+              )}
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => {
@@ -2756,8 +2664,7 @@ const Drive = () => {
               description: editFileDescription || null,
               folder_id: editFileFolderId,
               assigned_to: editFileAssignedUsers.length > 0 ? editFileAssignedUsers[0] : null,
-              file_category: editFileCategory,
-              is_restricted: editFileIsRestricted
+              file_category: editFileCategory
             })} disabled={updateFileMetadataMutation.isPending}>
               Save Changes
             </Button>

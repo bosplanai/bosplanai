@@ -1208,7 +1208,9 @@ By signing below, you acknowledge that you have read, understood, and agree to b
           folder_id: existingFile.folder_id,
           version: newVersion,
           parent_file_id: parentId,
-          is_restricted: existingFile.is_restricted
+          is_restricted: existingFile.is_restricted,
+          assigned_to: existingFile.assigned_to,
+          assigned_guest_id: existingFile.assigned_guest_id
         });
         if (dbError) throw dbError;
       } else {
@@ -3012,6 +3014,16 @@ By signing below, you acknowledge that you have read, understood, and agree to b
           const newVersion = fileVersions.length > 0 ? Math.max(...fileVersions.map((v: any) => v.version || 1)) + 1 : 1;
           const rootFileId = version.parent_file_id || version.id;
           
+          // Get the latest file's assignee to preserve it
+          const { data: latestFile } = await supabase
+            .from("data_room_files")
+            .select("assigned_to, assigned_guest_id")
+            .or(`id.eq.${rootFileId},parent_file_id.eq.${rootFileId}`)
+            .is("deleted_at", null)
+            .order("version", { ascending: false })
+            .limit(1)
+            .single();
+          
           const { data: newFileData, error } = await supabase.from("data_room_files").insert({
             ...version,
             id: undefined,
@@ -3019,7 +3031,9 @@ By signing below, you acknowledge that you have read, understood, and agree to b
             parent_file_id: rootFileId,
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
-            uploaded_by: user.id
+            uploaded_by: user.id,
+            assigned_to: latestFile?.assigned_to,
+            assigned_guest_id: latestFile?.assigned_guest_id
           } as any).select('id').single();
           
           if (error) {
