@@ -79,7 +79,7 @@ serve(async (req) => {
       customerId = existingCustomers.data[0].id;
     }
 
-    const origin = returnOrigin || "https://bosplansupabase.lovable.app";
+    const origin = returnOrigin || "https://bosplanv4.lovable.app";
 
     // Convert MB to GB for storage (used in metadata)
     const storageGb = tierInfo.mb / 1024;

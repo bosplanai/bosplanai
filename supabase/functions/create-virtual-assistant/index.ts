@@ -259,7 +259,7 @@ Deno.serve(async (req) => {
               
               <p style="color: #d9534f;"><strong>Important:</strong> Please change your password after your first login for security purposes.</p>
               
-              <p>You can log in at: <a href="https://bosplansupabase.lovable.app/auth" style="color: #0d7377;">https://bosplansupabase.lovable.app/auth</a></p>
+              <p>You can log in at: <a href="https://bosplanv4.lovable.app/auth" style="color: #0d7377;">https://bosplanv4.lovable.app/auth</a></p>
               
               <p style="margin-top: 30px;">
                 Best regards,<br>
@@ -285,7 +285,7 @@ Deno.serve(async (req) => {
               
               <p>Since you already have an existing BosPlan account, you can use your current login credentials to access the platform.</p>
               
-              <p>Log in at: <a href="https://bosplansupabase.lovable.app/auth" style="color: #0d7377;">https://bosplansupabase.lovable.app/auth</a></p>
+              <p>Log in at: <a href="https://bosplanv4.lovable.app/auth" style="color: #0d7377;">https://bosplanv4.lovable.app/auth</a></p>
               
               <p style="margin-top: 30px;">
                 Best regards,<br>

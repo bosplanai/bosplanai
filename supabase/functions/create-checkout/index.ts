@@ -87,7 +87,7 @@ serve(async (req) => {
     }
 
     // Get the origin from the request headers for the redirect URL
-    const origin = req.headers.get("origin") || "https://bosplansupabase.lovable.app";
+    const origin = req.headers.get("origin") || "https://bosplanv4.lovable.app";
 
     // Create Stripe checkout session
     const session = await stripe.checkout.sessions.create({

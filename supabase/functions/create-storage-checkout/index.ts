@@ -79,7 +79,7 @@ serve(async (req) => {
       customerId = existingCustomers.data[0].id;
     }
 
-    const origin = returnOrigin || "https://bosplansupabase.lovable.app";
+    const origin = returnOrigin || "https://bosplanv4.lovable.app";
 
     // Create checkout session for one-time storage purchase in USD
     const session = await stripe.checkout.sessions.create({

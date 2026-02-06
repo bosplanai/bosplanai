@@ -63,7 +63,7 @@ serve(async (req) => {
     const customer = customers.data[0];
 
     // Get the origin from request headers for return URL
-    const origin = req.headers.get("origin") || "https://bosplansupabase.lovable.app";
+    const origin = req.headers.get("origin") || "https://bosplanv4.lovable.app";
     
     // Create billing portal session
     const portalSession = await stripe.billingPortal.sessions.create({
