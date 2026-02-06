@@ -262,7 +262,7 @@ const ProductManagementBoard = () => {
           )}
           <ArchiveFolder onRestore={refetchProjects} variant="projects" />
           {(isAdmin || isMember) && <ProjectDraftsFolder onPublishDraft={handlePublishProjectDraft} />}
-          <RecyclingBin onRestore={refetchProjects} />
+          <RecyclingBin onRestore={refetchProjects} variant="projects" />
         </div>
       </div>
 
