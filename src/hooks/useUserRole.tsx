@@ -1,4 +1,4 @@
-import { useState, useEffect, createContext, useContext, ReactNode } from "react";
+import { useState, useEffect, createContext, useContext, ReactNode, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "./useAuth";
 import { useOrganization } from "./useOrganization";
@@ -38,12 +38,28 @@ export const UserRoleProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
   const { organization } = useOrganization();
+  
+  // Track if this is the initial load vs a refetch
+  const isInitialLoad = useRef(true);
+  // Track the last fetched org to avoid unnecessary refetches
+  const lastFetchedOrgId = useRef<string | null>(null);
 
   const fetchRole = async () => {
     if (!user || !organization) {
       setRole(null);
       setLoading(false);
+      isInitialLoad.current = false;
       return;
+    }
+
+    // Skip if we've already fetched for this org (unless it's a manual refetch)
+    if (lastFetchedOrgId.current === organization.id && !isInitialLoad.current) {
+      return;
+    }
+
+    // Only show loading state on initial load, not on subsequent fetches
+    if (isInitialLoad.current) {
+      setLoading(true);
     }
 
     try {
@@ -54,22 +70,34 @@ export const UserRoleProvider = ({ children }: { children: ReactNode }) => {
         .eq("organization_id", organization.id)
         .single();
 
-        if (error) {
+      if (error) {
         console.error("Error fetching user role:", error);
         setRole(null);
       } else {
         setRole(mapDbRoleToUiRole(data?.role) as AppRole | null);
       }
+      lastFetchedOrgId.current = organization.id;
     } catch (error) {
       console.error("Error fetching user role:", error);
       setRole(null);
     } finally {
       setLoading(false);
+      isInitialLoad.current = false;
     }
   };
 
+  // Force refetch for manual calls (e.g., after role change)
+  const forceRefetch = async () => {
+    lastFetchedOrgId.current = null;
+    isInitialLoad.current = false;
+    await fetchRole();
+  };
+
   useEffect(() => {
-    fetchRole();
+    // Reset for new organization
+    if (organization && lastFetchedOrgId.current !== organization.id) {
+      fetchRole();
+    }
   }, [user, organization]);
 
   // Computed permissions based on role types:
@@ -137,7 +165,7 @@ export const UserRoleProvider = ({ children }: { children: ReactNode }) => {
         canUseTaskPopulate,
         canSwitchOrganizations,
         canManageSettings,
-        refetch: fetchRole,
+        refetch: forceRefetch,
       }}
     >
       {children}

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -126,12 +126,28 @@ const ProtectedRoute = ({ children, skipOnboardingCheck = false }: ProtectedRout
   const [onboardingCompleted, setOnboardingCompleted] = useState<boolean | null>(null);
   const [checkingOnboarding, setCheckingOnboarding] = useState(true);
   const [isViewerRole, setIsViewerRole] = useState(false);
+  
+  // Track if we've completed initial check to avoid flashing loading state
+  const hasCompletedInitialCheck = useRef(false);
+  const lastCheckedOrgId = useRef<string | null>(null);
 
   useEffect(() => {
     const checkOnboarding = async () => {
       if (!user || !organization || skipOnboardingCheck) {
         setCheckingOnboarding(false);
+        hasCompletedInitialCheck.current = true;
         return;
+      }
+
+      // Skip redundant checks for the same org after initial load
+      if (hasCompletedInitialCheck.current && lastCheckedOrgId.current === organization.id) {
+        setCheckingOnboarding(false);
+        return;
+      }
+
+      // Only show loading on initial check, not on org switches
+      if (!hasCompletedInitialCheck.current) {
+        setCheckingOnboarding(true);
       }
 
       try {
@@ -154,25 +170,28 @@ const ProtectedRoute = ({ children, skipOnboardingCheck = false }: ProtectedRout
         // DB roles are: admin | moderator | user | super_admin
         // UI "viewer" maps to DB "user"
         setIsViewerRole(roleResult.data?.role === "user");
+        lastCheckedOrgId.current = organization.id;
       } catch (error) {
         console.error("Failed to check onboarding status:", error);
         setOnboardingCompleted(true); // Default to completed on error
       } finally {
         setCheckingOnboarding(false);
+        hasCompletedInitialCheck.current = true;
       }
     };
 
-    // Reset checking state when dependencies change to ensure we re-evaluate
+    // Run check when we have the required data
     if (user && profile && organization) {
-      setCheckingOnboarding(true);
       checkOnboarding();
     } else if (!authLoading && !orgLoading) {
       // Only stop checking if we're done loading and still missing data
       setCheckingOnboarding(false);
+      hasCompletedInitialCheck.current = true;
     }
   }, [user, profile, organization, skipOnboardingCheck, authLoading, orgLoading]);
 
-  if (authLoading || orgLoading || checkingOnboarding) {
+  // Only show loading screen on initial load, not on org switches
+  if ((authLoading || orgLoading || checkingOnboarding) && !hasCompletedInitialCheck.current) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-muted-foreground">Loading...</div>
@@ -229,9 +248,19 @@ const ProtectedRoute = ({ children, skipOnboardingCheck = false }: ProtectedRout
 const AdminRoute = ({ children }: { children: React.ReactNode }) => {
   const { user, loading: authLoading } = useAuth();
   const { profile, organization, loading: orgLoading } = useOrganization();
-  const { isAdmin, loading: roleLoading } = useUserRole();
+  const { isAdmin, loading: roleLoading, role } = useUserRole();
+  
+  // Track if we've completed initial load
+  const hasCompletedInitialLoad = useRef(false);
+  
+  useEffect(() => {
+    if (!authLoading && !orgLoading && !roleLoading) {
+      hasCompletedInitialLoad.current = true;
+    }
+  }, [authLoading, orgLoading, roleLoading]);
 
-  if (authLoading || orgLoading || roleLoading) {
+  // Only show loading screen on initial load
+  if ((authLoading || orgLoading || roleLoading) && !hasCompletedInitialLoad.current) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-muted-foreground">Loading...</div>
@@ -260,8 +289,18 @@ const MemberRoute = ({ children }: { children: React.ReactNode }) => {
   const { user, loading: authLoading } = useAuth();
   const { profile, organization, loading: orgLoading } = useOrganization();
   const { isAdmin, role, loading: roleLoading } = useUserRole();
+  
+  // Track if we've completed initial load
+  const hasCompletedInitialLoad = useRef(false);
+  
+  useEffect(() => {
+    if (!authLoading && !orgLoading && !roleLoading) {
+      hasCompletedInitialLoad.current = true;
+    }
+  }, [authLoading, orgLoading, roleLoading]);
 
-  if (authLoading || orgLoading || roleLoading) {
+  // Only show loading screen on initial load
+  if ((authLoading || orgLoading || roleLoading) && !hasCompletedInitialLoad.current) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-muted-foreground">Loading...</div>
