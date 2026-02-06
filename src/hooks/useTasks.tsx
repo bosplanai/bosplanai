@@ -1,5 +1,5 @@
 // @ts-nocheck
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "./useAuth";
 import { useOrganization } from "./useOrganization";
@@ -62,6 +62,18 @@ export const useTasks = () => {
   const { user } = useAuth();
   const { profile, organization } = useOrganization();
   const { toast } = useToast();
+  
+  // Refs to avoid stale closures in realtime subscription
+  const userRef = useRef(user);
+  const profileRef = useRef(profile);
+  const organizationRef = useRef(organization);
+  
+  // Keep refs updated
+  useEffect(() => {
+    userRef.current = user;
+    profileRef.current = profile;
+    organizationRef.current = organization;
+  }, [user, profile, organization]);
 
   // Helper to generate signed URL from file path
   const getSignedUrl = async (filePath: string): Promise<string | null> => {
@@ -76,8 +88,12 @@ export const useTasks = () => {
     }
   };
 
-  const fetchTasks = async () => {
-    if (!user || !profile || !organization) {
+  const fetchTasks = useCallback(async () => {
+    const currentUser = userRef.current;
+    const currentProfile = profileRef.current;
+    const currentOrganization = organizationRef.current;
+    
+    if (!currentUser || !currentProfile || !currentOrganization) {
       setTasks([]);
       setLoading(false);
       return;
@@ -94,7 +110,7 @@ export const useTasks = () => {
           project:projects!tasks_project_id_fkey(id, title),
           task_assignments(id, user_id, assignment_status, user:profiles!task_assignments_user_id_fkey(id, full_name))
         `)
-        .eq("organization_id", organization.id)
+        .eq("organization_id", currentOrganization.id)
         .is("deleted_at", null)
         .is("archived_at", null)
         .or("is_draft.is.null,is_draft.eq.false")
@@ -112,12 +128,12 @@ export const useTasks = () => {
       const filteredRows = rows.filter((t: any) => {
         const assignments = t.task_assignments || [];
         const userHasAcceptedAssignment = assignments.some(
-          (a: any) => a.user_id === user.id && a.assignment_status === "accepted"
+          (a: any) => a.user_id === currentUser.id && a.assignment_status === "accepted"
         );
         const anyAssigneeAccepted = assignments.some(
           (a: any) => a.assignment_status === "accepted"
         );
-        const userIsCreator = t.created_by_user_id === user.id;
+        const userIsCreator = t.created_by_user_id === currentUser.id;
         const hasNoAssignments = assignments.length === 0;
         
         // User sees task if:
@@ -191,18 +207,18 @@ export const useTasks = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [toast]);
 
   useEffect(() => {
     fetchTasks();
-  }, [user, profile, organization]);
+  }, [user, profile, organization, fetchTasks]);
 
   // Real-time subscription for task changes to keep all assignees in sync
   useEffect(() => {
     if (!organization || !user) return;
 
     const channel = supabase
-      .channel(`tasks-realtime-${organization.id}`)
+      .channel(`tasks-realtime-${organization.id}-${user.id}`)
       .on(
         'postgres_changes',
         {
@@ -230,12 +246,14 @@ export const useTasks = () => {
           fetchTasks();
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log('Tasks realtime subscription status:', status);
+      });
 
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [organization, user]);
+  }, [organization?.id, user?.id, fetchTasks]);
 
   // Expose refetch function for external use
   const refetchTasks = () => {
