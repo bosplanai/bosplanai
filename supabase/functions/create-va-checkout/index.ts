@@ -136,7 +136,7 @@ serve(async (req) => {
     console.log("Created new USD price:", stripePrice.id, "amount:", priceCents);
 
     // Get origin for redirect URLs
-    const origin = req.headers.get("origin") || "https://bosplansupabase.lovable.app";
+    const origin = req.headers.get("origin") || "https://bosplanv4.lovable.app";
 
     // Get organization slug for redirect
     const { data: org } = await supabase

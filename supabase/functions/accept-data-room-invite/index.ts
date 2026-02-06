@@ -147,7 +147,7 @@ Deno.serve(async (req) => {
     const guestAccessId = invite.access_id;
 
     // Send confirmation email with password and direct data room link
-    const siteUrl = origin || "https://bosplansupabase.lovable.app";
+    const siteUrl = origin || "https://bosplanv4.lovable.app";
     const directAccessLink = `${siteUrl}/guest-dataroom?accessId=${guestAccessId}`;
 
     if (resendApiKey && dataRoom) {
