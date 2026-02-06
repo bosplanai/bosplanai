@@ -228,8 +228,8 @@ const TaskDetailSheet = ({
             </Select>
           </div>
 
-          {/* Assign Team Member - Only show for Product Management */}
-          {destination === "product" && members.length > 0 && (
+          {/* Assign Team Member - Show for Product, Operational, and Strategic boards */}
+          {(destination === "product" || destination === "operational" || destination === "strategic") && members.length > 0 && (
             <div className="space-y-2">
               <Label>Assign To Team Member</Label>
               <Select value={assignedUserId} onValueChange={setAssignedUserId}>

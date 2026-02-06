@@ -237,8 +237,8 @@ const GeneratedTaskItem = ({
             </SelectContent>
           </Select>
 
-          {/* Assignee - Only show for product board */}
-          {destination === "product" && members.length > 0 && (
+          {/* Assignee - Show for product, operational, and strategic boards */}
+          {(destination === "product" || destination === "operational" || destination === "strategic") && members.length > 0 && (
             <Select value={task.assignedUserId || "none"} onValueChange={handleAssigneeChange}>
               <SelectTrigger className="h-7 w-auto min-w-[100px] max-w-[140px] text-xs gap-1 border-dashed">
                 <UserCheck className="w-3 h-3 shrink-0" />
