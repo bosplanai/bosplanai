@@ -108,18 +108,22 @@ export const useTasks = () => {
 
       // Filter tasks based on per-assignee acceptance:
       // - Task appears on user's board if they have an accepted assignment
-      // - Task ALWAYS appears on creator's board for tracking/oversight (regardless of assignment status)
+      // - Task appears on creator's board if at least one assignee accepted OR no assignees exist
       const filteredRows = rows.filter((t: any) => {
         const assignments = t.task_assignments || [];
         const userHasAcceptedAssignment = assignments.some(
           (a: any) => a.user_id === user.id && a.assignment_status === "accepted"
         );
+        const anyAssigneeAccepted = assignments.some(
+          (a: any) => a.assignment_status === "accepted"
+        );
         const userIsCreator = t.created_by_user_id === user.id;
+        const hasNoAssignments = assignments.length === 0;
         
         // User sees task if:
         // 1. They have personally accepted the assignment, OR
-        // 2. They created the task (always visible for tracking/oversight)
-        return userHasAcceptedAssignment || userIsCreator;
+        // 2. They created the task AND (at least one person has accepted OR there are no assignments)
+        return userHasAcceptedAssignment || (userIsCreator && (anyAssigneeAccepted || hasNoAssignments));
       });
 
       // Generate signed URLs for attachments
@@ -308,41 +312,48 @@ export const useTasks = () => {
         signedUrl = data.attachment_url;
       }
 
-      // Always add task to local state for the creator (for immediate visibility/tracking)
-      // The creator always sees their tasks regardless of assignment status
-      setTasks((prev) => [
-        ...prev,
-        {
-          id: data.id,
-          title: data.title,
-          description: data.description,
-          status: data.status as "todo" | "complete",
-          icon: data.icon,
-          category: data.category,
-          subcategory: data.subcategory as TaskSubcategory,
-          position: data.position,
-          priority: data.priority as TaskPriority,
-          attachment_url: signedUrl,
-          attachment_name: data.attachment_name,
-          organization_id: data.organization_id,
-          assigned_user_id: data.assigned_user_id,
-          created_by_user_id: data.created_by_user_id,
-          project_id: data.project_id,
-          assigned_user: data.assigned_user as TaskUser | null,
-          created_by_user: data.created_by_user as TaskUser | null,
-          project: data.project as TaskProject | null,
-          task_assignments: allAssigneeIds.map(id => ({
-            id: '',
-            user_id: id,
-            assignment_status: id === user.id ? 'accepted' : 'pending',
-          })),
-          created_at: data.created_at,
-          due_date: data.due_date,
-          completed_at: data.completed_at,
-          is_recurring: data.is_recurring,
-          assignment_status: "accepted" as AssignmentStatus,
-        },
-      ]);
+      // Check if current user has an accepted assignment (self-assigned) OR there are no assignees
+      const userHasAcceptedAssignment = allAssigneeIds.includes(user.id) && 
+        allAssigneeIds.length > 0 && 
+        allAssigneeIds.some(id => id === user.id);
+      const hasNoAssignees = allAssigneeIds.length === 0;
+      
+      // Add to local state if user self-assigned (accepted) OR task has no assignees (creator sees it)
+      if (userHasAcceptedAssignment || hasNoAssignees) {
+        setTasks((prev) => [
+          ...prev,
+          {
+            id: data.id,
+            title: data.title,
+            description: data.description,
+            status: data.status as "todo" | "complete",
+            icon: data.icon,
+            category: data.category,
+            subcategory: data.subcategory as TaskSubcategory,
+            position: data.position,
+            priority: data.priority as TaskPriority,
+            attachment_url: signedUrl,
+            attachment_name: data.attachment_name,
+            organization_id: data.organization_id,
+            assigned_user_id: data.assigned_user_id,
+            created_by_user_id: data.created_by_user_id,
+            project_id: data.project_id,
+            assigned_user: data.assigned_user as TaskUser | null,
+            created_by_user: data.created_by_user as TaskUser | null,
+            project: data.project as TaskProject | null,
+            task_assignments: allAssigneeIds.map(id => ({
+              id: '',
+              user_id: id,
+              assignment_status: id === user.id ? 'accepted' : 'pending',
+            })),
+            created_at: data.created_at,
+            due_date: data.due_date,
+            completed_at: data.completed_at,
+            is_recurring: data.is_recurring,
+            assignment_status: "accepted" as AssignmentStatus,
+          },
+        ]);
+      }
 
       // Show different toast based on whether all assignees are self or include others
       const hasOtherAssignees = allAssigneeIds.some(id => id !== user.id);
