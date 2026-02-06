@@ -239,16 +239,16 @@ Deno.serve(async (req) => {
           <html>
             <head>
               <meta charset="utf-8">
-              <title>Welcome to BosPlan - Virtual Assistant Account</title>
+              <title>Welcome to Bosplan - Virtual Assistant Account</title>
             </head>
             <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
               <div style="text-align: center; margin-bottom: 30px;">
-                <h1 style="color: #0d7377; margin-bottom: 10px;">Welcome to BosPlan!</h1>
+                <h1 style="color: #0d7377; margin-bottom: 10px;">Welcome to Bosplan!</h1>
               </div>
               
               <p>Hi ${firstName},</p>
               
-              <p>You have been registered as a Virtual Assistant on BosPlan${orgName ? ` and allocated to <strong>${orgName}</strong>` : ""}.</p>
+              <p>You have been registered as a Virtual Assistant on Bosplan${orgName ? ` and allocated to <strong>${orgName}</strong>` : ""}.</p>
               
               <p>Here are your login credentials:</p>
               
@@ -263,7 +263,7 @@ Deno.serve(async (req) => {
               
               <p style="margin-top: 30px;">
                 Best regards,<br>
-                The BosPlan Team
+                The Bosplan Team
               </p>
             </body>
           </html>
@@ -272,24 +272,24 @@ Deno.serve(async (req) => {
           <html>
             <head>
               <meta charset="utf-8">
-              <title>BosPlan - Virtual Assistant Allocation</title>
+              <title>Bosplan - Virtual Assistant Allocation</title>
             </head>
             <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
               <div style="text-align: center; margin-bottom: 30px;">
-                <h1 style="color: #0d7377; margin-bottom: 10px;">BosPlan Notification</h1>
+                <h1 style="color: #0d7377; margin-bottom: 10px;">Bosplan Notification</h1>
               </div>
               
               <p>Hi ${firstName},</p>
               
-              <p>You have been registered as a Virtual Assistant on BosPlan${orgName ? ` and allocated to <strong>${orgName}</strong>` : ""}.</p>
+              <p>You have been registered as a Virtual Assistant on Bosplan${orgName ? ` and allocated to <strong>${orgName}</strong>` : ""}.</p>
               
-              <p>Since you already have an existing BosPlan account, you can use your current login credentials to access the platform.</p>
+              <p>Since you already have an existing Bosplan account, you can use your current login credentials to access the platform.</p>
               
               <p>Log in at: <a href="https://bosplanv4.lovable.app/auth" style="color: #0d7377;">https://bosplanv4.lovable.app/auth</a></p>
               
               <p style="margin-top: 30px;">
                 Best regards,<br>
-                The BosPlan Team
+                The Bosplan Team
               </p>
             </body>
           </html>
@@ -304,7 +304,7 @@ Deno.serve(async (req) => {
           body: JSON.stringify({
             from: fromEmail,
             to: [email],
-            subject: `Welcome to BosPlan - Virtual Assistant Account`,
+            subject: `Welcome to Bosplan - Virtual Assistant Account`,
             html: emailHtml,
           }),
         });

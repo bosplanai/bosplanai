@@ -58,7 +58,7 @@ serve(async (req) => {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const resendApiKey = Deno.env.get("RESEND_API_KEY");
-    const fromEmail = Deno.env.get("RESEND_FROM_EMAIL") || "BosPlan <noreply@bosplan.com>";
+    const fromEmail = Deno.env.get("RESEND_FROM_EMAIL") || "Bosplan <noreply@bosplan.com>";
     const siteUrl = Deno.env.get("SITE_URL") || "https://bosplanv4.lovable.app";
     
     console.log("send-invite function called");
@@ -370,7 +370,7 @@ serve(async (req) => {
         <html>
           <head>
             <meta charset="utf-8">
-            <title>You've been added to new organisations on BosPlan</title>
+            <title>You've been added to new organisations on Bosplan</title>
             <style>
               body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f5f5f5; }
               .container { background-color: white; border-radius: 12px; padding: 40px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
@@ -395,7 +395,7 @@ serve(async (req) => {
                 <h1>You've Been Added! 🎉</h1>
               </div>
               
-              <p class="message">${inviterName} has added you to the following organisation(s) on BosPlan:</p>
+              <p class="message">${inviterName} has added you to the following organisation(s) on Bosplan:</p>
               
               <table class="org-table">
                 <thead>
@@ -420,7 +420,7 @@ serve(async (req) => {
                 </div>
               </div>
               
-              <p style="text-align: center;">You already have a BosPlan account. Simply log in to access your new organisation(s):</p>
+              <p style="text-align: center;">You already have a Bosplan account. Simply log in to access your new organisation(s):</p>
               
               <a href="${dashboardLink}" class="cta-button">
                 Go to Dashboard
@@ -429,7 +429,7 @@ serve(async (req) => {
               <div class="footer">
                 <p>You can switch between organisations using the organisation switcher in the dashboard.</p>
                 <p style="margin-top: 16px;">
-                  <strong>BosPlan</strong><br>
+                  <strong>Bosplan</strong><br>
                   Your Business Operations Platform
                 </p>
               </div>
@@ -441,7 +441,7 @@ serve(async (req) => {
         <html>
           <head>
             <meta charset="utf-8">
-            <title>You've Been Invited to Join a Team on BosPlan</title>
+            <title>You've Been Invited to Join a Team on Bosplan</title>
             <style>
               body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f5f5f5; }
               .container { background-color: white; border-radius: 12px; padding: 40px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
@@ -503,7 +503,7 @@ serve(async (req) => {
               <div class="footer">
                 <p>If you were not expecting this invitation, please ignore it.</p>
                 <p style="margin-top: 16px;">
-                  <strong>BosPlan</strong><br>
+                  <strong>Bosplan</strong><br>
                   Your Business Operations Platform
                 </p>
               </div>
@@ -519,8 +519,8 @@ serve(async (req) => {
           .join(", ");
         
         const emailSubject = userAlreadyExists 
-          ? `${inviterName} added you to ${orgNames} on BosPlan`
-          : `You've Been Invited to Join a Team on BosPlan 🎉`;
+          ? `${inviterName} added you to ${orgNames} on Bosplan`
+          : `You've Been Invited to Join a Team on Bosplan 🎉`;
 
         const response = await fetch("https://api.resend.com/emails", {
           method: "POST",

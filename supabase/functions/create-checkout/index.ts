@@ -52,7 +52,7 @@ serve(async (req) => {
       priceData = {
         currency: "usd",
         product_data: {
-          name: "BosPlan Yearly Plan",
+          name: "Bosplan Yearly Plan",
           description: "Annual subscription - Includes 3 users, $6/month per additional user",
         },
         unit_amount: 54000, // $540/year ($45/month billed annually)
@@ -64,7 +64,7 @@ serve(async (req) => {
       priceData = {
         currency: "usd",
         product_data: {
-          name: "BosPlan Monthly Plan",
+          name: "Bosplan Monthly Plan",
           description: "Monthly subscription - Includes 3 users, $6/month per additional user",
         },
         unit_amount: 6000, // $60/month

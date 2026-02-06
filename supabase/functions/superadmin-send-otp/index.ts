@@ -232,7 +232,7 @@ serve(async (req) => {
     const resend = new Resend(resendApiKey);
 
     const { error: emailError } = await resend.emails.send({
-      from: resendFromEmail.includes("<") ? resendFromEmail : `BosPlan Security <${resendFromEmail}>`,
+      from: resendFromEmail.includes("<") ? resendFromEmail : `Bosplan Security <${resendFromEmail}>`,
       to: [email],
       subject: "Your Super Admin Verification Code",
       html: `
@@ -242,7 +242,7 @@ serve(async (req) => {
           </div>
           <div style="background: #1e293b; padding: 30px; border-radius: 0 0 10px 10px;">
             <p style="color: #94a3b8; font-size: 16px; margin-bottom: 20px;">
-              A login attempt was made to the BosPlan Super Admin dashboard. 
+              A login attempt was made to the Bosplan Super Admin dashboard.
               Use the verification code below to complete your login:
             </p>
             <div style="background: #0f172a; border: 2px solid #f97316; border-radius: 8px; padding: 20px; text-align: center; margin: 20px 0;">

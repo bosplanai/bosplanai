@@ -197,12 +197,12 @@ export const useTasks = () => {
     fetchTasks();
   }, [user, profile, organization]);
 
-  // Real-time subscription for task changes to keep calendar in sync
+  // Real-time subscription for task changes to keep all assignees in sync
   useEffect(() => {
     if (!organization || !user) return;
 
     const channel = supabase
-      .channel(`tasks-realtime-${organization.id}-${user.id}`)
+      .channel(`tasks-realtime-${organization.id}`)
       .on(
         'postgres_changes',
         {
@@ -213,7 +213,20 @@ export const useTasks = () => {
         },
         (payload) => {
           console.log('Task realtime update received:', payload);
-          // Refetch tasks when any change occurs (including assignment_status changes)
+          // Refetch tasks when any change occurs (status changes, updates, etc.)
+          fetchTasks();
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'task_assignments',
+        },
+        (payload) => {
+          console.log('Task assignment realtime update received:', payload);
+          // Refetch when assignments change (accept/decline/reassign)
           fetchTasks();
         }
       )
