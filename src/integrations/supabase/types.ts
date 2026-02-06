@@ -571,6 +571,7 @@ export type Database = {
           name: string
           organization_id: string
           parent_file_id: string | null
+          status: string
           updated_at: string
           uploaded_by: string
           version: number
@@ -590,6 +591,7 @@ export type Database = {
           name: string
           organization_id: string
           parent_file_id?: string | null
+          status?: string
           updated_at?: string
           uploaded_by: string
           version?: number
@@ -609,6 +611,7 @@ export type Database = {
           name?: string
           organization_id?: string
           parent_file_id?: string | null
+          status?: string
           updated_at?: string
           uploaded_by?: string
           version?: number
