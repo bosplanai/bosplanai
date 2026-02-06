@@ -84,7 +84,7 @@ serve(async (req) => {
     // Convert MB to GB for storage (used in metadata)
     const storageGb = tierInfo.mb / 1024;
 
-    // Create checkout session for one-time storage purchase in USD
+    // Create checkout session for monthly recurring storage subscription in USD
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
       customer_email: customerId ? undefined : user.email,
@@ -94,18 +94,31 @@ serve(async (req) => {
             currency: "usd",
             product_data: {
               name: `Data Room Storage - ${tierInfo.label}`,
-              description: `One-time purchase of ${tierInfo.label} additional storage for Data Rooms`,
+              description: `Monthly subscription for ${tierInfo.label} additional storage for Data Rooms`,
             },
             unit_amount: tierInfo.priceUsd,
+            recurring: {
+              interval: "month",
+            },
           },
           quantity: 1,
         },
       ],
-      mode: "payment",
+      mode: "subscription",
       success_url: `${origin}/payment-success?session_id={CHECKOUT_SESSION_ID}&storage_purchase=success&product=dataroom&org_id=${organizationId}&org_slug=${orgData.slug}`,
       cancel_url: `${origin}/${orgData.slug}/dataroom?storage_purchase=canceled`,
+      subscription_data: {
+        metadata: {
+          type: "storage_subscription",
+          product: "dataroom",
+          organizationId,
+          userId: user.id,
+          storageMb: tierInfo.mb.toString(),
+          storageGb: storageGb.toString(),
+        },
+      },
       metadata: {
-        type: "storage_purchase",
+        type: "storage_subscription",
         product: "dataroom",
         organizationId,
         userId: user.id,
