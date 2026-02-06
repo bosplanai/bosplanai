@@ -22,7 +22,7 @@ Deno.serve(async (req) => {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const resendApiKey = Deno.env.get("RESEND_API_KEY");
-    const fromEmail = Deno.env.get("RESEND_FROM_EMAIL") || "BosPlan <noreply@bosplan.com>";
+    const fromEmail = Deno.env.get("RESEND_FROM_EMAIL") || "Bosplan <noreply@bosplan.com>";
     const siteUrl = Deno.env.get("SITE_URL") || "https://bosplanv4.lovable.app";
 
     console.log("send-data-room-invite function called");
@@ -263,7 +263,7 @@ Deno.serve(async (req) => {
               <div class="footer">
                 <p>If you didn't expect this invitation, you can safely ignore this email.</p>
                 <p style="margin-top: 16px;">
-                  <strong>BosPlan</strong><br>
+                  <strong>Bosplan</strong><br>
                   Secure Document Sharing
                 </p>
               </div>
@@ -282,7 +282,7 @@ Deno.serve(async (req) => {
           body: JSON.stringify({
             from: fromEmail,
             to: [email],
-            subject: `${inviterName} invited you to access ${dataRoom.name} on BosPlan`,
+            subject: `${inviterName} invited you to access ${dataRoom.name} on Bosplan`,
             html: emailHtml,
           }),
         });
