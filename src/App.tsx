@@ -430,11 +430,11 @@ const AppRoutes = () => (
                 />
                 <Route
                   path="/:orgSlug/projects"
-                  element={
+                element={
                     <OrgSlugValidator>
-                      <AdminRoute>
+                      <MemberRoute>
                         <ProductManagement />
-                      </AdminRoute>
+                      </MemberRoute>
                     </OrgSlugValidator>
                   }
                 />

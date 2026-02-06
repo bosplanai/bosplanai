@@ -59,7 +59,7 @@ const ProductManagementBoard = () => {
   const { organization } = useOrganization();
   const { archiveProject } = useArchive();
   const { toast } = useToast();
-  const { isAdmin } = useUserRole();
+  const { isAdmin, isMember } = useUserRole();
   const refetchProjects = () => {
     // Trigger re-fetch by updating state
     window.location.reload();
@@ -251,7 +251,7 @@ const ProductManagementBoard = () => {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input placeholder="Search projects..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="pl-9 w-full sm:w-64 bg-white rounded-full border-brand-green" />
           </div>
-          {isAdmin && (
+          {(isAdmin || isMember) && (
             <Button 
               className="gap-2 shadow-md text-white dark:text-black hover:opacity-90 rounded-full bg-brand-orange hover:bg-brand-orange/90 h-10 sm:h-9"
               onClick={() => setIsAddDialogOpen(true)}
@@ -261,7 +261,7 @@ const ProductManagementBoard = () => {
             </Button>
           )}
           <ArchiveFolder onRestore={refetchProjects} variant="projects" />
-          {isAdmin && <ProjectDraftsFolder onPublishDraft={handlePublishProjectDraft} />}
+          {(isAdmin || isMember) && <ProjectDraftsFolder onPublishDraft={handlePublishProjectDraft} />}
           <RecyclingBin onRestore={refetchProjects} />
         </div>
       </div>
