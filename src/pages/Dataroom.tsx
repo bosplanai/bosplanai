@@ -1210,7 +1210,8 @@ By signing below, you acknowledge that you have read, understood, and agree to b
           parent_file_id: parentId,
           is_restricted: existingFile.is_restricted,
           assigned_to: existingFile.assigned_to,
-          assigned_guest_id: existingFile.assigned_guest_id
+          assigned_guest_id: existingFile.assigned_guest_id,
+          status: existingFile.status
         });
         if (dbError) throw dbError;
       } else {
