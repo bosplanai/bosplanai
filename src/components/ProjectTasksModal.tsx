@@ -56,6 +56,7 @@ interface ProjectTask {
   attachment_name?: string | null;
   task_assignments?: TaskAssignment[];
   assignment_status?: string;
+  completed_at?: string | null;
 }
 const getPriorityConfig = (priority: string) => {
   switch (priority) {
@@ -193,6 +194,7 @@ const ProjectTasksModal = ({
           project_id,
           attachment_url,
           attachment_name,
+          completed_at,
           task_assignments(user_id, user:profiles!task_assignments_user_id_fkey(id, full_name)),
           created_by_user:profiles!tasks_created_by_user_id_fkey(id, full_name)
         `).eq("project_id", projectId).is("deleted_at", null);
@@ -252,6 +254,7 @@ const ProjectTasksModal = ({
           project_id: t.project_id,
           attachment_url: signedAttachmentUrl,
           attachment_name: t.attachment_name,
+          completed_at: (t as any).completed_at,
           task_assignments: (t.task_assignments || []) as TaskAssignment[]
         };
       }));
@@ -321,7 +324,7 @@ const ProjectTasksModal = ({
     updateTask(taskId, {
       status: newStatus,
       completed_at: completedAt,
-    } as any);
+    });
   };
   const handlePriorityChange = (taskId: string, newPriority: string) => {
     updateTask(taskId, {
