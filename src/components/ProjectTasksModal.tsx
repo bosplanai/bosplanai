@@ -4,6 +4,7 @@ import { Calendar, Flag, User, Circle, Pencil, Check, X, Users, FolderOpen, Plus
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "./ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "./ui/alert-dialog";
 
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
@@ -102,7 +103,10 @@ const ProjectTasksModal = ({ isOpen, onClose, projectId, projectTitle }: Project
   const [editedDescription, setEditedDescription] = useState("");
   const [newTaskTitle, setNewTaskTitle] = useState("");
   const [newTaskCategory, setNewTaskCategory] = useState<string>("");
+  const [newTaskAssignee, setNewTaskAssignee] = useState<string>("");
   const [isAddingTask, setIsAddingTask] = useState(false);
+  const [showRequestSentDialog, setShowRequestSentDialog] = useState(false);
+  const [requestSentTo, setRequestSentTo] = useState<string>("");
   const [isEditingProjectTitle, setIsEditingProjectTitle] = useState(false);
   const [isEditingProjectDescription, setIsEditingProjectDescription] = useState(false);
   const [editedProjectTitle, setEditedProjectTitle] = useState("");
@@ -445,7 +449,11 @@ const ProjectTasksModal = ({ isOpen, onClose, projectId, projectTitle }: Project
 
     setIsAddingTask(true);
     try {
-      const { data, error } = await supabase
+      // Check if assigning to someone other than self
+      const isAssigningToOther = newTaskAssignee && newTaskAssignee !== user.id;
+      
+      // Create the task
+      const { data: taskData, error: taskError } = await supabase
         .from("tasks")
         .insert({
           title: newTaskTitle.trim(),
@@ -458,15 +466,47 @@ const ProjectTasksModal = ({ isOpen, onClose, projectId, projectTitle }: Project
           category: newTaskCategory,
           subcategory: "weekly",
           icon: "ListTodo",
+          // Set assigned_user_id for the task (will be synced by trigger)
+          assigned_user_id: newTaskAssignee || null,
         })
         .select()
         .single();
 
-      if (error) throw error;
+      if (taskError) throw taskError;
+
+      // If assigning to someone, create the task_assignment record
+      if (newTaskAssignee) {
+        const assignmentStatus = isAssigningToOther ? "pending" : "accepted";
+        const acceptedAt = isAssigningToOther ? null : new Date().toISOString();
+        
+        const { error: assignmentError } = await supabase
+          .from("task_assignments")
+          .insert({
+            task_id: taskData.id,
+            user_id: newTaskAssignee,
+            assigned_by: user.id,
+            assignment_status: assignmentStatus,
+            accepted_at: acceptedAt,
+          });
+
+        if (assignmentError) {
+          console.error("Error creating assignment:", assignmentError);
+          // Don't throw - task was created successfully
+        }
+      }
+
+      // Get assignee name for the confirmation dialog
+      if (isAssigningToOther) {
+        const assignee = members.find(m => m.user_id === newTaskAssignee);
+        setRequestSentTo(assignee?.full_name || "the assignee");
+        setShowRequestSentDialog(true);
+      } else {
+        toast.success("Task added to project");
+      }
 
       setNewTaskTitle("");
       setNewTaskCategory("");
-      toast.success("Task added to project");
+      setNewTaskAssignee("");
       fetchTasks();
     } catch (error) {
       console.error("Error adding task:", error);
@@ -540,6 +580,7 @@ const ProjectTasksModal = ({ isOpen, onClose, projectId, projectTitle }: Project
 
 
   return (
+    <>
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="max-w-3xl max-h-[85vh] flex flex-col p-0 overflow-hidden">
         {/* Header with project title */}
@@ -742,9 +783,9 @@ const ProjectTasksModal = ({ isOpen, onClose, projectId, projectTitle }: Project
                   className="flex-1 h-10 bg-background"
                 />
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <Select value={newTaskCategory} onValueChange={setNewTaskCategory}>
-                  <SelectTrigger className="w-[200px] h-10 bg-background">
+                  <SelectTrigger className="w-[180px] h-10 bg-background">
                     <SelectValue placeholder="Select board *" />
                   </SelectTrigger>
                   <SelectContent>
@@ -755,6 +796,34 @@ const ProjectTasksModal = ({ isOpen, onClose, projectId, projectTitle }: Project
                         <SelectItem value="strategic">Strategic Management</SelectItem>
                       </>
                     )}
+                  </SelectContent>
+                </Select>
+                <Select value={newTaskAssignee} onValueChange={setNewTaskAssignee}>
+                  <SelectTrigger className="w-[180px] h-10 bg-background">
+                    <div className="flex items-center gap-2">
+                      <User className="w-4 h-4 text-muted-foreground" />
+                      <SelectValue placeholder="Assign to (optional)" />
+                    </div>
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">
+                      <span className="text-muted-foreground">No assignee</span>
+                    </SelectItem>
+                    {members.map((member) => (
+                      <SelectItem key={member.user_id} value={member.user_id}>
+                        <div className="flex items-center gap-2">
+                          <Avatar className="w-5 h-5">
+                            <AvatarFallback className="text-[10px] bg-primary/10 text-primary">
+                              {member.full_name?.substring(0, 2).toUpperCase() || "??"}
+                            </AvatarFallback>
+                          </Avatar>
+                          <span>{member.full_name}</span>
+                          {member.user_id === user?.id && (
+                            <span className="text-xs text-muted-foreground">(you)</span>
+                          )}
+                        </div>
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
                 <Button
@@ -1142,6 +1211,30 @@ const ProjectTasksModal = ({ isOpen, onClose, projectId, projectTitle }: Project
         </div>
       </DialogContent>
     </Dialog>
+
+    {/* Task Request Sent Confirmation Dialog */}
+    <AlertDialog open={showRequestSentDialog} onOpenChange={setShowRequestSentDialog}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
+              <Check className="w-4 h-4 text-primary" />
+            </div>
+            Task Request Sent
+          </AlertDialogTitle>
+          <AlertDialogDescription>
+            Your task request has been successfully sent to <strong>{requestSentTo}</strong>. 
+            The task will appear on their dashboard once they accept it.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogAction onClick={() => setShowRequestSentDialog(false)}>
+            Got it
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+    </>
   );
 };
 
