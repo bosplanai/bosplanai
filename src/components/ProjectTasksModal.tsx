@@ -19,6 +19,7 @@ import { useTeamMembers } from "@/hooks/useTeamMembers";
 import { useProjects } from "@/hooks/useProjects";
 import { useAuth } from "@/hooks/useAuth";
 import { useOrganization } from "@/hooks/useOrganization";
+import { useUserRole } from "@/hooks/useUserRole";
 import { toast } from "sonner";
 import ProjectAttachmentsList from "./ProjectAttachmentsList";
 import TaskAttachmentsList from "./TaskAttachmentsList";
@@ -115,6 +116,7 @@ const ProjectTasksModal = ({ isOpen, onClose, projectId, projectTitle }: Project
   const { projects, updateProject } = useProjects();
   const { user } = useAuth();
   const { organization } = useOrganization();
+  const { isAdmin, isMember, isViewer } = useUserRole();
 
   // Get current project details
   const currentProject = projects.find(p => p.id === projectId);
@@ -162,7 +164,30 @@ const ProjectTasksModal = ({ isOpen, onClose, projectId, projectTitle }: Project
 
       if (error) throw error;
 
-      const sortedTasks = (data || []).sort((a, b) => {
+      // Filter tasks based on user role:
+      // - Admin: sees all tasks within the project
+      // - Manager: sees only Product Management (category = "product") tasks
+      // - Viewer: sees only tasks they are assigned to or created
+      let filteredData = data || [];
+      
+      if (!isAdmin) {
+        if (isMember) {
+          // Managers see only Product Management tasks within the project
+          filteredData = filteredData.filter((t) => t.category === "product");
+        } else if (isViewer && user) {
+          // Viewers see only tasks they created or are assigned to
+          filteredData = filteredData.filter((t) => {
+            const isCreator = t.created_by_user_id === user.id;
+            const isAssigned = t.assigned_user_id === user.id;
+            const hasTaskAssignment = (t.task_assignments || []).some(
+              (a: any) => a.user_id === user.id
+            );
+            return isCreator || isAssigned || hasTaskAssignment;
+          });
+        }
+      }
+
+      const sortedTasks = filteredData.sort((a, b) => {
         if (a.due_date && b.due_date) {
           return new Date(a.due_date).getTime() - new Date(b.due_date).getTime();
         }
