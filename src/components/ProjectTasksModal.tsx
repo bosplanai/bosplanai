@@ -102,6 +102,7 @@ const ProjectTasksModal = ({ isOpen, onClose, projectId, projectTitle }: Project
   const [editedTitle, setEditedTitle] = useState("");
   const [editedDescription, setEditedDescription] = useState("");
   const [newTaskTitle, setNewTaskTitle] = useState("");
+  const [newTaskDescription, setNewTaskDescription] = useState("");
   const [newTaskCategory, setNewTaskCategory] = useState<string>("");
   const [newTaskAssignee, setNewTaskAssignee] = useState<string>("");
   const [newTaskDueDate, setNewTaskDueDate] = useState<Date | undefined>(undefined);
@@ -462,6 +463,7 @@ const ProjectTasksModal = ({ isOpen, onClose, projectId, projectTitle }: Project
         .from("tasks")
         .insert({
           title: newTaskTitle.trim(),
+          description: newTaskDescription.trim() || null,
           project_id: projectId,
           user_id: user.id,
           created_by_user_id: user.id,
@@ -535,6 +537,7 @@ const ProjectTasksModal = ({ isOpen, onClose, projectId, projectTitle }: Project
       }
 
       setNewTaskTitle("");
+      setNewTaskDescription("");
       setNewTaskCategory("");
       setNewTaskAssignee("");
       setNewTaskDueDate(undefined);
@@ -803,19 +806,34 @@ const ProjectTasksModal = ({ isOpen, onClose, projectId, projectTitle }: Project
 
             {/* Add Task Input */}
             <div className="flex flex-col gap-4 mb-5 p-4 rounded-xl bg-muted/20 border border-border">
-              {/* Task title */}
-              <Input
-                ref={newTaskInputRef}
-                placeholder="What needs to be done?"
-                value={newTaskTitle}
-                onChange={(e) => setNewTaskTitle(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && newTaskTitle.trim() && newTaskCategory) {
-                    handleAddTask();
-                  }
-                }}
-                className="h-11 bg-background text-sm"
-              />
+              {/* Task title & description */}
+              <div className="space-y-2">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-muted-foreground">Task title <span className="text-destructive">*</span></label>
+                  <Input
+                    ref={newTaskInputRef}
+                    placeholder="What needs to be done?"
+                    value={newTaskTitle}
+                    onChange={(e) => setNewTaskTitle(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && newTaskTitle.trim() && newTaskCategory) {
+                        handleAddTask();
+                      }
+                    }}
+                    className="h-10 bg-background text-sm"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-muted-foreground">Description</label>
+                  <textarea
+                    placeholder="Add a description..."
+                    value={newTaskDescription}
+                    onChange={(e) => setNewTaskDescription(e.target.value)}
+                    rows={2}
+                    className="flex w-full rounded-md border border-input bg-background shadow-md px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 resize-none"
+                  />
+                </div>
+              </div>
 
               {/* Row 1: Board & Assignee */}
               <div className="grid grid-cols-2 gap-3">
