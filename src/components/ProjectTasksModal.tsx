@@ -836,84 +836,6 @@ const ProjectTasksModal = ({
 
                         {/* Metadata Row */}
                         <div className="flex flex-wrap items-center gap-2 pl-6 pt-2 border-t border-border/50">
-                        {/* Due Date */}
-                        <Popover>
-                          <PopoverTrigger asChild>
-                            <Button variant="outline" size="sm" className={cn("h-7 px-2 text-xs border-0 bg-[#F5F6F7] dark:bg-[#1D2128] dark:text-white", !task.due_date && "text-muted-foreground dark:text-white/60")}>
-                              <Calendar className="w-3 h-3 mr-1" />
-                              {task.due_date ? format(new Date(task.due_date), "MMM d, yyyy") : "Set date"}
-                            </Button>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-auto p-0" align="start">
-                            <CalendarPicker mode="single" selected={task.due_date ? new Date(task.due_date) : undefined} onSelect={date => handleDueDateChange(task.id, date)} initialFocus />
-                          </PopoverContent>
-                        </Popover>
-
-                        {/* Priority */}
-                        <Select value={task.priority} onValueChange={value => handlePriorityChange(task.id, value)}>
-                          <SelectTrigger className="h-7 w-auto px-2 border-0 bg-[#F5F6F7] dark:bg-[#1D2128]">
-                            <Badge variant="outline" className={cn("text-xs", priorityConfig.className)}>
-                              <Flag className="w-3 h-3 mr-1" />
-                              {priorityConfig.label}
-                            </Badge>
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="high">High</SelectItem>
-                            <SelectItem value="medium">Medium</SelectItem>
-                            <SelectItem value="low">Low</SelectItem>
-                          </SelectContent>
-                        </Select>
-
-                        {/* Assignees - Multi-select */}
-                        <Popover>
-                            <PopoverTrigger asChild>
-                              <Button variant="outline" size="sm" className="h-7 px-2 border-0 bg-[#F5F6F7] dark:bg-[#1D2128] dark:text-white">
-                                {(() => {
-                              const assignees = getTaskAssignees(task);
-                              if (assignees.length === 0) {
-                                return <>
-                                        <Users className="w-3 h-3 mr-1" />
-                                        <span className="text-xs text-muted-foreground">Assign</span>
-                                      </>;
-                              }
-                              return <div className="flex items-center gap-1.5">
-                                      <div className="flex items-center -space-x-1">
-                                        {assignees.slice(0, 3).map((a, idx) => <Avatar key={a.id} className="w-5 h-5 border-2 border-background" style={{
-                                    zIndex: 3 - idx
-                                  }}>
-                                            <AvatarFallback className="text-[8px] bg-primary/10 text-primary font-medium">
-                                              {getInitials(a.name)}
-                                            </AvatarFallback>
-                                          </Avatar>)}
-                                      </div>
-                                      <span className="text-xs text-foreground/70 dark:text-white max-w-[100px] truncate">
-                                        Assigned: {assignees.length === 1 ? assignees[0].name.split(' ')[0] : `${assignees.length}`}
-                                      </span>
-                                    </div>;
-                            })()}
-                              </Button>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-56 p-2" align="start">
-                              <p className="text-xs font-medium text-muted-foreground mb-2">
-                                Assign to (select multiple)
-                              </p>
-                              <div className="space-y-1 max-h-48 overflow-y-auto">
-                                {members.map(member => {
-                              const isAssigned = isUserAssignedToTask(task, member.user_id);
-                              return <div key={member.user_id} className={cn("flex items-center gap-2 px-2 py-1.5 rounded-md cursor-pointer hover:bg-muted transition-colors", isAssigned && "bg-primary/10")} onClick={() => toggleTaskAssignment(task.id, member.user_id)}>
-                                      <Checkbox checked={isAssigned} className="pointer-events-none" />
-                                      <Avatar className="w-5 h-5">
-                                        
-                                      </Avatar>
-                                      <span className="text-xs truncate">{member.full_name}</span>
-                                    </div>;
-                            })}
-                                {members.length === 0 && <p className="text-xs text-muted-foreground text-center py-2">
-                                    No team members available
-                                  </p>}
-                              </div>
-                            </PopoverContent>
-                          </Popover>
 
                         {/* Project */}
                         <Select value={task.project_id || "no-project"} onValueChange={value => handleProjectChange(task.id, value === "no-project" ? null : value)}>
@@ -934,22 +856,6 @@ const ProjectTasksModal = ({
                         </Select>
 
                         {/* Created by */}
-                        {task.created_by_user_name && <div className="flex items-center gap-1.5 px-2 py-1 rounded-full border-0 bg-[#F5F6F7] dark:bg-[#1D2128]" title={`Created by ${task.created_by_user_name}`}>
-                            <span className="text-[10px] text-muted-foreground dark:text-white">By:</span>
-                            <Avatar className="w-4 h-4 border border-border">
-                              <AvatarFallback className="text-[7px] bg-muted text-muted-foreground font-semibold">
-                                {getInitials(task.created_by_user_name)}
-                              </AvatarFallback>
-                            </Avatar>
-                            <span className="text-xs font-medium text-muted-foreground dark:text-white">
-                              {task.created_by_user_name.split(' ')[0]}
-                            </span>
-                          </div>}
-
-                        {/* Task Attachments */}
-                        {organization?.id && <TaskAttachmentsList taskId={task.id} organizationId={organization.id} canEdit={true} />}
-
-                        {/* Delete Button */}
                         <Button variant="ghost" size="sm" className="h-7 px-2 text-muted-foreground hover:text-destructive ml-auto" onClick={() => handleDeleteTask(task.id, task.title)}>
                           <Trash2 className="w-3 h-3" />
                         </Button>
