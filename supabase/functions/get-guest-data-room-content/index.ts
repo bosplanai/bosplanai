@@ -258,7 +258,7 @@ Deno.serve(async (req) => {
     // Get ALL files in the data room to properly compute latest versions
     const { data: allFiles, error: filesError } = await supabaseAdmin
       .from("data_room_files")
-      .select("id, name, file_path, file_size, mime_type, created_at, updated_at, folder_id, is_restricted, uploaded_by, version, parent_file_id, assigned_to, assigned_guest_id")
+      .select("id, name, file_path, file_size, mime_type, created_at, updated_at, folder_id, is_restricted, uploaded_by, version, parent_file_id, assigned_to, assigned_guest_id, status")
       .eq("data_room_id", dataRoom.id)
       .is("deleted_at", null)
       .order("version", { ascending: false });
