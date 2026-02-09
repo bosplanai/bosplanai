@@ -1009,26 +1009,7 @@ const ProjectTasksModal = ({
 
                         {/* Metadata Row */}
                         <div className="flex flex-wrap items-center gap-2 pl-6 pt-2 border-t border-border/50">
-
-                        {/* Project */}
-                        <Select value={task.project_id || "no-project"} onValueChange={value => handleProjectChange(task.id, value === "no-project" ? null : value)}>
-                          <SelectTrigger className="h-7 w-auto px-2 border-0 bg-[#F5F6F7] dark:bg-[#1D2128] dark:text-white">
-                            <div className="flex items-center gap-1">
-                              <FolderOpen className="w-3 h-3" />
-                              <span className="text-xs max-w-[100px] truncate">
-                                {projects.find(p => p.id === task.project_id)?.title || "No project"}
-                              </span>
-                            </div>
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="no-project">No project</SelectItem>
-                            {projects.map(project => <SelectItem key={project.id} value={project.id}>
-                                {project.title}
-                              </SelectItem>)}
-                          </SelectContent>
-                        </Select>
-
-                        {/* Created by */}
+                        {/* Delete Button */}
                         <Button variant="ghost" size="sm" className="h-7 px-2 text-muted-foreground hover:text-destructive ml-auto" onClick={() => handleDeleteTask(task.id, task.title)}>
                           <Trash2 className="w-3 h-3" />
                         </Button>
