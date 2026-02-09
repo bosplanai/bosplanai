@@ -145,7 +145,7 @@ const CreateProjectDialog = ({ open, onOpenChange, onCreateProject, onSaveDraft 
           </div>
           <div className="space-y-2">
             <Label>Due Date</Label>
-            <Popover>
+            <Popover modal={true}>
               <PopoverTrigger asChild>
                 <Button
                   variant="outline"
@@ -250,7 +250,7 @@ const CreateProjectDialog = ({ open, onOpenChange, onCreateProject, onSaveDraft 
                       <div className="grid grid-cols-3 gap-3">
                         <div className="space-y-1">
                           <Label className="text-xs">Due Date</Label>
-                          <Popover>
+                          <Popover modal={true}>
                             <PopoverTrigger asChild>
                               <Button
                                 variant="outline"
