@@ -38,22 +38,30 @@ export const UserRoleProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
   const { organization } = useOrganization();
-  
+
   // Track if this is the initial load vs a refetch
   const isInitialLoad = useRef(true);
-  // Track the last fetched org to avoid unnecessary refetches
+  // Track the last fetched org+user to avoid unnecessary refetches
+  // IMPORTANT: include user_id to prevent leaking a prior user's permissions after sign out/in.
   const lastFetchedOrgId = useRef<string | null>(null);
+  const lastFetchedUserId = useRef<string | null>(null);
 
   const fetchRole = async () => {
     if (!user || !organization) {
+      lastFetchedOrgId.current = null;
+      lastFetchedUserId.current = null;
       setRole(null);
       setLoading(false);
       isInitialLoad.current = false;
       return;
     }
 
-    // Skip if we've already fetched for this org (unless it's a manual refetch)
-    if (lastFetchedOrgId.current === organization.id && !isInitialLoad.current) {
+    // Skip if we've already fetched for this exact user+org (unless it's a manual refetch)
+    if (
+      lastFetchedOrgId.current === organization.id &&
+      lastFetchedUserId.current === user.id &&
+      !isInitialLoad.current
+    ) {
       return;
     }
 
@@ -76,7 +84,9 @@ export const UserRoleProvider = ({ children }: { children: ReactNode }) => {
       } else {
         setRole(mapDbRoleToUiRole(data?.role) as AppRole | null);
       }
+
       lastFetchedOrgId.current = organization.id;
+      lastFetchedUserId.current = user.id;
     } catch (error) {
       console.error("Error fetching user role:", error);
       setRole(null);
@@ -89,15 +99,29 @@ export const UserRoleProvider = ({ children }: { children: ReactNode }) => {
   // Force refetch for manual calls (e.g., after role change)
   const forceRefetch = async () => {
     lastFetchedOrgId.current = null;
+    lastFetchedUserId.current = null;
     isInitialLoad.current = false;
     await fetchRole();
   };
 
+  // Reset cached role when the authenticated user changes (prevents permission leakage)
   useEffect(() => {
-    // Reset for new organization
-    if (organization && lastFetchedOrgId.current !== organization.id) {
-      fetchRole();
+    lastFetchedOrgId.current = null;
+    lastFetchedUserId.current = null;
+    isInitialLoad.current = true;
+
+    if (!user) {
+      setRole(null);
+      setLoading(false);
+      isInitialLoad.current = false;
+    } else {
+      setRole(null);
+      setLoading(true);
     }
+  }, [user?.id]);
+
+  useEffect(() => {
+    fetchRole();
   }, [user, organization]);
 
   // Computed permissions based on role types:
