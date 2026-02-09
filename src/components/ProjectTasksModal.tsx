@@ -806,6 +806,15 @@ const ProjectTasksModal = ({ isOpen, onClose, projectId, projectTitle }: Project
 
             {/* Add Task Input */}
             <div className="flex flex-col gap-4 mb-5 p-4 rounded-xl bg-muted/20 border border-border">
+              {/* Project indicator */}
+              <div className="flex items-center gap-2">
+                <FolderOpen className="w-3.5 h-3.5 text-primary" />
+                <span className="text-xs font-medium text-muted-foreground">Project:</span>
+                <Badge variant="secondary" className="text-xs font-medium">
+                  {projectTitle}
+                </Badge>
+              </div>
+
               {/* Task title & description */}
               <div className="space-y-2">
                 <div className="space-y-1.5">
