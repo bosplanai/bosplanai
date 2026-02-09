@@ -101,6 +101,7 @@ const ProjectTasksModal = ({ isOpen, onClose, projectId, projectTitle }: Project
   const [editedTitle, setEditedTitle] = useState("");
   const [editedDescription, setEditedDescription] = useState("");
   const [newTaskTitle, setNewTaskTitle] = useState("");
+  const [newTaskCategory, setNewTaskCategory] = useState<string>("");
   const [isAddingTask, setIsAddingTask] = useState(false);
   const [isEditingProjectTitle, setIsEditingProjectTitle] = useState(false);
   const [isEditingProjectDescription, setIsEditingProjectDescription] = useState(false);
@@ -440,7 +441,7 @@ const ProjectTasksModal = ({ isOpen, onClose, projectId, projectTitle }: Project
   };
 
   const handleAddTask = async () => {
-    if (!newTaskTitle.trim() || !projectId || !user || !organization) return;
+    if (!newTaskTitle.trim() || !newTaskCategory || !projectId || !user || !organization) return;
 
     setIsAddingTask(true);
     try {
@@ -454,7 +455,7 @@ const ProjectTasksModal = ({ isOpen, onClose, projectId, projectTitle }: Project
           organization_id: organization.id,
           status: "todo",
           priority: "medium",
-          category: "product",
+          category: newTaskCategory,
           subcategory: "weekly",
           icon: "ListTodo",
         })
@@ -464,6 +465,7 @@ const ProjectTasksModal = ({ isOpen, onClose, projectId, projectTitle }: Project
       if (error) throw error;
 
       setNewTaskTitle("");
+      setNewTaskCategory("");
       toast.success("Task added to project");
       fetchTasks();
     } catch (error) {
@@ -725,28 +727,49 @@ const ProjectTasksModal = ({ isOpen, onClose, projectId, projectTitle }: Project
             </div>
 
             {/* Add Task Input */}
-            <div className="flex gap-2 mb-5 p-3 rounded-lg bg-muted/30 border border-dashed border-border">
-              <Input
-                ref={newTaskInputRef}
-                placeholder="Add a new task to this project..."
-                value={newTaskTitle}
-                onChange={(e) => setNewTaskTitle(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && newTaskTitle.trim()) {
-                    handleAddTask();
-                  }
-                }}
-                className="flex-1 h-10 bg-background"
-              />
-              <Button
-                onClick={handleAddTask}
-                disabled={!newTaskTitle.trim() || isAddingTask}
-                size="default"
-                className="gap-2 h-10"
-              >
-                <Plus className="w-4 h-4" />
-                Add Task
-              </Button>
+            <div className="flex flex-col gap-3 mb-5 p-3 rounded-lg bg-muted/30 border border-dashed border-border">
+              <div className="flex gap-2">
+                <Input
+                  ref={newTaskInputRef}
+                  placeholder="Add a new task to this project..."
+                  value={newTaskTitle}
+                  onChange={(e) => setNewTaskTitle(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && newTaskTitle.trim() && newTaskCategory) {
+                      handleAddTask();
+                    }
+                  }}
+                  className="flex-1 h-10 bg-background"
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <Select value={newTaskCategory} onValueChange={setNewTaskCategory}>
+                  <SelectTrigger className="w-[200px] h-10 bg-background">
+                    <SelectValue placeholder="Select board *" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="product">Product Management</SelectItem>
+                    {isAdmin && (
+                      <>
+                        <SelectItem value="operational">Operational Management</SelectItem>
+                        <SelectItem value="strategic">Strategic Management</SelectItem>
+                      </>
+                    )}
+                  </SelectContent>
+                </Select>
+                <Button
+                  onClick={handleAddTask}
+                  disabled={!newTaskTitle.trim() || !newTaskCategory || isAddingTask}
+                  size="default"
+                  className="gap-2 h-10 ml-auto"
+                >
+                  <Plus className="w-4 h-4" />
+                  Add Task
+                </Button>
+              </div>
+              {!newTaskCategory && newTaskTitle.trim() && (
+                <p className="text-xs text-muted-foreground">Please select a board to create the task</p>
+              )}
             </div>
 
             {/* Task List */}
