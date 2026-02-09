@@ -162,9 +162,15 @@ export const useTasks = () => {
       const tasksWithSignedUrls = await Promise.all(
         filteredRows.map(async (t: any) => {
           let signedUrl: string | null = null;
-          // Check if attachment_url is a file path (not a full URL)
-          if (t.attachment_url && !t.attachment_url.startsWith('http')) {
-            signedUrl = await getSignedUrl(t.attachment_url);
+          // Check if attachment_url is a file path (not a full URL or domain)
+          if (t.attachment_url && !t.attachment_url.startsWith('http') && !t.attachment_url.includes('.') || (t.attachment_url && !t.attachment_url.startsWith('http') && t.attachment_url.includes('/'))) {
+            // Only treat as storage path if it looks like a path (has slashes but no dots at start)
+            const looksLikeUrl = /^[a-zA-Z0-9][-a-zA-Z0-9]*\.[a-zA-Z]{2,}/.test(t.attachment_url);
+            if (!looksLikeUrl) {
+              signedUrl = await getSignedUrl(t.attachment_url);
+            } else {
+              signedUrl = t.attachment_url;
+            }
           } else {
             signedUrl = t.attachment_url;
           }
@@ -230,11 +236,12 @@ export const useTasks = () => {
   }, [user, profile, organization, isAdmin, isMember, fetchTasks]);
 
   // Real-time subscription for task changes to keep all assignees in sync
+  // Use separate channels: one filtered by org for tasks, one unfiltered for assignments
   useEffect(() => {
     if (!organization || !user) return;
 
-    const channel = supabase
-      .channel(`tasks-realtime-${organization.id}-${user.id}`)
+    const tasksChannel = supabase
+      .channel(`tasks-rt-${organization.id}-${user.id}`)
       .on(
         'postgres_changes',
         {
@@ -243,12 +250,15 @@ export const useTasks = () => {
           table: 'tasks',
           filter: `organization_id=eq.${organization.id}`,
         },
-        (payload) => {
-          console.log('Task realtime update received:', payload);
-          // Refetch tasks when any change occurs (status changes, updates, etc.)
+        () => {
           fetchTasks();
         }
       )
+      .subscribe();
+
+    // Separate channel for task_assignments (no filter supported without org column)
+    const assignmentsChannel = supabase
+      .channel(`task-assignments-rt-${organization.id}-${user.id}`)
       .on(
         'postgres_changes',
         {
@@ -256,18 +266,15 @@ export const useTasks = () => {
           schema: 'public',
           table: 'task_assignments',
         },
-        (payload) => {
-          console.log('Task assignment realtime update received:', payload);
-          // Refetch when assignments change (accept/decline/reassign)
+        () => {
           fetchTasks();
         }
       )
-      .subscribe((status) => {
-        console.log('Tasks realtime subscription status:', status);
-      });
+      .subscribe();
 
     return () => {
-      supabase.removeChannel(channel);
+      supabase.removeChannel(tasksChannel);
+      supabase.removeChannel(assignmentsChannel);
     };
   }, [organization?.id, user?.id, fetchTasks]);
 
