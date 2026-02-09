@@ -132,11 +132,21 @@ export const useTasks = () => {
       const currentIsAdmin = isAdminRef.current;
       const currentIsMember = isMemberRef.current;
 
-      // Filter tasks based on user role:
-      // - Full Access (admin) users see ALL tasks in the organization - no filtering
-      // - Manager users see ALL Product Management tasks, plus assigned/created tasks from other categories
+      // Universal filter: tasks with assignments where NONE are accepted are hidden from ALL views.
+      // This ensures assigned tasks only appear after acceptance, regardless of role.
+      // Unassigned tasks (no assignments) always pass through.
+      const visibleRows = rows.filter((t: any) => {
+        const assignments = t.task_assignments || [];
+        if (assignments.length === 0) return true; // Unassigned task — always visible
+        // At least one assignment must be accepted for the task to appear
+        return assignments.some((a: any) => a.assignment_status === "accepted");
+      });
+
+      // Role-based filtering on visible rows:
+      // - Full Access (admin) users see ALL visible tasks in the organization
+      // - Manager users see ALL visible Product Management tasks, plus assigned/created
       // - Team users see tasks based on per-assignee acceptance rules only
-      const filteredRows = currentIsAdmin ? rows : rows.filter((t: any) => {
+      const filteredRows = currentIsAdmin ? visibleRows : visibleRows.filter((t: any) => {
         // Managers see all Product Management tasks within the organization
         if (currentIsMember && t.category === "product") {
           return true;
