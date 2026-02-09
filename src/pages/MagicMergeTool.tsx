@@ -254,22 +254,24 @@ const MagicMergeTool = () => {
       const mergeLabel = mergeType === "temporary" ? "temporarily transferred" : "permanently transferred";
 
       // Notify departing user (source)
-      await supabase.from("notifications").insert({
-        user_id: sourceUserId,
-        organization_id: organization.id,
-        type: "task_merge",
-        title: "Tasks Transferred",
-        message: `${tasksToTransfer.length} task(s) have been ${mergeLabel} to ${targetName}.`,
-      });
+      if (organization?.id) {
+        await supabase.from("notifications").insert({
+          user_id: sourceUserId,
+          organization_id: organization.id,
+          type: "task_merge",
+          title: "Tasks Transferred",
+          message: `${tasksToTransfer.length} task(s) have been ${mergeLabel} to ${targetName}.`,
+        });
 
-      // Notify receiving user (target)
-      await supabase.from("notifications").insert({
-        user_id: targetUserId,
-        organization_id: organization.id,
-        type: "task_merge",
-        title: "Tasks Received",
-        message: `${tasksToTransfer.length} task(s) have been ${mergeLabel} to you from ${sourceName}.`,
-      });
+        // Notify receiving user (target)
+        await supabase.from("notifications").insert({
+          user_id: targetUserId,
+          organization_id: organization.id,
+          type: "task_merge",
+          title: "Tasks Received",
+          message: `${tasksToTransfer.length} task(s) have been ${mergeLabel} to you from ${sourceName}.`,
+        });
+      }
 
       // 2. Create audit log
       const {
