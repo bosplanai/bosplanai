@@ -317,9 +317,11 @@ const ProjectTasksModal = ({
     setEditSheetTask(task);
   };
   const handleStatusChange = (taskId: string, newStatus: string) => {
+    const completedAt = newStatus === "complete" ? new Date().toISOString() : null;
     updateTask(taskId, {
-      status: newStatus
-    });
+      status: newStatus,
+      completed_at: completedAt,
+    } as any);
   };
   const handlePriorityChange = (taskId: string, newPriority: string) => {
     updateTask(taskId, {
