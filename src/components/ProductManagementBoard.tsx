@@ -54,7 +54,7 @@ const ProductManagementBoard = () => {
     deleteProject,
     reorderProjects
   } = useProjects();
-  const { addTask } = useTasks();
+  const { addTask, refetch: refetchTasks } = useTasks();
   const { triggerSparkle } = useSparkle();
   const { organization } = useOrganization();
   const { archiveProject } = useArchive();
@@ -363,7 +363,7 @@ const ProductManagementBoard = () => {
           </DragOverlay>
         </DndContext>}
 
-      <ProjectTasksModal isOpen={!!selectedProject} onClose={() => setSelectedProject(null)} projectId={selectedProject?.id || null} projectTitle={selectedProject?.title || ""} />
+      <ProjectTasksModal isOpen={!!selectedProject} onClose={() => setSelectedProject(null)} projectId={selectedProject?.id || null} projectTitle={selectedProject?.title || ""} onTasksChanged={refetchTasks} />
 
       <ArchiveChoiceDialog
         open={archiveDialogOpen}

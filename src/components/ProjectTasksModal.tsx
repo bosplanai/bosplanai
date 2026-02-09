@@ -30,6 +30,7 @@ interface ProjectTasksModalProps {
   onClose: () => void;
   projectId: string | null;
   projectTitle: string;
+  onTasksChanged?: () => void;
 }
 interface TaskAssignment {
   user_id: string;
@@ -111,7 +112,8 @@ const ProjectTasksModal = ({
   isOpen,
   onClose,
   projectId,
-  projectTitle
+  projectTitle,
+  onTasksChanged
 }: ProjectTasksModalProps) => {
   const [tasks, setTasks] = useState<ProjectTask[]>([]);
   const [loading, setLoading] = useState(false);
@@ -301,6 +303,7 @@ const ProjectTasksModal = ({
         error
       } = await supabase.from("tasks").update(updates).eq("id", taskId);
       if (error) throw error;
+      onTasksChanged?.();
     } catch (error) {
       console.error("Error updating task:", error);
       fetchTasks(); // Revert on error
@@ -511,6 +514,7 @@ const ProjectTasksModal = ({
       setNewTaskUrl("");
       setNewTaskAttachments([]);
       fetchTasks();
+      onTasksChanged?.();
     } catch (error) {
       console.error("Error adding task:", error);
       toast.error("Failed to add task");
@@ -528,7 +532,8 @@ const ProjectTasksModal = ({
       }).eq("id", taskId);
       if (error) throw error;
       setTasks(prev => prev.filter(t => t.id !== taskId));
-      toast.success("Task deleted");
+      toast.success("Task moved to recycling bin");
+      onTasksChanged?.();
     } catch (error) {
       console.error("Error deleting task:", error);
       toast.error("Failed to delete task");
