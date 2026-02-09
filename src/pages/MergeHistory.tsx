@@ -112,12 +112,12 @@ const MergeHistory = () => {
         }
         
         // Update assigned_user_id on the task itself
-        // Set to pending since this is a reversion/reassignment
+        // Merge reverts skip the approval process - set directly to accepted
         await supabase
           .from("tasks")
           .update({ 
             assigned_user_id: log.source_user_id,
-            assignment_status: log.source_user_id && log.source_user_id !== user?.id ? 'pending' : 'accepted'
+            assignment_status: 'accepted'
           })
           .eq("id", taskId);
       }
