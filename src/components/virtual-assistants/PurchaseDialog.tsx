@@ -47,8 +47,8 @@ const PurchaseDialog = ({ open, onOpenChange, assistantTitle, assistantId }: Pur
       if (error) throw error;
 
       if (data?.url) {
-        window.open(data.url, "_blank");
-        onOpenChange(false);
+        // Use location.href to avoid iPad/Safari popup blockers on async calls
+        window.location.href = data.url;
       } else {
         throw new Error("No checkout URL received");
       }
