@@ -956,6 +956,34 @@ const GuestDataRoom = () => {
       setDeletingFileId(null);
     }
   };
+  // Update file status handler
+  const handleGuestFileStatusChange = async (fileId: string, status: string) => {
+    try {
+      const response = await fetch(
+        `https://qiikjhvzlwzysbtzhdcd.supabase.co/functions/v1/guest-update-file-status`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            accessId: accessIdParam,
+            email: email.toLowerCase(),
+            password,
+            fileId,
+            status,
+          }),
+        }
+      );
+
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || "Failed to update status");
+
+      // Update local state
+      setFiles(prev => prev.map(f => f.id === fileId ? { ...f, status } : f));
+      toast.success("Status updated");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to update status");
+    }
+  };
 
   // Delete folder handler (simplified - guests can only delete empty folders they created)
   const handleDeleteFolder = async (folderId: string) => {
@@ -1649,6 +1677,7 @@ const GuestDataRoom = () => {
                               onEditDocument={file.permission_level === "edit" ? () => setEditFile(file) : undefined}
                               onDelete={file.is_own_upload ? () => handleDeleteFile(file) : undefined}
                               onManagePermissions={file.is_own_upload ? () => openFilePermissions(file) : undefined}
+                              onStatusChange={(status) => handleGuestFileStatusChange(file.id, status)}
                             />
                           );
                         })}

@@ -66,6 +66,7 @@ interface GuestDataRoomFileCardProps {
   onEditDocument?: () => void;
   onDelete?: () => void;
   onManagePermissions?: () => void;
+  onStatusChange?: (status: string) => void;
 }
 
 const STATUS_DISPLAY: Record<string, { label: string; color: string; bgColor: string }> = {
@@ -107,6 +108,7 @@ export function GuestDataRoomFileCard({
   onEditDocument,
   onDelete,
   onManagePermissions,
+  onStatusChange,
 }: GuestDataRoomFileCardProps) {
   const statusDisplay = STATUS_DISPLAY[file.status || "not_opened"] || STATUS_DISPLAY.not_opened;
   const canEditDocument = isEditableDocument(file.mime_type, file.name) && file.permission_level === "edit";
@@ -233,15 +235,50 @@ export function GuestDataRoomFileCard({
           {/* Current Status */}
           <div className="flex flex-col gap-1.5 min-w-0">
             <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Status</span>
-            <div className={`flex items-center gap-1.5 ${statusDisplay.color}`}>
-              <div className={cn(
-                "w-2 h-2 rounded-full flex-shrink-0",
-                file.status === "completed" ? "bg-brand-green" :
-                file.status === "review_failed" ? "bg-brand-coral" :
-                file.status === "in_review" ? "bg-brand-teal" : "bg-brand-orange"
-              )} />
-              <span className="text-xs font-medium">{statusDisplay.label}</span>
-            </div>
+            {onStatusChange ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button className={`flex items-center gap-1.5 ${statusDisplay.color} cursor-pointer hover:opacity-80 transition-opacity`}>
+                    <div className={cn(
+                      "w-2 h-2 rounded-full flex-shrink-0",
+                      file.status === "completed" ? "bg-brand-green" :
+                      file.status === "review_failed" ? "bg-brand-coral" :
+                      file.status === "in_review" ? "bg-brand-teal" : "bg-brand-orange"
+                    )} />
+                    <span className="text-xs font-medium">{statusDisplay.label}</span>
+                    <ChevronDown className="w-3 h-3 opacity-60" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="w-44 bg-popover">
+                  {Object.entries(STATUS_DISPLAY).map(([value, option]) => (
+                    <DropdownMenuItem
+                      key={value}
+                      onClick={() => onStatusChange(value)}
+                      className={`gap-2 ${file.status === value ? "bg-accent" : ""}`}
+                    >
+                      <div className={cn(
+                        "w-2 h-2 rounded-full",
+                        value === "completed" ? "bg-brand-green" :
+                        value === "review_failed" ? "bg-brand-coral" :
+                        value === "in_review" ? "bg-brand-teal" : "bg-brand-orange"
+                      )} />
+                      <span className="text-xs">{option.label}</span>
+                      {file.status === value && <Check className="w-3 h-3 ml-auto" />}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : (
+              <div className={`flex items-center gap-1.5 ${statusDisplay.color}`}>
+                <div className={cn(
+                  "w-2 h-2 rounded-full flex-shrink-0",
+                  file.status === "completed" ? "bg-brand-green" :
+                  file.status === "review_failed" ? "bg-brand-coral" :
+                  file.status === "in_review" ? "bg-brand-teal" : "bg-brand-orange"
+                )} />
+                <span className="text-xs font-medium">{statusDisplay.label}</span>
+              </div>
+            )}
           </div>
 
           {/* Assigned To */}
