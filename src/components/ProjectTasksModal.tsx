@@ -9,6 +9,7 @@ import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Textarea } from "./ui/textarea";
+import { Label } from "./ui/label";
 import { Calendar as CalendarPicker } from "./ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
@@ -124,6 +125,7 @@ const ProjectTasksModal = ({
   const [newTaskDueDate, setNewTaskDueDate] = useState<Date | undefined>(undefined);
   const [newTaskPriority, setNewTaskPriority] = useState("medium");
   const [newTaskUrl, setNewTaskUrl] = useState("");
+  const [newTaskAttachments, setNewTaskAttachments] = useState<File[]>([]);
   const [isAddingTask, setIsAddingTask] = useState(false);
   const [showRequestSentDialog, setShowRequestSentDialog] = useState(false);
   const [requestSentTo, setRequestSentTo] = useState<string>("");
@@ -134,6 +136,7 @@ const ProjectTasksModal = ({
   const titleInputRef = useRef<HTMLInputElement>(null);
   const descriptionInputRef = useRef<HTMLTextAreaElement>(null);
   const newTaskInputRef = useRef<HTMLInputElement>(null);
+  const newTaskFileInputRef = useRef<HTMLInputElement>(null);
   const projectTitleInputRef = useRef<HTMLInputElement>(null);
   const projectDescriptionInputRef = useRef<HTMLTextAreaElement>(null);
   const {
@@ -486,6 +489,30 @@ const ProjectTasksModal = ({
         }
       }
 
+      // Upload attachments if any
+      if (newTaskAttachments.length > 0 && organization) {
+        for (const file of newTaskAttachments) {
+          const fileExt = file.name.split(".").pop();
+          const filePath = `${organization.id}/${taskData.id}_${Date.now()}.${fileExt}`;
+          const { error: uploadError } = await supabase.storage
+            .from("task-attachments")
+            .upload(filePath, file);
+          if (uploadError) {
+            console.error("Upload error:", uploadError);
+            continue;
+          }
+          await supabase.from("task_attachments").insert({
+            task_id: taskData.id,
+            organization_id: organization.id,
+            file_path: filePath,
+            file_name: file.name,
+            file_size: file.size,
+            mime_type: file.type || null,
+            uploaded_by: user.id,
+          });
+        }
+      }
+
       // Get assignee name for the confirmation dialog
       if (isAssigningToOther) {
         const assignee = members.find(m => m.user_id === newTaskAssignee);
@@ -501,6 +528,7 @@ const ProjectTasksModal = ({
       setNewTaskDueDate(undefined);
       setNewTaskPriority("medium");
       setNewTaskUrl("");
+      setNewTaskAttachments([]);
       fetchTasks();
     } catch (error) {
       console.error("Error adding task:", error);
@@ -698,110 +726,186 @@ const ProjectTasksModal = ({
             </div>
 
             {/* Add Task Input */}
-            <div className="flex flex-col gap-3 mb-5 p-3 rounded-lg bg-muted/30 border border-dashed border-border">
+            <div className="flex flex-col gap-4 mb-5 p-4 rounded-xl bg-muted/30 border border-dashed border-border">
               {/* Title */}
-              <Input ref={newTaskInputRef} placeholder="Task title *" value={newTaskTitle} onChange={e => setNewTaskTitle(e.target.value)} onKeyDown={e => {
-                if (e.key === "Enter" && newTaskTitle.trim() && newTaskCategory) {
-                  handleAddTask();
-                }
-              }} className="h-10 bg-background" />
+              <div className="space-y-1.5">
+                <Label className="text-xs font-medium">
+                  Title <span className="text-destructive">*</span>
+                </Label>
+                <Input ref={newTaskInputRef} placeholder="What needs to be done?" value={newTaskTitle} onChange={e => setNewTaskTitle(e.target.value)} onKeyDown={e => {
+                  if (e.key === "Enter" && newTaskTitle.trim() && newTaskCategory) {
+                    handleAddTask();
+                  }
+                }} className="h-10 bg-background" />
+              </div>
 
               {/* Description */}
-              <Textarea
-                placeholder="Add a description (optional)"
-                value={newTaskDescription}
-                onChange={e => setNewTaskDescription(e.target.value.slice(0, 500))}
-                rows={2}
-                maxLength={500}
-                className="resize-none bg-background"
-              />
-
-              {/* Row: Board + Assignee */}
-              <div className="flex items-center gap-2 flex-wrap">
-                <Select value={newTaskCategory} onValueChange={setNewTaskCategory}>
-                  <SelectTrigger className="w-[180px] h-10 bg-background">
-                    <SelectValue placeholder="Select board *" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="product">Product Management</SelectItem>
-                    {isAdmin && <>
-                        <SelectItem value="operational">Operational Management</SelectItem>
-                        <SelectItem value="strategic">Strategic Management</SelectItem>
-                      </>}
-                  </SelectContent>
-                </Select>
-                <Select value={newTaskAssignee || "__none__"} onValueChange={val => setNewTaskAssignee(val === "__none__" ? "" : val)}>
-                  <SelectTrigger className="w-[180px] h-10 bg-background">
-                    <div className="flex items-center gap-2">
-                      <User className="w-4 h-4 text-muted-foreground" />
-                      <SelectValue placeholder="Assign to (optional)" />
-                    </div>
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="__none__">
-                      <span className="text-muted-foreground">No assignee</span>
-                    </SelectItem>
-                    {members.map(member => <SelectItem key={member.user_id} value={member.user_id}>
-                        <div className="flex items-center gap-2">
-                          <Avatar className="w-5 h-5">
-                            <AvatarFallback className="text-[10px] bg-primary/10 text-primary">
-                              {member.full_name?.substring(0, 2).toUpperCase() || "??"}
-                            </AvatarFallback>
-                          </Avatar>
-                          <span>{member.full_name}</span>
-                          {member.user_id === user?.id && <span className="text-xs text-muted-foreground">(you)</span>}
-                        </div>
-                      </SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Row: Due Date + Priority */}
-              <div className="flex items-center gap-2 flex-wrap">
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button variant="outline" size="sm" className={cn("h-10 px-3 gap-2", !newTaskDueDate && "text-muted-foreground")}>
-                      <Calendar className="w-4 h-4" />
-                      {newTaskDueDate ? format(newTaskDueDate, "MMM d, yyyy") : "Due date"}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <CalendarPicker mode="single" selected={newTaskDueDate} onSelect={setNewTaskDueDate} initialFocus className="p-3 pointer-events-auto" />
-                  </PopoverContent>
-                </Popover>
-                {newTaskDueDate && (
-                  <Button variant="ghost" size="sm" onClick={() => setNewTaskDueDate(undefined)} className="h-10 px-2 text-xs text-muted-foreground">
-                    <X className="w-3 h-3 mr-1" /> Clear date
-                  </Button>
-                )}
-                <Select value={newTaskPriority} onValueChange={setNewTaskPriority}>
-                  <SelectTrigger className="w-[140px] h-10 bg-background">
-                    <div className="flex items-center gap-2">
-                      <Flag className="w-4 h-4 text-muted-foreground" />
-                      <SelectValue />
-                    </div>
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="low">Low</SelectItem>
-                    <SelectItem value="medium">Medium</SelectItem>
-                    <SelectItem value="high">High</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* URL */}
-              <div className="relative">
-                <Link className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <Input
-                  placeholder="Link / URL (optional)"
-                  value={newTaskUrl}
-                  onChange={e => setNewTaskUrl(e.target.value)}
-                  className="h-10 pl-10 bg-background"
+              <div className="space-y-1.5">
+                <Label className="text-xs font-medium">
+                  Description <span className="text-muted-foreground text-[10px]">({newTaskDescription.length}/500)</span>
+                </Label>
+                <Textarea
+                  placeholder="Add details or context..."
+                  value={newTaskDescription}
+                  onChange={e => setNewTaskDescription(e.target.value.slice(0, 500))}
+                  rows={2}
+                  maxLength={500}
+                  className="resize-none bg-background"
                 />
               </div>
 
-              {/* Add Button */}
-              <div className="flex items-center gap-2">
+              {/* Board + Assignee */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-medium">
+                    Board <span className="text-destructive">*</span>
+                  </Label>
+                  <Select value={newTaskCategory} onValueChange={setNewTaskCategory}>
+                    <SelectTrigger className="h-10 bg-background">
+                      <SelectValue placeholder="Select board" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="product">Product Management</SelectItem>
+                      {isAdmin && <>
+                          <SelectItem value="operational">Operational Management</SelectItem>
+                          <SelectItem value="strategic">Strategic Management</SelectItem>
+                        </>}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-medium">Assignee</Label>
+                  <Select value={newTaskAssignee || "__none__"} onValueChange={val => setNewTaskAssignee(val === "__none__" ? "" : val)}>
+                    <SelectTrigger className="h-10 bg-background">
+                      <div className="flex items-center gap-2">
+                        <User className="w-4 h-4 text-muted-foreground shrink-0" />
+                        <SelectValue placeholder="No assignee" />
+                      </div>
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__none__">
+                        <span className="text-muted-foreground">No assignee</span>
+                      </SelectItem>
+                      {members.map(member => <SelectItem key={member.user_id} value={member.user_id}>
+                          <div className="flex items-center gap-2">
+                            <Avatar className="w-5 h-5">
+                              <AvatarFallback className="text-[10px] bg-primary/10 text-primary">
+                                {member.full_name?.substring(0, 2).toUpperCase() || "??"}
+                              </AvatarFallback>
+                            </Avatar>
+                            <span>{member.full_name}</span>
+                            {member.user_id === user?.id && <span className="text-xs text-muted-foreground">(you)</span>}
+                          </div>
+                        </SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              {/* Due Date + Priority */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-medium">Due Date</Label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" className={cn("w-full h-10 justify-start text-left font-normal", !newTaskDueDate && "text-muted-foreground")}>
+                        <Calendar className="w-4 h-4 mr-2 shrink-0" />
+                        {newTaskDueDate ? format(newTaskDueDate, "MMM d, yyyy") : "Pick a date"}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <CalendarPicker mode="single" selected={newTaskDueDate} onSelect={setNewTaskDueDate} initialFocus className="p-3 pointer-events-auto" />
+                    </PopoverContent>
+                  </Popover>
+                  {newTaskDueDate && (
+                    <Button variant="ghost" size="sm" onClick={() => setNewTaskDueDate(undefined)} className="text-xs text-muted-foreground h-6 px-1">
+                      Clear date
+                    </Button>
+                  )}
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-medium">Priority</Label>
+                  <Select value={newTaskPriority} onValueChange={setNewTaskPriority}>
+                    <SelectTrigger className="h-10 bg-background">
+                      <div className="flex items-center gap-2">
+                        <Flag className="w-4 h-4 text-muted-foreground shrink-0" />
+                        <SelectValue />
+                      </div>
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="low">Low</SelectItem>
+                      <SelectItem value="medium">Medium</SelectItem>
+                      <SelectItem value="high">High</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              {/* URL */}
+              <div className="space-y-1.5">
+                <Label className="text-xs font-medium">Link / URL</Label>
+                <div className="relative">
+                  <Link className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Input
+                    placeholder="https://example.com"
+                    value={newTaskUrl}
+                    onChange={e => setNewTaskUrl(e.target.value)}
+                    className="h-10 pl-10 bg-background"
+                  />
+                </div>
+              </div>
+
+              {/* Attachments */}
+              <div className="space-y-1.5">
+                <Label className="text-xs font-medium">Attachments</Label>
+                <input
+                  ref={newTaskFileInputRef}
+                  type="file"
+                  multiple
+                  className="hidden"
+                  onChange={(e) => {
+                    const files = Array.from(e.target.files || []);
+                    setNewTaskAttachments(prev => [...prev, ...files]);
+                    e.target.value = "";
+                  }}
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="w-full gap-2 text-sm font-normal justify-start h-9"
+                  onClick={() => newTaskFileInputRef.current?.click()}
+                >
+                  <Paperclip className="w-3.5 h-3.5" />
+                  {newTaskAttachments.length === 0 ? "Add attachments" : "Add more files"}
+                </Button>
+                {newTaskAttachments.length > 0 && (
+                  <div className="flex flex-wrap gap-2 mt-2">
+                    {newTaskAttachments.map((file, idx) => (
+                      <div
+                        key={idx}
+                        className="flex items-center gap-1.5 text-xs bg-muted/60 border border-border/40 rounded-full px-3 py-1.5 group"
+                      >
+                        <FileText className="w-3 h-3 text-muted-foreground shrink-0" />
+                        <span className="truncate max-w-[120px]">{file.name}</span>
+                        <span className="text-muted-foreground text-[10px] shrink-0">
+                          {(file.size / 1024).toFixed(0)}KB
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setNewTaskAttachments(prev => prev.filter((_, i) => i !== idx))}
+                          className="text-muted-foreground hover:text-destructive shrink-0 opacity-60 group-hover:opacity-100 transition-opacity"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Footer: validation + button */}
+              <div className="flex items-center gap-2 pt-2 border-t border-border/50">
                 {!newTaskCategory && newTaskTitle.trim() && <p className="text-xs text-muted-foreground">Please select a board to create the task</p>}
                 <Button onClick={handleAddTask} disabled={!newTaskTitle.trim() || !newTaskCategory || isAddingTask} size="default" className="gap-2 h-10 ml-auto">
                   <Plus className="w-4 h-4" />
