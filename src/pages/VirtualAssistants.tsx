@@ -87,6 +87,10 @@ const VirtualAssistants = () => {
   const handleCheckout = async (assistantId: string, hoursPackage: number) => {
     const checkoutKey = `${assistantId}-${hoursPackage}`;
     setLoadingCheckout(checkoutKey);
+
+    // Pre-open window in the synchronous click handler to avoid iPad/Safari popup blockers
+    const newWindow = window.open("about:blank", "_blank");
+
     try {
       const {
         data,
@@ -99,8 +103,14 @@ const VirtualAssistants = () => {
       });
       if (error) throw error;
       if (data?.url) {
-        window.open(data.url, "_blank");
+        if (newWindow) {
+          newWindow.location.href = data.url;
+        } else {
+          // Fallback if popup was still blocked
+          window.location.href = data.url;
+        }
       } else {
+        newWindow?.close();
         throw new Error("No checkout URL received");
       }
     } catch (error) {
