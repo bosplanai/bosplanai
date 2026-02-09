@@ -91,19 +91,14 @@ Deno.serve(async (req) => {
       .eq("id", invite.data_room_id)
       .single();
 
-    // Get client IP for audit trail
-    const clientIp = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || 
-                     req.headers.get("x-real-ip") || 
-                     "unknown";
-
-    // Create NDA signature record
+    // Create NDA signature record (IP address intentionally not stored)
     const { error: signatureError } = await supabaseAdmin
       .from("data_room_nda_signatures")
       .insert({
         data_room_id: invite.data_room_id,
         signer_name: signerName,
         signer_email: signerEmail.toLowerCase(),
-        ip_address: clientIp,
+        ip_address: null,
         nda_content_hash: dataRoom?.nda_content_hash || null,
       });
 
@@ -141,7 +136,7 @@ Deno.serve(async (req) => {
         user_email: signerEmail.toLowerCase(),
         action: "nda_signed",
         is_guest: true,
-        details: { ip_address: clientIp },
+        details: {},
       });
     }
 
