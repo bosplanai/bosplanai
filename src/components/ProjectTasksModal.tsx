@@ -228,7 +228,11 @@ const ProjectTasksModal = ({
       const tasksWithSignedUrls: ProjectTask[] = await Promise.all(sortedTasks.map(async t => {
         let signedAttachmentUrl: string | null = t.attachment_url ?? null;
         if (signedAttachmentUrl && !signedAttachmentUrl.startsWith("http")) {
-          signedAttachmentUrl = await getSignedUrl(signedAttachmentUrl);
+          // Only treat as storage path if it doesn't look like a bare domain
+          const looksLikeUrl = /^[a-zA-Z0-9][-a-zA-Z0-9]*\.[a-zA-Z]{2,}/.test(signedAttachmentUrl);
+          if (!looksLikeUrl) {
+            signedAttachmentUrl = await getSignedUrl(signedAttachmentUrl);
+          }
         }
         const createdByUser = t.created_by_user as {
           id: string;
