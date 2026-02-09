@@ -24,6 +24,7 @@ import { useUserRole } from "@/hooks/useUserRole";
 import { toast } from "sonner";
 import ProjectAttachmentsList from "./ProjectAttachmentsList";
 import TaskAttachmentsList from "./TaskAttachmentsList";
+import TaskEditSheet from "./TaskEditSheet";
 
 interface ProjectTasksModalProps {
   isOpen: boolean;
@@ -101,6 +102,7 @@ const ProjectTasksModal = ({ isOpen, onClose, projectId, projectTitle }: Project
   const [editingField, setEditingField] = useState<string | null>(null);
   const [editedTitle, setEditedTitle] = useState("");
   const [editedDescription, setEditedDescription] = useState("");
+  const [editSheetTask, setEditSheetTask] = useState<ProjectTask | null>(null);
   const [newTaskTitle, setNewTaskTitle] = useState("");
   const [newTaskDescription, setNewTaskDescription] = useState("");
   const [newTaskCategory, setNewTaskCategory] = useState<string>("");
@@ -1045,9 +1047,6 @@ const ProjectTasksModal = ({ isOpen, onClose, projectId, projectTitle }: Project
                 {tasks.map((task, index) => {
                   const priorityConfig = getPriorityConfig(task.priority);
                   const statusConfig = getStatusConfig(task.status);
-                  const isEditingTitle = editingTaskId === task.id && editingField === "title";
-                  const isEditingDescription = editingTaskId === task.id && editingField === "description";
-
                   return (
                     <div
                       key={task.id}
@@ -1061,103 +1060,36 @@ const ProjectTasksModal = ({ isOpen, onClose, projectId, projectTitle }: Project
                       <div className="space-y-3">
                         {/* Task Header: Title + Status + Edit */}
                         <div className="flex items-start justify-between gap-3">
-                          <div className="flex-1 min-w-0">
-                            {(isEditingTitle || isEditingDescription) ? (
-                              <div className="space-y-3">
-                                <div className="space-y-1.5">
-                                  <Label className="text-xs text-muted-foreground">Title</Label>
-                                  <Input
-                                    ref={titleInputRef}
-                                    value={editedTitle}
-                                    onChange={(e) => setEditedTitle(e.target.value)}
-                                    onKeyDown={(e) => {
-                                      if (e.key === "Escape") {
-                                        setEditingTaskId(null);
-                                        setEditingField(null);
-                                      }
-                                    }}
-                                    className="h-9 text-sm font-medium"
-                                    placeholder="Task title..."
-                                  />
-                                </div>
-                                <div className="space-y-1.5">
-                                  <Label className="text-xs text-muted-foreground">Description</Label>
-                                  <Textarea
-                                    ref={descriptionInputRef}
-                                    value={editedDescription}
-                                    onChange={(e) => setEditedDescription(e.target.value)}
-                                    onKeyDown={(e) => {
-                                      if (e.key === "Escape") {
-                                        setEditingTaskId(null);
-                                        setEditingField(null);
-                                      }
-                                    }}
-                                    rows={2}
-                                    className="text-sm resize-none"
-                                    placeholder="Add a description..."
-                                  />
-                                </div>
-                                <div className="flex gap-2">
-                                  <Button
-                                    size="sm"
-                                    onClick={() => {
-                                      handleSaveTitle(task.id);
-                                      handleSaveDescription(task.id);
-                                    }}
-                                  >
-                                    <Check className="w-3.5 h-3.5 mr-1" />
-                                    Save
-                                  </Button>
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    onClick={() => {
-                                      setEditingTaskId(null);
-                                      setEditingField(null);
-                                    }}
-                                  >
-                                    Cancel
-                                  </Button>
-                                </div>
-                              </div>
-                            ) : (
-                              <div className="space-y-1">
-                                <div className="flex items-center gap-2">
-                                  <span className="text-xs text-muted-foreground font-mono">#{index + 1}</span>
-                                  <h4 className={cn(
-                                    "text-base font-semibold",
-                                    task.status === "complete" 
-                                      ? "text-muted-foreground line-through" 
-                                      : "text-foreground"
-                                  )}>
-                                    {task.title}
-                                  </h4>
-                                </div>
-                                {task.description && (
-                                  <p className="text-sm text-muted-foreground leading-relaxed pl-6 line-clamp-2">
-                                    {task.description}
-                                  </p>
-                                )}
-                              </div>
+                          <div className="flex-1 min-w-0 space-y-1">
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs text-muted-foreground font-mono">#{index + 1}</span>
+                              <h4 className={cn(
+                                "text-base font-semibold",
+                                task.status === "complete" 
+                                  ? "text-muted-foreground line-through" 
+                                  : "text-foreground"
+                              )}>
+                                {task.title}
+                              </h4>
+                            </div>
+                            {task.description && (
+                              <p className="text-sm text-muted-foreground leading-relaxed pl-6 line-clamp-2">
+                                {task.description}
+                              </p>
                             )}
                           </div>
 
                           <div className="flex items-center gap-1.5 flex-shrink-0">
-                            {/* Edit Button */}
-                            {!(isEditingTitle || isEditingDescription) && (
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="h-8 px-2 text-muted-foreground hover:text-foreground"
-                                onClick={() => {
-                                  handleStartEditTitle(task);
-                                  setEditedDescription(task.description || "");
-                                }}
-                                title="Edit task"
-                              >
-                                <Pencil className="w-3.5 h-3.5" />
-                              </Button>
-                            )}
+                            {/* Edit Button - Opens Sheet */}
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 px-2 text-muted-foreground hover:text-foreground"
+                              onClick={() => setEditSheetTask(task)}
+                              title="Edit task"
+                            >
+                              <Pencil className="w-3.5 h-3.5" />
+                            </Button>
 
                             {/* Status Badge */}
                             <Select
@@ -1408,6 +1340,24 @@ const ProjectTasksModal = ({ isOpen, onClose, projectId, projectTitle }: Project
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
+
+    {/* Task Edit Sheet */}
+    {editSheetTask && organization?.id && (
+      <TaskEditSheet
+        open={!!editSheetTask}
+        onOpenChange={(open) => {
+          if (!open) setEditSheetTask(null);
+        }}
+        task={editSheetTask}
+        members={members}
+        organizationId={organization.id}
+        onSave={() => fetchTasks()}
+        onRequestSent={(name) => {
+          setRequestSentTo(name);
+          setShowRequestSentDialog(true);
+        }}
+      />
+    )}
     </>
   );
 };
