@@ -239,12 +239,37 @@ const MagicMergeTool = () => {
         }
 
         // Also update assigned_user_id on the task itself
-        // Set to pending since this is a reassignment to someone else
+        // Magic Merge skips the task request/approval process - set directly to accepted
         await supabase.from("tasks").update({
           assigned_user_id: targetUserId,
-          assignment_status: targetUserId && targetUserId !== user.id ? 'pending' : 'accepted'
+          assignment_status: 'accepted'
         }).eq("id", taskId);
       }
+
+      // Get user names for notifications
+      const sourceMember = members.find(m => m.user_id === sourceUserId);
+      const targetMember = members.find(m => m.user_id === targetUserId);
+      const sourceName = sourceMember?.full_name || "A team member";
+      const targetName = targetMember?.full_name || "A team member";
+      const mergeLabel = mergeType === "temporary" ? "temporarily transferred" : "permanently transferred";
+
+      // Notify departing user (source)
+      await supabase.from("notifications").insert({
+        user_id: sourceUserId,
+        organization_id: organization.id,
+        type: "task_merge",
+        title: "Tasks Transferred",
+        message: `${tasksToTransfer.length} task(s) have been ${mergeLabel} to ${targetName}.`,
+      });
+
+      // Notify receiving user (target)
+      await supabase.from("notifications").insert({
+        user_id: targetUserId,
+        organization_id: organization.id,
+        type: "task_merge",
+        title: "Tasks Received",
+        message: `${tasksToTransfer.length} task(s) have been ${mergeLabel} to you from ${sourceName}.`,
+      });
 
       // 2. Create audit log
       const {
