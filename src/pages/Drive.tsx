@@ -766,6 +766,13 @@ const Drive = () => {
       assignedUsers?: string[];
     }) => {
       if (!organization?.id || !user?.id) throw new Error("Not authenticated");
+
+      // Enforce storage limit - block uploads if storage is exceeded
+      if (storageUsage.used >= storageUsage.total) {
+        setStoragePurchaseDialogOpen(true);
+        throw new Error("Storage limit exceeded. Please purchase additional storage to continue uploading files.");
+      }
+
       const fileArray = Array.from(files);
       const results: {
         name: string;
