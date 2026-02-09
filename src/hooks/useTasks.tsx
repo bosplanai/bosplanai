@@ -483,15 +483,14 @@ export const useTasks = () => {
     newPosition: number,
     category: string
   ) => {
+    const completedAt = newStatus === "complete" ? new Date().toISOString() : null;
+
     // Optimistic update
     setTasks((prev) => {
       const task = prev.find((t) => t.id === taskId);
       if (!task) return prev;
 
       const otherTasks = prev.filter((t) => t.id !== taskId);
-      const sameCategoryAndStatus = otherTasks.filter(
-        (t) => t.category === category && t.status === newStatus
-      );
 
       // Update positions of tasks that need to shift
       const updatedOthers = otherTasks.map((t) => {
@@ -503,14 +502,14 @@ export const useTasks = () => {
 
       return [
         ...updatedOthers,
-        { ...task, status: newStatus, position: newPosition },
+        { ...task, status: newStatus, position: newPosition, completed_at: completedAt },
       ];
     });
 
     try {
       const { error } = await supabase
         .from("tasks")
-        .update({ status: newStatus, position: newPosition })
+        .update({ status: newStatus, position: newPosition, completed_at: completedAt })
         .eq("id", taskId);
 
       if (error) throw error;
