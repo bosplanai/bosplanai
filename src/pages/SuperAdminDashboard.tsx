@@ -11,6 +11,7 @@ import { useSuperAdminSession } from "@/hooks/useSuperAdminSession";
 import bosplanLogo from "@/assets/bosplan-logo.png";
 import SuperAdminSettingsDialog from "@/components/superadmin/SuperAdminSettingsDialog";
 import CustomButtonsSection from "@/components/superadmin/CustomButtonsSection";
+import CustomerFeedbackSection from "@/components/superadmin/CustomerFeedbackSection";
 const SuperAdminDashboard = () => {
   const { navigate, navigateOrg } = useOrgNavigation();
   const {
@@ -306,6 +307,11 @@ const SuperAdminDashboard = () => {
                 </div>
               </div>;
         })}
+        </div>
+
+        {/* Customer Feedback Section */}
+        <div className="mt-8">
+          <CustomerFeedbackSection />
         </div>
 
         {/* Custom Buttons Section */}
