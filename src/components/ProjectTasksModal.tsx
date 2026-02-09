@@ -909,63 +909,72 @@ const ProjectTasksModal = ({ isOpen, onClose, projectId, projectTitle }: Project
                 </div>
               </div>
 
-              {/* Row 3: URL */}
-              <div className="space-y-1.5">
-                <label className="text-xs font-medium text-muted-foreground">URL</label>
-                <div className="relative">
-                  <Link className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
-                  <Input
-                    placeholder="https://example.com"
-                    value={newTaskUrl}
-                    onChange={(e) => setNewTaskUrl(e.target.value)}
-                    className="h-9 pl-9 bg-background text-sm"
+              {/* Row 3: URL & Attachments side by side */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-muted-foreground">Link / URL</label>
+                  <div className="relative">
+                    <Link className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+                    <Input
+                      placeholder="https://example.com"
+                      value={newTaskUrl}
+                      onChange={(e) => setNewTaskUrl(e.target.value)}
+                      className="h-9 pl-9 bg-background text-sm"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-muted-foreground">
+                    Attachments {newTaskAttachments.length > 0 && `(${newTaskAttachments.length})`}
+                  </label>
+                  <input
+                    ref={attachmentInputRef}
+                    type="file"
+                    multiple
+                    className="hidden"
+                    onChange={(e) => {
+                      const files = Array.from(e.target.files || []);
+                      setNewTaskAttachments((prev) => [...prev, ...files]);
+                      e.target.value = "";
+                    }}
                   />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-9 w-full gap-2 text-sm font-normal justify-start"
+                    onClick={() => attachmentInputRef.current?.click()}
+                  >
+                    <Paperclip className="w-3.5 h-3.5" />
+                    {newTaskAttachments.length === 0 ? "Attach files" : "Add more files"}
+                  </Button>
                 </div>
               </div>
 
-              {/* Row 4: Attachments */}
-              <div className="space-y-1.5">
-                <label className="text-xs font-medium text-muted-foreground">Attachments</label>
-                <input
-                  ref={attachmentInputRef}
-                  type="file"
-                  multiple
-                  className="hidden"
-                  onChange={(e) => {
-                    const files = Array.from(e.target.files || []);
-                    setNewTaskAttachments((prev) => [...prev, ...files]);
-                    e.target.value = "";
-                  }}
-                />
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="gap-2 text-sm font-normal"
-                  onClick={() => attachmentInputRef.current?.click()}
-                >
-                  <Paperclip className="w-3.5 h-3.5" />
-                  Attach files
-                </Button>
-                {newTaskAttachments.length > 0 && (
-                  <div className="flex flex-col gap-1.5 mt-1.5">
-                    {newTaskAttachments.map((file, idx) => (
-                      <div key={idx} className="flex items-center gap-2 text-xs bg-muted/50 rounded-md px-2.5 py-1.5">
-                        <FileText className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-                        <span className="truncate flex-1">{file.name}</span>
-                        <span className="text-muted-foreground shrink-0">{(file.size / 1024).toFixed(0)} KB</span>
-                        <button
-                          type="button"
-                          onClick={() => setNewTaskAttachments((prev) => prev.filter((_, i) => i !== idx))}
-                          className="text-muted-foreground hover:text-destructive shrink-0"
-                        >
-                          <X className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
+              {/* Attached files list */}
+              {newTaskAttachments.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  {newTaskAttachments.map((file, idx) => (
+                    <div
+                      key={idx}
+                      className="flex items-center gap-1.5 text-xs bg-muted/60 border border-border/40 rounded-full px-3 py-1.5 group"
+                    >
+                      <FileText className="w-3 h-3 text-muted-foreground shrink-0" />
+                      <span className="truncate max-w-[120px]">{file.name}</span>
+                      <span className="text-muted-foreground text-[10px] shrink-0">
+                        {(file.size / 1024).toFixed(0)}KB
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setNewTaskAttachments((prev) => prev.filter((_, i) => i !== idx))}
+                        className="text-muted-foreground hover:text-destructive shrink-0 opacity-60 group-hover:opacity-100 transition-opacity"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
 
               {/* Action row */}
               <div className="flex items-center justify-between pt-1">
