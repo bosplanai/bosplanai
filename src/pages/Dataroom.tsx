@@ -784,7 +784,6 @@ By signing below, you acknowledge that you have read, understood, and agree to b
         <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">${sig.signer_name}</td>
         <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">${sig.signer_email}</td>
         <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">${format(new Date(sig.signed_at), "MMM d, yyyy 'at' h:mm a")}</td>
-        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">${sig.ip_address || "N/A"}</td>
       </tr>
     `).join('');
 
@@ -817,7 +816,6 @@ By signing below, you acknowledge that you have read, understood, and agree to b
               <th>Signer Name</th>
               <th>Email</th>
               <th>Signed At</th>
-              <th>IP Address</th>
             </tr>
           </thead>
           <tbody>
@@ -2844,7 +2842,7 @@ By signing below, you acknowledge that you have read, understood, and agree to b
                       <div className="text-right text-sm">
                         <p className="text-foreground">{format(new Date(sig.signed_at), "MMM d, yyyy")}</p>
                         <p className="text-muted-foreground">{format(new Date(sig.signed_at), "h:mm a")}</p>
-                        {sig.ip_address && <p className="text-xs text-muted-foreground mt-1">IP: {sig.ip_address}</p>}
+                        
                       </div>
                     </div>
                   </Card>)}
