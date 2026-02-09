@@ -1144,6 +1144,50 @@ export type Database = {
           },
         ]
       }
+      dataroom_storage_purchases: {
+        Row: {
+          amount_cents: number
+          created_at: string
+          id: string
+          organization_id: string
+          price_id: string
+          status: string
+          storage_gb: number
+          stripe_session_id: string
+          user_id: string
+        }
+        Insert: {
+          amount_cents?: number
+          created_at?: string
+          id?: string
+          organization_id: string
+          price_id: string
+          status?: string
+          storage_gb?: number
+          stripe_session_id: string
+          user_id: string
+        }
+        Update: {
+          amount_cents?: number
+          created_at?: string
+          id?: string
+          organization_id?: string
+          price_id?: string
+          status?: string
+          storage_gb?: number
+          stripe_session_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dataroom_storage_purchases_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       drive_document_content: {
         Row: {
           content: string
@@ -1601,6 +1645,38 @@ export type Database = {
           },
         ]
       }
+      organization_dataroom_storage: {
+        Row: {
+          additional_storage_gb: number
+          created_at: string
+          id: string
+          organization_id: string
+          updated_at: string
+        }
+        Insert: {
+          additional_storage_gb?: number
+          created_at?: string
+          id?: string
+          organization_id: string
+          updated_at?: string
+        }
+        Update: {
+          additional_storage_gb?: number
+          created_at?: string
+          id?: string
+          organization_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organization_dataroom_storage_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: true
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       organization_invites: {
         Row: {
           accepted_at: string | null
@@ -1706,6 +1782,38 @@ export type Database = {
             columns: ["plan_id"]
             isOneToOne: false
             referencedRelation: "specialist_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      organization_storage: {
+        Row: {
+          additional_storage_gb: number
+          created_at: string
+          id: string
+          organization_id: string
+          updated_at: string
+        }
+        Insert: {
+          additional_storage_gb?: number
+          created_at?: string
+          id?: string
+          organization_id: string
+          updated_at?: string
+        }
+        Update: {
+          additional_storage_gb?: number
+          created_at?: string
+          id?: string
+          organization_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organization_storage_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: true
+            referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
         ]
@@ -2237,6 +2345,50 @@ export type Database = {
             columns: ["created_by"]
             isOneToOne: false
             referencedRelation: "profiles_decrypted"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      storage_purchases: {
+        Row: {
+          amount_cents: number
+          created_at: string
+          id: string
+          organization_id: string
+          price_id: string
+          status: string
+          storage_gb: number
+          stripe_session_id: string
+          user_id: string
+        }
+        Insert: {
+          amount_cents?: number
+          created_at?: string
+          id?: string
+          organization_id: string
+          price_id: string
+          status?: string
+          storage_gb?: number
+          stripe_session_id: string
+          user_id: string
+        }
+        Update: {
+          amount_cents?: number
+          created_at?: string
+          id?: string
+          organization_id?: string
+          price_id?: string
+          status?: string
+          storage_gb?: number
+          stripe_session_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "storage_purchases_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
         ]
