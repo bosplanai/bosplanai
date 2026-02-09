@@ -89,6 +89,27 @@ Deno.serve(async (req) => {
         { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
+    // Enforce storage limit for data room uploads
+    const { data: drFiles } = await supabaseAdmin
+      .from("data_room_files")
+      .select("file_size")
+      .eq("organization_id", invite.organization_id)
+      .is("deleted_at", null);
+    const totalUsed = drFiles?.reduce((acc: number, f: any) => acc + (f.file_size || 0), 0) || 0;
+
+    const { data: storageData } = await supabaseAdmin
+      .from("organization_dataroom_storage")
+      .select("additional_storage_gb")
+      .eq("organization_id", invite.organization_id)
+      .maybeSingle();
+    const additionalGb = storageData?.additional_storage_gb || 0;
+    const totalAllowed = 100 * 1024 * 1024 + additionalGb * 1024 * 1024 * 1024;
+
+    if (totalUsed >= totalAllowed) {
+      return new Response(JSON.stringify({ error: "Data room storage limit exceeded. The organization needs to purchase additional storage." }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
     // Upload file to storage
     const timestamp = Date.now();
     const sanitizedFileName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");

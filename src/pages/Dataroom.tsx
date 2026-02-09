@@ -1264,6 +1264,17 @@ By signing below, you acknowledge that you have read, understood, and agree to b
       });
       return;
     }
+    
+    // Enforce storage limit - block uploads if storage is exceeded
+    if (storageUsage.used >= storageUsage.total) {
+      setStoragePurchaseDialogOpen(true);
+      toast({
+        title: "Storage limit exceeded",
+        description: "Please purchase additional storage to continue uploading files.",
+        variant: "destructive"
+      });
+      return;
+    }
     setUploading(true);
     setUploadProgress({
       total: files.length,
