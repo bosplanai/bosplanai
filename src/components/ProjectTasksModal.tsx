@@ -773,107 +773,130 @@ const ProjectTasksModal = ({ isOpen, onClose, projectId, projectTitle }: Project
             </div>
 
             {/* Add Task Input */}
-            <div className="flex flex-col gap-3 mb-5 p-3 rounded-lg bg-muted/30 border border-dashed border-border">
-              <div className="flex gap-2">
-                <Input
-                  ref={newTaskInputRef}
-                  placeholder="Add a new task to this project..."
-                  value={newTaskTitle}
-                  onChange={(e) => setNewTaskTitle(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && newTaskTitle.trim() && newTaskCategory) {
-                      handleAddTask();
-                    }
-                  }}
-                  className="flex-1 h-10 bg-background"
-                />
-              </div>
-              <div className="flex items-center gap-2 flex-wrap">
-                <Select value={newTaskCategory} onValueChange={setNewTaskCategory}>
-                  <SelectTrigger className="w-[180px] h-10 bg-background">
-                    <SelectValue placeholder="Select board *" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="product">Product Management</SelectItem>
-                    {isAdmin && (
-                      <>
-                        <SelectItem value="operational">Operational Management</SelectItem>
-                        <SelectItem value="strategic">Strategic Management</SelectItem>
-                      </>
-                    )}
-                  </SelectContent>
-                </Select>
-                <Select value={newTaskAssignee || "__none__"} onValueChange={(val) => setNewTaskAssignee(val === "__none__" ? "" : val)}>
-                  <SelectTrigger className="w-[180px] h-10 bg-background">
-                    <div className="flex items-center gap-2">
-                      <User className="w-4 h-4 text-muted-foreground" />
-                      <SelectValue placeholder="Assign to (optional)" />
-                    </div>
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="__none__">
-                      <span className="text-muted-foreground">No assignee</span>
-                    </SelectItem>
-                    {members.map((member) => (
-                      <SelectItem key={member.user_id} value={member.user_id}>
-                        <div className="flex items-center gap-2">
-                          <Avatar className="w-5 h-5">
-                            <AvatarFallback className="text-[10px] bg-primary/10 text-primary">
-                              {member.full_name?.substring(0, 2).toUpperCase() || "??"}
-                            </AvatarFallback>
-                          </Avatar>
-                          <span>{member.full_name}</span>
-                          {member.user_id === user?.id && (
-                            <span className="text-xs text-muted-foreground">(you)</span>
-                          )}
-                        </div>
+            <div className="flex flex-col gap-4 mb-5 p-4 rounded-xl bg-muted/20 border border-border">
+              {/* Task title */}
+              <Input
+                ref={newTaskInputRef}
+                placeholder="What needs to be done?"
+                value={newTaskTitle}
+                onChange={(e) => setNewTaskTitle(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && newTaskTitle.trim() && newTaskCategory) {
+                    handleAddTask();
+                  }
+                }}
+                className="h-11 bg-background text-sm"
+              />
+
+              {/* Row 1: Board & Assignee */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-muted-foreground">Board <span className="text-destructive">*</span></label>
+                  <Select value={newTaskCategory} onValueChange={setNewTaskCategory}>
+                    <SelectTrigger className="h-9 bg-background text-sm">
+                      <SelectValue placeholder="Select board" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="product">Product Management</SelectItem>
+                      {isAdmin && (
+                        <>
+                          <SelectItem value="operational">Operational Management</SelectItem>
+                          <SelectItem value="strategic">Strategic Management</SelectItem>
+                        </>
+                      )}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-muted-foreground">Assignee</label>
+                  <Select value={newTaskAssignee || "__none__"} onValueChange={(val) => setNewTaskAssignee(val === "__none__" ? "" : val)}>
+                    <SelectTrigger className="h-9 bg-background text-sm">
+                      <div className="flex items-center gap-2">
+                        <User className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                        <SelectValue placeholder="No assignee" />
+                      </div>
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__none__">
+                        <span className="text-muted-foreground">No assignee</span>
                       </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button variant="outline" className={cn("w-[160px] h-10 justify-start text-left font-normal", !newTaskDueDate && "text-muted-foreground")}>
-                      <Calendar className="w-4 h-4 mr-2" />
-                      {newTaskDueDate ? format(newTaskDueDate, "MMM d, yyyy") : "Due date"}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <CalendarPicker
-                      mode="single"
-                      selected={newTaskDueDate}
-                      onSelect={setNewTaskDueDate}
-                      initialFocus
-                      className={cn("p-3 pointer-events-auto")}
-                    />
-                  </PopoverContent>
-                </Popover>
-                <Select value={newTaskPriority} onValueChange={setNewTaskPriority}>
-                  <SelectTrigger className="w-[140px] h-10 bg-background">
-                    <div className="flex items-center gap-2">
-                      <Flag className="w-4 h-4 text-muted-foreground" />
-                      <SelectValue placeholder="Priority" />
-                    </div>
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="low">Low</SelectItem>
-                    <SelectItem value="medium">Medium</SelectItem>
-                    <SelectItem value="high">High</SelectItem>
-                  </SelectContent>
-                </Select>
+                      {members.map((member) => (
+                        <SelectItem key={member.user_id} value={member.user_id}>
+                          <div className="flex items-center gap-2">
+                            <Avatar className="w-5 h-5">
+                              <AvatarFallback className="text-[10px] bg-primary/10 text-primary">
+                                {member.full_name?.substring(0, 2).toUpperCase() || "??"}
+                              </AvatarFallback>
+                            </Avatar>
+                            <span>{member.full_name}</span>
+                            {member.user_id === user?.id && (
+                              <span className="text-xs text-muted-foreground">(you)</span>
+                            )}
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              {/* Row 2: Due date & Priority */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-muted-foreground">Due date</label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" className={cn("w-full h-9 justify-start text-left text-sm font-normal", !newTaskDueDate && "text-muted-foreground")}>
+                        <Calendar className="w-3.5 h-3.5 mr-2 shrink-0" />
+                        {newTaskDueDate ? format(newTaskDueDate, "MMM d, yyyy") : "Pick a date"}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <CalendarPicker
+                        mode="single"
+                        selected={newTaskDueDate}
+                        onSelect={setNewTaskDueDate}
+                        initialFocus
+                        className={cn("p-3 pointer-events-auto")}
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-muted-foreground">Priority</label>
+                  <Select value={newTaskPriority} onValueChange={setNewTaskPriority}>
+                    <SelectTrigger className="h-9 bg-background text-sm">
+                      <div className="flex items-center gap-2">
+                        <Flag className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                        <SelectValue placeholder="Priority" />
+                      </div>
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="low">Low</SelectItem>
+                      <SelectItem value="medium">Medium</SelectItem>
+                      <SelectItem value="high">High</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              {/* Action row */}
+              <div className="flex items-center justify-between pt-1">
+                {!newTaskCategory && newTaskTitle.trim() ? (
+                  <p className="text-xs text-destructive">Please select a board</p>
+                ) : (
+                  <div />
+                )}
                 <Button
                   onClick={handleAddTask}
                   disabled={!newTaskTitle.trim() || !newTaskCategory || isAddingTask}
-                  size="default"
-                  className="gap-2 h-10 ml-auto"
+                  size="sm"
+                  className="gap-2"
                 >
                   <Plus className="w-4 h-4" />
                   Add Task
                 </Button>
               </div>
-              {!newTaskCategory && newTaskTitle.trim() && (
-                <p className="text-xs text-muted-foreground">Please select a board to create the task</p>
-              )}
             </div>
 
             {/* Task List */}
