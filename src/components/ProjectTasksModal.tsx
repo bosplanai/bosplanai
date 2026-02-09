@@ -1,6 +1,6 @@
 // @ts-nocheck
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Calendar, Flag, User, Circle, Pencil, Check, X, Users, FolderOpen, Plus, Trash2, FileText } from "lucide-react";
+import { Calendar, Flag, User, Circle, Pencil, Check, X, Users, FolderOpen, Plus, Trash2, FileText, Paperclip, Link, Upload } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "./ui/dialog";
@@ -106,6 +106,9 @@ const ProjectTasksModal = ({ isOpen, onClose, projectId, projectTitle }: Project
   const [newTaskAssignee, setNewTaskAssignee] = useState<string>("");
   const [newTaskDueDate, setNewTaskDueDate] = useState<Date | undefined>(undefined);
   const [newTaskPriority, setNewTaskPriority] = useState<string>("medium");
+  const [newTaskAttachments, setNewTaskAttachments] = useState<File[]>([]);
+  const [newTaskUrl, setNewTaskUrl] = useState<string>("");
+  const attachmentInputRef = useRef<HTMLInputElement>(null);
   const [isAddingTask, setIsAddingTask] = useState(false);
   const [showRequestSentDialog, setShowRequestSentDialog] = useState(false);
   const [requestSentTo, setRequestSentTo] = useState<string>("");
@@ -469,8 +472,8 @@ const ProjectTasksModal = ({ isOpen, onClose, projectId, projectTitle }: Project
           category: newTaskCategory,
           subcategory: "weekly",
           icon: "ListTodo",
-          // Set assigned_user_id for the task (will be synced by trigger)
           assigned_user_id: newTaskAssignee || null,
+          attachment_url: newTaskUrl.trim() || null,
         })
         .select()
         .single();
@@ -498,6 +501,30 @@ const ProjectTasksModal = ({ isOpen, onClose, projectId, projectTitle }: Project
         }
       }
 
+      // Upload file attachments
+      if (newTaskAttachments.length > 0) {
+        for (const file of newTaskAttachments) {
+          const fileExt = file.name.split(".").pop();
+          const filePath = `${organization.id}/${taskData.id}_${Date.now()}.${fileExt}`;
+          const { error: uploadError } = await supabase.storage
+            .from("task-attachments")
+            .upload(filePath, file);
+          if (uploadError) {
+            console.error("Upload error:", uploadError);
+            continue;
+          }
+          await supabase.from("task_attachments").insert({
+            task_id: taskData.id,
+            organization_id: organization.id,
+            file_path: filePath,
+            file_name: file.name,
+            file_size: file.size,
+            mime_type: file.type || null,
+            uploaded_by: user.id,
+          });
+        }
+      }
+
       // Get assignee name for the confirmation dialog
       if (isAssigningToOther) {
         const assignee = members.find(m => m.user_id === newTaskAssignee);
@@ -512,6 +539,8 @@ const ProjectTasksModal = ({ isOpen, onClose, projectId, projectTitle }: Project
       setNewTaskAssignee("");
       setNewTaskDueDate(undefined);
       setNewTaskPriority("medium");
+      setNewTaskAttachments([]);
+      setNewTaskUrl("");
       fetchTasks();
     } catch (error) {
       console.error("Error adding task:", error);
@@ -880,6 +909,64 @@ const ProjectTasksModal = ({ isOpen, onClose, projectId, projectTitle }: Project
                 </div>
               </div>
 
+              {/* Row 3: URL */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-muted-foreground">URL</label>
+                <div className="relative">
+                  <Link className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+                  <Input
+                    placeholder="https://example.com"
+                    value={newTaskUrl}
+                    onChange={(e) => setNewTaskUrl(e.target.value)}
+                    className="h-9 pl-9 bg-background text-sm"
+                  />
+                </div>
+              </div>
+
+              {/* Row 4: Attachments */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-muted-foreground">Attachments</label>
+                <input
+                  ref={attachmentInputRef}
+                  type="file"
+                  multiple
+                  className="hidden"
+                  onChange={(e) => {
+                    const files = Array.from(e.target.files || []);
+                    setNewTaskAttachments((prev) => [...prev, ...files]);
+                    e.target.value = "";
+                  }}
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="gap-2 text-sm font-normal"
+                  onClick={() => attachmentInputRef.current?.click()}
+                >
+                  <Paperclip className="w-3.5 h-3.5" />
+                  Attach files
+                </Button>
+                {newTaskAttachments.length > 0 && (
+                  <div className="flex flex-col gap-1.5 mt-1.5">
+                    {newTaskAttachments.map((file, idx) => (
+                      <div key={idx} className="flex items-center gap-2 text-xs bg-muted/50 rounded-md px-2.5 py-1.5">
+                        <FileText className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                        <span className="truncate flex-1">{file.name}</span>
+                        <span className="text-muted-foreground shrink-0">{(file.size / 1024).toFixed(0)} KB</span>
+                        <button
+                          type="button"
+                          onClick={() => setNewTaskAttachments((prev) => prev.filter((_, i) => i !== idx))}
+                          className="text-muted-foreground hover:text-destructive shrink-0"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
               {/* Action row */}
               <div className="flex items-center justify-between pt-1">
                 {!newTaskCategory && newTaskTitle.trim() ? (
@@ -894,7 +981,7 @@ const ProjectTasksModal = ({ isOpen, onClose, projectId, projectTitle }: Project
                   className="gap-2"
                 >
                   <Plus className="w-4 h-4" />
-                  Add Task
+                  {isAddingTask ? "Adding..." : "Add Task"}
                 </Button>
               </div>
             </div>
