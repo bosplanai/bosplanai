@@ -27,7 +27,7 @@ interface NavItem {
 // admin (Full Access): everything
 const allNavItems: NavItem[] = [
   { id: "tasks", icon: LayoutGrid, label: "Tasks", path: "" },
-  { id: "projects", icon: Building, label: "Projects", path: "/projects", requiredRole: "admin" },
+  { id: "projects", icon: Building, label: "Projects", path: "/projects", requiredRole: "member" },
   { id: "calendar", icon: Calendar, label: "Calendar", path: "/calendar" },
   { id: "drive", icon: HardDrive, label: "Bosdrive", path: "/drive" },
   { id: "dataroom", icon: FolderLock, label: "Data Room", path: "/dataroom" },
