@@ -162,6 +162,30 @@ const TaskEditSheet = ({
 
       if (error) throw error;
 
+      // Sync URL to task_urls table
+      const newUrl = url.trim();
+      const oldUrl = task.attachment_url?.trim() || "";
+      if (newUrl !== oldUrl) {
+        // Remove old URL entry if it existed
+        if (oldUrl) {
+          await supabase
+            .from("task_urls")
+            .delete()
+            .eq("task_id", task.id)
+            .eq("url", oldUrl);
+        }
+        // Add new URL entry
+        if (newUrl) {
+          await supabase.from("task_urls").insert({
+            task_id: task.id,
+            organization_id: organizationId,
+            url: newUrl,
+            title: null,
+            created_by: user.id,
+          });
+        }
+      }
+
       // Upload new file attachments
       if (newAttachments.length > 0) {
         for (const file of newAttachments) {

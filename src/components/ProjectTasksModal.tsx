@@ -459,6 +459,17 @@ const ProjectTasksModal = ({
         }
       }
 
+      // Save URL to task_urls table so it appears on the Tasks Dashboard
+      if (newTaskUrl.trim() && organization) {
+        await supabase.from("task_urls").insert({
+          task_id: taskData.id,
+          organization_id: organization.id,
+          url: newTaskUrl.trim(),
+          title: null,
+          created_by: user.id,
+        });
+      }
+
       // Upload attachments if any
       if (newTaskAttachments.length > 0 && organization) {
         for (const file of newTaskAttachments) {
