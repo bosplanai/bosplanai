@@ -1,6 +1,6 @@
 // @ts-nocheck
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Calendar, Flag, User, Circle, Pencil, Check, X, Users, FolderOpen, Plus, Trash2, FileText } from "lucide-react";
+import { Calendar, Flag, User, Circle, Pencil, Check, X, Users, FolderOpen, Plus, Trash2, FileText, Link, Paperclip } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "./ui/dialog";
@@ -118,8 +118,12 @@ const ProjectTasksModal = ({
   const [editedTitle, setEditedTitle] = useState("");
   const [editedDescription, setEditedDescription] = useState("");
   const [newTaskTitle, setNewTaskTitle] = useState("");
+  const [newTaskDescription, setNewTaskDescription] = useState("");
   const [newTaskCategory, setNewTaskCategory] = useState<string>("");
   const [newTaskAssignee, setNewTaskAssignee] = useState<string>("");
+  const [newTaskDueDate, setNewTaskDueDate] = useState<Date | undefined>(undefined);
+  const [newTaskPriority, setNewTaskPriority] = useState("medium");
+  const [newTaskUrl, setNewTaskUrl] = useState("");
   const [isAddingTask, setIsAddingTask] = useState(false);
   const [showRequestSentDialog, setShowRequestSentDialog] = useState(false);
   const [requestSentTo, setRequestSentTo] = useState<string>("");
@@ -447,16 +451,18 @@ const ProjectTasksModal = ({
         error: taskError
       } = await supabase.from("tasks").insert({
         title: newTaskTitle.trim(),
+        description: newTaskDescription.trim() || null,
         project_id: projectId,
         user_id: user.id,
         created_by_user_id: user.id,
         organization_id: organization.id,
         status: "todo",
-        priority: "medium",
+        priority: newTaskPriority,
         category: newTaskCategory,
         subcategory: "weekly",
         icon: "ListTodo",
-        // Set assigned_user_id for the task (will be synced by trigger)
+        due_date: newTaskDueDate ? newTaskDueDate.toISOString().split("T")[0] : null,
+        attachment_url: newTaskUrl.trim() || null,
         assigned_user_id: newTaskAssignee || null
       }).select().single();
       if (taskError) throw taskError;
@@ -489,8 +495,12 @@ const ProjectTasksModal = ({
         toast.success("Task added to project");
       }
       setNewTaskTitle("");
+      setNewTaskDescription("");
       setNewTaskCategory("");
       setNewTaskAssignee("");
+      setNewTaskDueDate(undefined);
+      setNewTaskPriority("medium");
+      setNewTaskUrl("");
       fetchTasks();
     } catch (error) {
       console.error("Error adding task:", error);
@@ -689,13 +699,24 @@ const ProjectTasksModal = ({
 
             {/* Add Task Input */}
             <div className="flex flex-col gap-3 mb-5 p-3 rounded-lg bg-muted/30 border border-dashed border-border">
-              <div className="flex gap-2">
-                <Input ref={newTaskInputRef} placeholder="Add a new task to this project..." value={newTaskTitle} onChange={e => setNewTaskTitle(e.target.value)} onKeyDown={e => {
-                  if (e.key === "Enter" && newTaskTitle.trim() && newTaskCategory) {
-                    handleAddTask();
-                  }
-                }} className="flex-1 h-10 bg-background" />
-              </div>
+              {/* Title */}
+              <Input ref={newTaskInputRef} placeholder="Task title *" value={newTaskTitle} onChange={e => setNewTaskTitle(e.target.value)} onKeyDown={e => {
+                if (e.key === "Enter" && newTaskTitle.trim() && newTaskCategory) {
+                  handleAddTask();
+                }
+              }} className="h-10 bg-background" />
+
+              {/* Description */}
+              <Textarea
+                placeholder="Add a description (optional)"
+                value={newTaskDescription}
+                onChange={e => setNewTaskDescription(e.target.value.slice(0, 500))}
+                rows={2}
+                maxLength={500}
+                className="resize-none bg-background"
+              />
+
+              {/* Row: Board + Assignee */}
               <div className="flex items-center gap-2 flex-wrap">
                 <Select value={newTaskCategory} onValueChange={setNewTaskCategory}>
                   <SelectTrigger className="w-[180px] h-10 bg-background">
@@ -733,12 +754,60 @@ const ProjectTasksModal = ({
                       </SelectItem>)}
                   </SelectContent>
                 </Select>
+              </div>
+
+              {/* Row: Due Date + Priority */}
+              <div className="flex items-center gap-2 flex-wrap">
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" size="sm" className={cn("h-10 px-3 gap-2", !newTaskDueDate && "text-muted-foreground")}>
+                      <Calendar className="w-4 h-4" />
+                      {newTaskDueDate ? format(newTaskDueDate, "MMM d, yyyy") : "Due date"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <CalendarPicker mode="single" selected={newTaskDueDate} onSelect={setNewTaskDueDate} initialFocus className="p-3 pointer-events-auto" />
+                  </PopoverContent>
+                </Popover>
+                {newTaskDueDate && (
+                  <Button variant="ghost" size="sm" onClick={() => setNewTaskDueDate(undefined)} className="h-10 px-2 text-xs text-muted-foreground">
+                    <X className="w-3 h-3 mr-1" /> Clear date
+                  </Button>
+                )}
+                <Select value={newTaskPriority} onValueChange={setNewTaskPriority}>
+                  <SelectTrigger className="w-[140px] h-10 bg-background">
+                    <div className="flex items-center gap-2">
+                      <Flag className="w-4 h-4 text-muted-foreground" />
+                      <SelectValue />
+                    </div>
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="low">Low</SelectItem>
+                    <SelectItem value="medium">Medium</SelectItem>
+                    <SelectItem value="high">High</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* URL */}
+              <div className="relative">
+                <Link className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  placeholder="Link / URL (optional)"
+                  value={newTaskUrl}
+                  onChange={e => setNewTaskUrl(e.target.value)}
+                  className="h-10 pl-10 bg-background"
+                />
+              </div>
+
+              {/* Add Button */}
+              <div className="flex items-center gap-2">
+                {!newTaskCategory && newTaskTitle.trim() && <p className="text-xs text-muted-foreground">Please select a board to create the task</p>}
                 <Button onClick={handleAddTask} disabled={!newTaskTitle.trim() || !newTaskCategory || isAddingTask} size="default" className="gap-2 h-10 ml-auto">
                   <Plus className="w-4 h-4" />
                   Add Task
                 </Button>
               </div>
-              {!newTaskCategory && newTaskTitle.trim() && <p className="text-xs text-muted-foreground">Please select a board to create the task</p>}
             </div>
 
             {/* Task List */}
