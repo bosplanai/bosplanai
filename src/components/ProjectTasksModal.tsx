@@ -798,7 +798,7 @@ const ProjectTasksModal = ({ isOpen, onClose, projectId, projectTitle }: Project
                     )}
                   </SelectContent>
                 </Select>
-                <Select value={newTaskAssignee} onValueChange={setNewTaskAssignee}>
+                <Select value={newTaskAssignee || "__none__"} onValueChange={(val) => setNewTaskAssignee(val === "__none__" ? "" : val)}>
                   <SelectTrigger className="w-[180px] h-10 bg-background">
                     <div className="flex items-center gap-2">
                       <User className="w-4 h-4 text-muted-foreground" />
@@ -806,7 +806,7 @@ const ProjectTasksModal = ({ isOpen, onClose, projectId, projectTitle }: Project
                     </div>
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">
+                    <SelectItem value="__none__">
                       <span className="text-muted-foreground">No assignee</span>
                     </SelectItem>
                     {members.map((member) => (
