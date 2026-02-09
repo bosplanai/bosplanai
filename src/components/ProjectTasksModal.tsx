@@ -104,6 +104,8 @@ const ProjectTasksModal = ({ isOpen, onClose, projectId, projectTitle }: Project
   const [newTaskTitle, setNewTaskTitle] = useState("");
   const [newTaskCategory, setNewTaskCategory] = useState<string>("");
   const [newTaskAssignee, setNewTaskAssignee] = useState<string>("");
+  const [newTaskDueDate, setNewTaskDueDate] = useState<Date | undefined>(undefined);
+  const [newTaskPriority, setNewTaskPriority] = useState<string>("medium");
   const [isAddingTask, setIsAddingTask] = useState(false);
   const [showRequestSentDialog, setShowRequestSentDialog] = useState(false);
   const [requestSentTo, setRequestSentTo] = useState<string>("");
@@ -462,7 +464,8 @@ const ProjectTasksModal = ({ isOpen, onClose, projectId, projectTitle }: Project
           created_by_user_id: user.id,
           organization_id: organization.id,
           status: "todo",
-          priority: "medium",
+          priority: newTaskPriority || "medium",
+          due_date: newTaskDueDate ? newTaskDueDate.toISOString() : null,
           category: newTaskCategory,
           subcategory: "weekly",
           icon: "ListTodo",
@@ -507,6 +510,8 @@ const ProjectTasksModal = ({ isOpen, onClose, projectId, projectTitle }: Project
       setNewTaskTitle("");
       setNewTaskCategory("");
       setNewTaskAssignee("");
+      setNewTaskDueDate(undefined);
+      setNewTaskPriority("medium");
       fetchTasks();
     } catch (error) {
       console.error("Error adding task:", error);
@@ -824,6 +829,36 @@ const ProjectTasksModal = ({ isOpen, onClose, projectId, projectTitle }: Project
                         </div>
                       </SelectItem>
                     ))}
+                  </SelectContent>
+                </Select>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" className={cn("w-[160px] h-10 justify-start text-left font-normal", !newTaskDueDate && "text-muted-foreground")}>
+                      <Calendar className="w-4 h-4 mr-2" />
+                      {newTaskDueDate ? format(newTaskDueDate, "MMM d, yyyy") : "Due date"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <CalendarPicker
+                      mode="single"
+                      selected={newTaskDueDate}
+                      onSelect={setNewTaskDueDate}
+                      initialFocus
+                      className={cn("p-3 pointer-events-auto")}
+                    />
+                  </PopoverContent>
+                </Popover>
+                <Select value={newTaskPriority} onValueChange={setNewTaskPriority}>
+                  <SelectTrigger className="w-[140px] h-10 bg-background">
+                    <div className="flex items-center gap-2">
+                      <Flag className="w-4 h-4 text-muted-foreground" />
+                      <SelectValue placeholder="Priority" />
+                    </div>
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="low">Low</SelectItem>
+                    <SelectItem value="medium">Medium</SelectItem>
+                    <SelectItem value="high">High</SelectItem>
                   </SelectContent>
                 </Select>
                 <Button
