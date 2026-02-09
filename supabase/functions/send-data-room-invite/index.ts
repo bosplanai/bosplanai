@@ -256,7 +256,7 @@ Deno.serve(async (req) => {
                 Access Data Room
               </a>
               
-              ${dataRoom.nda_required ? '<div class="nda-note">⚠️ This data room requires signing a Non-Disclosure Agreement before access.</div>' : ''}
+              ${dataRoom.nda_required ? '<div class="nda-note">⚠️ This data room requires signing a Non-Disclosure Agreement before access. After you sign the NDA and accept the invitation, your access password will be sent to you via email.</div>' : '<div class="nda-note">📧 After you accept the invitation, your access password will be sent to you via email.</div>'}
               
               <p class="expire-note">This invitation expires in 30 days.</p>
               
