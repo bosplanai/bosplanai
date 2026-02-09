@@ -62,7 +62,7 @@ export const useTasks = () => {
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
   const { profile, organization } = useOrganization();
-  const { isAdmin } = useUserRole();
+  const { isAdmin, isMember } = useUserRole();
   const { toast } = useToast();
   
   // Refs to avoid stale closures in realtime subscription
@@ -70,6 +70,7 @@ export const useTasks = () => {
   const profileRef = useRef(profile);
   const organizationRef = useRef(organization);
   const isAdminRef = useRef(isAdmin);
+  const isMemberRef = useRef(isMember);
   
   // Keep refs updated
   useEffect(() => {
@@ -77,7 +78,8 @@ export const useTasks = () => {
     profileRef.current = profile;
     organizationRef.current = organization;
     isAdminRef.current = isAdmin;
-  }, [user, profile, organization, isAdmin]);
+    isMemberRef.current = isMember;
+  }, [user, profile, organization, isAdmin, isMember]);
 
   // Helper to generate signed URL from file path
   const getSignedUrl = async (filePath: string): Promise<string | null> => {
@@ -126,13 +128,20 @@ export const useTasks = () => {
       // avoid crashing and incorrectly showing a load error.
       const rows = Array.isArray(data) ? data : [];
       
-      // Get current admin status from ref
+      // Get current role status from refs
       const currentIsAdmin = isAdminRef.current;
+      const currentIsMember = isMemberRef.current;
 
       // Filter tasks based on user role:
       // - Full Access (admin) users see ALL tasks in the organization - no filtering
-      // - Manager/Team users see tasks based on per-assignee acceptance rules
+      // - Manager users see ALL Product Management tasks, plus assigned/created tasks from other categories
+      // - Team users see tasks based on per-assignee acceptance rules only
       const filteredRows = currentIsAdmin ? rows : rows.filter((t: any) => {
+        // Managers see all Product Management tasks within the organization
+        if (currentIsMember && t.category === "product") {
+          return true;
+        }
+        
         const assignments = t.task_assignments || [];
         const userHasAcceptedAssignment = assignments.some(
           (a: any) => a.user_id === currentUser.id && a.assignment_status === "accepted"
@@ -218,7 +227,7 @@ export const useTasks = () => {
 
   useEffect(() => {
     fetchTasks();
-  }, [user, profile, organization, isAdmin, fetchTasks]);
+  }, [user, profile, organization, isAdmin, isMember, fetchTasks]);
 
   // Real-time subscription for task changes to keep all assignees in sync
   useEffect(() => {
