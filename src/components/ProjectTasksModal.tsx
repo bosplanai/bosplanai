@@ -1050,129 +1050,122 @@ const ProjectTasksModal = ({ isOpen, onClose, projectId, projectTitle }: Project
                       )}
                     >
                       <div className="space-y-3">
-                        {/* Task Header: Title + Status */}
+                        {/* Task Header: Title + Status + Edit */}
                         <div className="flex items-start justify-between gap-3">
                           <div className="flex-1 min-w-0">
-                            {isEditingTitle ? (
-                              <div className="flex items-center gap-2">
-                                <Input
-                                  ref={titleInputRef}
-                                  value={editedTitle}
-                                  onChange={(e) => setEditedTitle(e.target.value)}
-                                  onKeyDown={(e) => {
-                                    if (e.key === "Enter") handleSaveTitle(task.id);
-                                    if (e.key === "Escape") {
+                            {(isEditingTitle || isEditingDescription) ? (
+                              <div className="space-y-3">
+                                <div className="space-y-1.5">
+                                  <Label className="text-xs text-muted-foreground">Title</Label>
+                                  <Input
+                                    ref={titleInputRef}
+                                    value={editedTitle}
+                                    onChange={(e) => setEditedTitle(e.target.value)}
+                                    onKeyDown={(e) => {
+                                      if (e.key === "Escape") {
+                                        setEditingTaskId(null);
+                                        setEditingField(null);
+                                      }
+                                    }}
+                                    className="h-9 text-sm font-medium"
+                                    placeholder="Task title..."
+                                  />
+                                </div>
+                                <div className="space-y-1.5">
+                                  <Label className="text-xs text-muted-foreground">Description</Label>
+                                  <Textarea
+                                    ref={descriptionInputRef}
+                                    value={editedDescription}
+                                    onChange={(e) => setEditedDescription(e.target.value)}
+                                    onKeyDown={(e) => {
+                                      if (e.key === "Escape") {
+                                        setEditingTaskId(null);
+                                        setEditingField(null);
+                                      }
+                                    }}
+                                    rows={2}
+                                    className="text-sm resize-none"
+                                    placeholder="Add a description..."
+                                  />
+                                </div>
+                                <div className="flex gap-2">
+                                  <Button
+                                    size="sm"
+                                    onClick={() => {
+                                      handleSaveTitle(task.id);
+                                      handleSaveDescription(task.id);
+                                    }}
+                                  >
+                                    <Check className="w-3.5 h-3.5 mr-1" />
+                                    Save
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => {
                                       setEditingTaskId(null);
                                       setEditingField(null);
-                                    }
-                                  }}
-                                  className="h-9 text-base font-medium"
-                                />
-                                <Button
-                                  size="icon"
-                                  variant="ghost"
-                                  className="h-9 w-9 hover:bg-green-500/10 hover:text-green-600"
-                                  onClick={() => handleSaveTitle(task.id)}
-                                >
-                                  <Check className="w-4 h-4" />
-                                </Button>
-                                <Button
-                                  size="icon"
-                                  variant="ghost"
-                                  className="h-9 w-9 hover:bg-destructive/10 hover:text-destructive"
-                                  onClick={() => {
-                                    setEditingTaskId(null);
-                                    setEditingField(null);
-                                  }}
-                                >
-                                  <X className="w-4 h-4" />
-                                </Button>
+                                    }}
+                                  >
+                                    Cancel
+                                  </Button>
+                                </div>
                               </div>
                             ) : (
-                              <div
-                                className="flex items-center gap-2 cursor-pointer group"
-                                onClick={() => handleStartEditTitle(task)}
-                              >
-                                <span className="text-xs text-muted-foreground font-mono">#{index + 1}</span>
-                                <h4 className={cn(
-                                  "text-base font-semibold",
-                                  task.status === "complete" 
-                                    ? "text-muted-foreground line-through" 
-                                    : "text-foreground"
-                                )}>
-                                  {task.title}
-                                </h4>
-                                <Pencil className="w-3.5 h-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                              <div className="space-y-1">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-xs text-muted-foreground font-mono">#{index + 1}</span>
+                                  <h4 className={cn(
+                                    "text-base font-semibold",
+                                    task.status === "complete" 
+                                      ? "text-muted-foreground line-through" 
+                                      : "text-foreground"
+                                  )}>
+                                    {task.title}
+                                  </h4>
+                                </div>
+                                {task.description && (
+                                  <p className="text-sm text-muted-foreground leading-relaxed pl-6 line-clamp-2">
+                                    {task.description}
+                                  </p>
+                                )}
                               </div>
                             )}
                           </div>
 
-                          {/* Status Badge */}
-                          <Select
-                            value={task.status}
-                            onValueChange={(value) => handleStatusChange(task.id, value)}
-                          >
-                            <SelectTrigger className="w-auto h-8 px-3 border-0 gap-1.5">
-                              <Badge className={cn("text-xs font-medium", statusConfig.className)}>
-                                {statusConfig.label}
-                              </Badge>
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="todo">To Do</SelectItem>
-                              <SelectItem value="complete">Complete</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-
-                        {/* Description */}
-                        <div className="pl-6">
-                          {isEditingDescription ? (
-                            <div className="space-y-2">
-                              <Textarea
-                                ref={descriptionInputRef}
-                                value={editedDescription}
-                                onChange={(e) => setEditedDescription(e.target.value)}
-                                onKeyDown={(e) => {
-                                  if (e.key === "Escape") {
-                                    setEditingTaskId(null);
-                                    setEditingField(null);
-                                  }
+                          <div className="flex items-center gap-1.5 flex-shrink-0">
+                            {/* Edit Button */}
+                            {!(isEditingTitle || isEditingDescription) && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 px-2 text-muted-foreground hover:text-foreground"
+                                onClick={() => {
+                                  handleStartEditTitle(task);
+                                  setEditedDescription(task.description || "");
                                 }}
-                                rows={2}
-                                className="text-sm resize-none"
-                              />
-                              <div className="flex gap-2">
-                                <Button size="sm" onClick={() => handleSaveDescription(task.id)}>
-                                  Save
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => {
-                                    setEditingTaskId(null);
-                                    setEditingField(null);
-                                  }}
-                                >
-                                  Cancel
-                                </Button>
-                              </div>
-                            </div>
-                          ) : (
-                            <div
-                              className="cursor-pointer group flex items-start gap-2"
-                              onClick={() => handleStartEditDescription(task)}
+                                title="Edit task"
+                              >
+                                <Pencil className="w-3.5 h-3.5" />
+                              </Button>
+                            )}
+
+                            {/* Status Badge */}
+                            <Select
+                              value={task.status}
+                              onValueChange={(value) => handleStatusChange(task.id, value)}
                             >
-                              <p className={cn(
-                                "text-sm leading-relaxed",
-                                task.description 
-                                  ? "text-muted-foreground" 
-                                  : "text-muted-foreground/60 italic"
-                              )}>
-                                {task.description || "Click to add description..."}
-                              </p>
-                              <Pencil className="w-3 h-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 mt-1" />
-                            </div>
-                          )}
+                              <SelectTrigger className="w-auto h-8 px-3 border-0 gap-1.5">
+                                <Badge className={cn("text-xs font-medium", statusConfig.className)}>
+                                  {statusConfig.label}
+                                </Badge>
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="todo">To Do</SelectItem>
+                                <SelectItem value="complete">Complete</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
                         </div>
 
                         {/* Metadata Row */}
