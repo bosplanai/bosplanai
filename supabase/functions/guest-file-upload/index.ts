@@ -141,7 +141,6 @@ Deno.serve(async (req) => {
         uploaded_by: dataRoom.created_by,
         version: 1,
         is_restricted: false,
-        assigned_guest_id: invite.id,
       })
       .select("id, name")
       .single();
