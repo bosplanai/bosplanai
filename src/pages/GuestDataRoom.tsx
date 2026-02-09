@@ -959,23 +959,19 @@ const GuestDataRoom = () => {
   // Update file status handler
   const handleGuestFileStatusChange = async (fileId: string, status: string) => {
     try {
-      const response = await fetch(
-        `https://qiikjhvzlwzysbtzhdcd.supabase.co/functions/v1/guest-update-file-status`,
+      const { error: fnError } = await supabase.functions.invoke(
+        "guest-update-file-status",
         {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            accessId: accessIdParam,
+          body: {
+            token: token || password,
             email: email.toLowerCase(),
-            password,
             fileId,
             status,
-          }),
+          },
         }
       );
 
-      const result = await response.json();
-      if (!response.ok) throw new Error(result.error || "Failed to update status");
+      if (fnError) throw new Error("Failed to update status");
 
       // Update local state
       setFiles(prev => prev.map(f => f.id === fileId ? { ...f, status } : f));
