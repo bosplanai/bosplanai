@@ -6,6 +6,15 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+// Helper function for SHA-256 password hash
+async function hashPassword(password: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(password);
+  const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -19,9 +28,12 @@ Deno.serve(async (req) => {
       auth: { autoRefreshToken: false, persistSession: false },
     });
 
-    const { accessId, email, password, fileId, status } = await req.json();
+    const body = await req.json();
+    const { email, fileId, status } = body;
+    // Support both token and password fields, and accessId as fallback password
+    const actualPassword = body.token || body.password || body.accessId;
 
-    if (!accessId || !email || !password || !fileId || !status) {
+    if (!email || !actualPassword || !fileId || !status) {
       return new Response(
         JSON.stringify({ error: "Missing required fields" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -37,13 +49,17 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Verify guest credentials
+    const normalizedEmail = email.toLowerCase().trim();
+
+    // Verify guest access - match pattern used by other guest functions
     const { data: invite, error: inviteError } = await supabaseAdmin
       .from("data_room_invites")
-      .select("id, email, status, access_password, data_room_id, guest_name")
-      .eq("access_id", accessId)
+      .select("id, email, status, access_password, data_room_id, organization_id, guest_name")
+      .ilike("email", normalizedEmail)
       .eq("status", "accepted")
-      .single();
+      .order("expires_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
 
     if (inviteError || !invite) {
       return new Response(
@@ -52,21 +68,9 @@ Deno.serve(async (req) => {
       );
     }
 
-    if (invite.email.toLowerCase() !== email.toLowerCase()) {
-      return new Response(
-        JSON.stringify({ error: "Invalid access credentials" }),
-        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
     // Verify password hash
-    const encoder = new TextEncoder();
-    const data = encoder.encode(password);
-    const hashBuffer = await crypto.subtle.digest("SHA-256", data);
-    const hashArray = Array.from(new Uint8Array(hashBuffer));
-    const hashedPassword = hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
-
-    if (hashedPassword !== invite.access_password) {
+    const passwordHash = await hashPassword(actualPassword.toUpperCase());
+    if (passwordHash !== invite.access_password) {
       return new Response(
         JSON.stringify({ error: "Invalid access credentials" }),
         { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -106,8 +110,8 @@ Deno.serve(async (req) => {
     await supabaseAdmin.from("data_room_activity").insert({
       data_room_id: invite.data_room_id,
       organization_id: file.organization_id,
-      user_name: invite.guest_name || email.split("@")[0],
-      user_email: email.toLowerCase(),
+      user_name: invite.guest_name || normalizedEmail.split("@")[0],
+      user_email: normalizedEmail,
       action: "file_status_changed",
       details: { file_id: fileId, new_status: status },
       is_guest: true,
