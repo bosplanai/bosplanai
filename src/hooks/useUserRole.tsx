@@ -51,8 +51,13 @@ export const UserRoleProvider = ({ children }: { children: ReactNode }) => {
       lastFetchedOrgId.current = null;
       lastFetchedUserId.current = null;
       setRole(null);
-      setLoading(false);
-      isInitialLoad.current = false;
+      // Only clear loading when user is signed out.
+      // If user exists but organization hasn't loaded yet, keep loading=true
+      // so route guards (MemberRoute/AdminRoute) wait instead of redirecting.
+      if (!user) {
+        setLoading(false);
+        isInitialLoad.current = false;
+      }
       return;
     }
 
