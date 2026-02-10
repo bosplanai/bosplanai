@@ -98,34 +98,6 @@ export function DataRoomEditDetailsDialog({
             </Badge>
           </div>
 
-          {/* Destination Folder */}
-          <div>
-            <Label className="font-medium">Destination Folder</Label>
-            <div className="flex gap-2 mt-2">
-              <Select value={folderId || "uncategorized"} onValueChange={val => setFolderId(val === "uncategorized" ? null : val)}>
-                <SelectTrigger className="flex-1">
-                  <SelectValue placeholder="Select folder" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="uncategorized">
-                    <div className="flex items-center gap-2">
-                      <File className="w-4 h-4" />
-                      My Files (No folder)
-                    </div>
-                  </SelectItem>
-                  {folders.map(folder => <SelectItem key={folder.id} value={folder.id}>
-                      <div className="flex items-center gap-2">
-                        <Folder className="w-4 h-4 text-orange-400" />
-                        {folder.name}
-                      </div>
-                    </SelectItem>)}
-                </SelectContent>
-              </Select>
-              <Button variant="outline" size="icon" title="Create new folder" disabled>
-                <FolderPlus className="w-4 h-4" />
-              </Button>
-            </div>
-          </div>
 
           {/* Assign Users */}
           <div className="space-y-3 p-4 rounded-lg bg-muted/50 border border-border">
