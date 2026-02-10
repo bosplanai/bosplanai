@@ -16,6 +16,7 @@ import {
   Eye,
   Download,
   Clock,
+  Settings2,
   Edit3,
   Trash2,
   ChevronDown,
@@ -30,7 +31,6 @@ import {
   CheckCircle2,
   AlertCircle,
   FileDown,
-  Shield,
   Loader2,
 } from "lucide-react";
 import { format } from "date-fns";
@@ -63,9 +63,9 @@ interface GuestDataRoomFileCardProps {
   onView: () => void;
   onDownload: (format?: 'original' | 'pdf') => void;
   onViewVersions: () => void;
+  onEditDetails?: () => void;
   onEditDocument?: () => void;
   onDelete?: () => void;
-  onManagePermissions?: () => void;
   onStatusChange?: (status: string) => void;
 }
 
@@ -105,13 +105,13 @@ export function GuestDataRoomFileCard({
   onView,
   onDownload,
   onViewVersions,
+  onEditDetails,
   onEditDocument,
   onDelete,
-  onManagePermissions,
   onStatusChange,
 }: GuestDataRoomFileCardProps) {
   const statusDisplay = STATUS_DISPLAY[file.status || "not_opened"] || STATUS_DISPLAY.not_opened;
-  const canEditDocument = isEditableDocument(file.mime_type, file.name) && file.permission_level === "edit";
+  const canEditDocument = isEditableDocument(file.mime_type, file.name);
 
   return (
     <Card className="overflow-hidden hover:shadow-md transition-all duration-200 bg-card border-border/60">
@@ -170,23 +170,24 @@ export function GuestDataRoomFileCard({
                   </DropdownMenuSubContent>
                 </DropdownMenuPortal>
               </DropdownMenuSub>
+              <DropdownMenuSeparator />
               <DropdownMenuItem onClick={onViewVersions} className="gap-2">
                 <Clock className="w-4 h-4" />
                 View Versions
               </DropdownMenuItem>
+              {onEditDetails && (
+                <DropdownMenuItem onClick={onEditDetails} className="gap-2">
+                  <Settings2 className="w-4 h-4" />
+                  Edit Details
+                </DropdownMenuItem>
+              )}
               {canEditDocument && onEditDocument && (
                 <DropdownMenuItem onClick={onEditDocument} className="gap-2">
                   <Edit3 className="w-4 h-4" />
                   Edit Document
                 </DropdownMenuItem>
               )}
-              {file.is_own_upload && onManagePermissions && (
-                <DropdownMenuItem onClick={onManagePermissions} className="gap-2">
-                  <Shield className="w-4 h-4" />
-                  Manage Permissions
-                </DropdownMenuItem>
-              )}
-              {file.is_own_upload && onDelete && (
+              {onDelete && (
                 <>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem 
