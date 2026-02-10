@@ -3092,7 +3092,10 @@ By signing below, you acknowledge that you have read, understood, and agree to b
         versions={fileVersions}
         isLoading={versionsLoading}
         profileMap={profileMap}
-        onView={(version) => handleViewFile(version.id, version.file_path, version.name, version.mime_type)}
+        onView={(version) => {
+          setVersionHistoryDialogOpen(false);
+          handleViewFile(version.id, version.file_path, version.name, version.mime_type);
+        }}
         onDownload={(version, format) => handleDownloadFileWithFormat(version.id, version.file_path, originalFileName || version.name, version.mime_type, format)}
         onRestore={async (version) => {
           // Create a new version based on the restored one
