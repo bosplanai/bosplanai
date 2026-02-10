@@ -318,7 +318,7 @@ const MemberRoute = ({ children }: { children: React.ReactNode }) => {
     }
   }, [authLoading, orgLoading, roleLoading]);
 
-  // Only show loading screen on initial load
+  // Show loading on initial load OR when role is actively being fetched (e.g. org switch)
   if ((authLoading || orgLoading || roleLoading) && !hasCompletedInitialLoad.current) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
@@ -333,6 +333,15 @@ const MemberRoute = ({ children }: { children: React.ReactNode }) => {
 
   if (!profile || !organization) {
     return <Navigate to="/auth" replace />;
+  }
+
+  // While role is loading after org switch, show loading instead of redirecting
+  if (roleLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="text-muted-foreground">Loading...</div>
+      </div>
+    );
   }
 
   // Allow admin or member (manager) roles

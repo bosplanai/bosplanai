@@ -124,7 +124,11 @@ export const UserRoleProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [user?.id]);
 
+  // When org changes, signal loading so route guards wait instead of redirecting
   useEffect(() => {
+    if (user && organization && lastFetchedOrgId.current !== organization.id) {
+      setLoading(true);
+    }
     fetchRole();
   }, [user, organization]);
 
