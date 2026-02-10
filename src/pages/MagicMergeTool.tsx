@@ -254,24 +254,30 @@ const MagicMergeTool = () => {
       const targetName = targetMember?.full_name || "A team member";
       const mergeLabel = mergeType === "temporary" ? "temporarily transferred" : "permanently transferred";
 
-      // Notify departing user (source)
+      // Notify departing user (source) and receiving user (target)
+      // Wrapped in try-catch as notification RLS may block cross-user inserts
       if (organization?.id) {
-        await supabase.from("notifications").insert({
-          user_id: sourceUserId,
-          organization_id: organization.id,
-          type: "task_merge",
-          title: "Tasks Transferred",
-          message: `${tasksToTransfer.length} task(s) have been ${mergeLabel} to ${targetName}.`,
-        });
-
-        // Notify receiving user (target)
-        await supabase.from("notifications").insert({
-          user_id: targetUserId,
-          organization_id: organization.id,
-          type: "task_merge",
-          title: "Tasks Received",
-          message: `${tasksToTransfer.length} task(s) have been ${mergeLabel} to you from ${sourceName}.`,
-        });
+        try {
+          await supabase.from("notifications").insert([
+            {
+              user_id: sourceUserId,
+              organization_id: organization.id,
+              type: "task_merge",
+              title: "Tasks Transferred",
+              message: `${tasksToTransfer.length} task(s) have been ${mergeLabel} to ${targetName}.`,
+            },
+            {
+              user_id: targetUserId,
+              organization_id: organization.id,
+              type: "task_merge",
+              title: "Tasks Received",
+              message: `${tasksToTransfer.length} task(s) have been ${mergeLabel} to you from ${sourceName}.`,
+            },
+          ]);
+        } catch {
+          // Non-critical: merge still proceeds if notifications fail
+          console.warn("Could not send merge notifications");
+        }
       }
 
       // 2. Create audit log
