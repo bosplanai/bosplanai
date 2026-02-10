@@ -2229,7 +2229,10 @@ const GuestDataRoom = () => {
         versions={fileVersions}
         isLoading={loadingVersions}
         profileMap={versionProfileMap}
-        onView={handleViewVersion}
+        onView={(version) => {
+          setVersionHistoryFile(null);
+          handleViewVersion(version);
+        }}
         onDownload={(version) => handleDownloadVersion(version)}
         onRestore={handleRestoreVersion}
         onDelete={() => {
