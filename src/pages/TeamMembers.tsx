@@ -73,7 +73,6 @@ const TeamMembers = () => {
     createMember,
     bulkCreateMembers,
     addToOrganization,
-    deleteUserFromPlatform
   } = useTeamMembers();
 
   // Filter invites to only show pending (not accepted)
@@ -91,13 +90,10 @@ const TeamMembers = () => {
   const [resendingId, setResendingId] = useState<string | null>(null);
   const [removingInviteId, setRemovingInviteId] = useState<string | null>(null);
   const [addingToOrgId, setAddingToOrgId] = useState<string | null>(null);
-  const [deletingUserId, setDeletingUserId] = useState<string | null>(null);
+  
   const [emailError, setEmailError] = useState<string | null>(null);
   const [inviteNameError, setInviteNameError] = useState<string | null>(null);
   
-  // Delete from platform confirmation dialog state
-  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
-  const [userToDelete, setUserToDelete] = useState<{ userId: string; email: string; name: string } | null>(null);
 
   // Get organizations where user is admin (can invite to)
   const adminOrgs = organizations.filter(org => org.role === "admin");
@@ -535,35 +531,6 @@ const TeamMembers = () => {
       });
     }
   };
-  const handleDeleteFromPlatform = (userId: string, email: string, name: string) => {
-    setUserToDelete({ userId, email, name });
-    setDeleteConfirmOpen(true);
-  };
-  
-  const confirmDeleteFromPlatform = async () => {
-    if (!userToDelete) return;
-    
-    const { userId, email, name } = userToDelete;
-    setDeleteConfirmOpen(false);
-    setDeletingUserId(userId);
-    
-    try {
-      await deleteUserFromPlatform(email);
-      toast({
-        title: "User deleted",
-        description: `${name} has been permanently removed from the platform`
-      });
-    } catch (error: any) {
-      toast({
-        title: "Failed to delete user",
-        description: error.message,
-        variant: "destructive"
-      });
-    } finally {
-      setDeletingUserId(null);
-      setUserToDelete(null);
-    }
-  };
 
   const getInitials = (name: string) => {
     return name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2);
@@ -965,20 +932,6 @@ const TeamMembers = () => {
                               <Trash2 className="w-4 h-4 mr-2" />
                               Remove from {organization?.name || "Organisation"}
                             </DropdownMenuItem>
-                            {memberEmail && (
-                              <DropdownMenuItem 
-                                onClick={() => handleDeleteFromPlatform(member.user_id, memberEmail, member.full_name)} 
-                                className="text-destructive focus:text-destructive"
-                                disabled={deletingUserId === member.user_id}
-                              >
-                                {deletingUserId === member.user_id ? (
-                                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                                ) : (
-                                  <Trash2 className="w-4 h-4 mr-2" />
-                                )}
-                                Delete from Platform
-                              </DropdownMenuItem>
-                            )}
                           </DropdownMenuContent>
                         </DropdownMenu>
                       );
@@ -1204,27 +1157,6 @@ const TeamMembers = () => {
         </div>
       </div>
       
-      {/* Delete from Platform Confirmation Dialog */}
-      <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete User from Platform</AlertDialogTitle>
-            <AlertDialogDescription>
-              You are about to permanently remove <strong>{userToDelete?.name}</strong> from the platform. 
-              This will revoke all their access across all organisations and cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setUserToDelete(null)}>Cancel</AlertDialogCancel>
-            <AlertDialogAction 
-              onClick={confirmDeleteFromPlatform}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              Delete User
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
       
       <BetaFooter />
     </div>;
