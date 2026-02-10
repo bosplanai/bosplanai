@@ -108,15 +108,19 @@ export const UserRoleProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     lastFetchedOrgId.current = null;
     lastFetchedUserId.current = null;
-    isInitialLoad.current = true;
 
     if (!user) {
+      isInitialLoad.current = true;
       setRole(null);
       setLoading(false);
       isInitialLoad.current = false;
     } else {
-      setRole(null);
-      setLoading(true);
+      // Only show loading if we don't have a role yet (first load)
+      // Avoid flashing loading state during re-auth with same user
+      if (role === null) {
+        isInitialLoad.current = true;
+        setLoading(true);
+      }
     }
   }, [user?.id]);
 

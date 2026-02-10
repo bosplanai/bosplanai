@@ -127,7 +127,11 @@ export const OrganizationProvider = ({ children }: { children: ReactNode }) => {
   }, [user]);
 
   useEffect(() => {
-    isInitialLoad.current = true;
+    // Only treat as initial load if we haven't fetched yet
+    // Prevents re-triggering loading state on callback reference changes
+    if (!organization && !profile) {
+      isInitialLoad.current = true;
+    }
     fetchOrganizationData();
   }, [fetchOrganizationData]);
 

@@ -50,14 +50,15 @@ const OrganizationSwitcher = () => {
       }
     }
     
-    // Set the active organization - this updates localStorage and triggers storage event
+    // Set the active organization and refetch in parallel
+    // Navigate immediately to avoid OrgSlugValidator race condition
     await setActiveOrganization(org.id);
     
-    // Refetch organization data (this won't show loading state anymore)
-    await refetch();
+    // Navigate first so URL is ready when org data arrives
+    navigate(newPath, { replace: true });
     
-    // Navigate to the new path - this happens after data is ready
-    navigate(newPath);
+    // Then refetch org data in background (won't trigger loading state)
+    refetch();
   };
 
   const handleCreateClick = () => {

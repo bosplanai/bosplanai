@@ -73,9 +73,20 @@ const OrgSlugValidator = ({ children }: { children: React.ReactNode }) => {
   const { organization, loading } = useOrganization();
   const navigate = useNavigate();
   const location = useLocation();
+  // Track the last known org slug to detect org switches and skip redundant redirects
+  const lastOrgSlugRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (loading || !organization) return;
+
+    // Detect if the organization just changed (org switch in progress)
+    const orgJustChanged =
+      lastOrgSlugRef.current !== null &&
+      lastOrgSlugRef.current !== organization.slug;
+    lastOrgSlugRef.current = organization.slug;
+
+    // Skip redirect during org switch — OrganizationSwitcher handles navigation
+    if (orgJustChanged) return;
 
     // If the slug in URL doesn't match the active org, redirect to correct slug
     // IMPORTANT: Preserve query string (e.g., ?storage_purchase=success&session_id=...)
@@ -95,14 +106,19 @@ const RootRedirect = () => {
   const { user, loading: authLoading } = useAuth();
   const { organization, loading: orgLoading } = useOrganization();
   const location = useLocation();
+  const hasResolvedOnce = useRef(false);
 
   if (authLoading || orgLoading) {
+    // After the first successful resolve, don't flash "Loading..." on subsequent transitions
+    if (hasResolvedOnce.current) return null;
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-muted-foreground">Loading...</div>
       </div>
     );
   }
+
+  hasResolvedOnce.current = true;
 
   if (!user) {
     return <Navigate to="/welcome" replace />;
