@@ -1195,7 +1195,7 @@ By signing below, you acknowledge that you have read, understood, and agree to b
         newVersion = (allVersions?.[0]?.version || 1) + 1;
         isVersion = true;
 
-        const { error: dbError } = await supabase.from("data_room_files").insert({
+        const { data: insertedVersion, error: dbError } = await supabase.from("data_room_files").insert({
           organization_id: roomOrgId,
           data_room_id: activeRoomId,
           name: file.name,
@@ -1210,11 +1210,30 @@ By signing below, you acknowledge that you have read, understood, and agree to b
           assigned_to: existingFile.assigned_to,
           assigned_guest_id: existingFile.assigned_guest_id,
           status: existingFile.status
-        });
+        }).select("id").single();
         if (dbError) throw dbError;
+
+        // Background parse for editable documents so content is ready instantly
+        if (insertedVersion && isEditableDocument(file.type)) {
+          supabase.functions.invoke("parse-document", {
+            body: { fileId: insertedVersion.id, filePath, mimeType: file.type, bucket: "data-room-files" },
+          }).then(async (parseRes) => {
+            const parsed = parseRes.data?.content;
+            if (parsed && parsed.trim().length > 0) {
+              await supabase.from("data_room_document_content").insert({
+                file_id: insertedVersion.id,
+                data_room_id: activeRoomId,
+                organization_id: roomOrgId,
+                content: parsed,
+                content_type: "rich_text",
+                last_edited_by: user.id,
+              });
+            }
+          }).catch(() => { /* silent background parse */ });
+        }
       } else {
         // Create new file
-        const { error: dbError } = await supabase.from("data_room_files").insert({
+        const { data: insertedFile, error: dbError } = await supabase.from("data_room_files").insert({
           organization_id: roomOrgId,
           data_room_id: activeRoomId,
           name: file.name,
@@ -1224,8 +1243,27 @@ By signing below, you acknowledge that you have read, understood, and agree to b
           uploaded_by: user.id,
           folder_id: currentFolderId,
           version: 1
-        });
+        }).select("id").single();
         if (dbError) throw dbError;
+
+        // Background parse for editable documents so content is ready instantly
+        if (insertedFile && isEditableDocument(file.type)) {
+          supabase.functions.invoke("parse-document", {
+            body: { fileId: insertedFile.id, filePath, mimeType: file.type, bucket: "data-room-files" },
+          }).then(async (parseRes) => {
+            const parsed = parseRes.data?.content;
+            if (parsed && parsed.trim().length > 0) {
+              await supabase.from("data_room_document_content").insert({
+                file_id: insertedFile.id,
+                data_room_id: activeRoomId,
+                organization_id: roomOrgId,
+                content: parsed,
+                content_type: "rich_text",
+                last_edited_by: user.id,
+              });
+            }
+          }).catch(() => { /* silent background parse */ });
+        }
       }
 
       // Log activity for file upload
