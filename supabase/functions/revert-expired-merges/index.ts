@@ -68,6 +68,7 @@ Deno.serve(async (req) => {
                 task_id: taskId,
                 user_id: merge.source_user_id,
                 assigned_by: merge.performed_by,
+                status: "accepted",
               });
           }
 

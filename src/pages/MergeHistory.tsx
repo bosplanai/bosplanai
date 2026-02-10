@@ -108,6 +108,7 @@ const MergeHistory = () => {
               task_id: taskId,
               user_id: log.source_user_id,
               assigned_by: user.id,
+              status: 'accepted',
             });
         }
         

@@ -233,7 +233,8 @@ const MagicMergeTool = () => {
           } = await supabase.from("task_assignments").insert({
             task_id: taskId,
             user_id: targetUserId,
-            assigned_by: user.id
+            assigned_by: user.id,
+            status: 'accepted'
           });
           if (insertError) throw insertError;
         }
