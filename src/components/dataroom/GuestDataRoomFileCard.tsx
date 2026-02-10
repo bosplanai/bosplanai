@@ -114,7 +114,7 @@ export function GuestDataRoomFileCard({
   const canEditDocument = isEditableDocument(file.mime_type, file.name);
 
   return (
-    <Card className="overflow-hidden hover:shadow-md transition-all duration-200 bg-card border-border/60">
+    <Card className="overflow-hidden hover:shadow-md transition-all duration-200 bg-card border-border/60 cursor-pointer" onClick={onView}>
       {/* Header with file icon, name, version badge, and dropdown */}
       <div className="p-4 pb-2">
         <div className="flex items-start gap-3">
@@ -137,7 +137,7 @@ export function GuestDataRoomFileCard({
           {/* Dropdown Menu */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" className="h-8 px-2 gap-1">
+              <Button variant="outline" size="sm" className="h-8 px-2 gap-1" onClick={(e) => e.stopPropagation()}>
                 <ChevronDown className="w-4 h-4" />
               </Button>
             </DropdownMenuTrigger>
@@ -239,7 +239,7 @@ export function GuestDataRoomFileCard({
             {onStatusChange ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <button className={`flex items-center gap-1.5 ${statusDisplay.color} cursor-pointer hover:opacity-80 transition-opacity`}>
+                  <button onClick={(e) => e.stopPropagation()} className={`flex items-center gap-1.5 ${statusDisplay.color} cursor-pointer hover:opacity-80 transition-opacity`}>
                     <div className={cn(
                       "w-2 h-2 rounded-full flex-shrink-0",
                       file.status === "completed" ? "bg-brand-green" :

@@ -1752,19 +1752,57 @@ By signing below, you acknowledge that you have read, understood, and agree to b
   const handleViewFile = async (fileId: string, filePath: string, fileName: string, mimeType: string | null) => {
     const fileType = getFileType(mimeType, fileName);
     setPreviewLoading(true);
-    const {
-      data
-    } = await supabase.storage.from("data-room-files").createSignedUrl(filePath, 60 * 60);
-    setPreviewLoading(false);
-    if (data?.signedUrl) {
-      // Always open in preview dialog for all file types
-      setPreviewFile({
-        id: fileId,
-        name: fileName,
-        url: data.signedUrl,
-        type: fileType,
-        mimeType: mimeType || undefined,
-        file_path: filePath
+    try {
+      // Try to get signed URL for the given file path
+      let { data } = await supabase.storage.from("data-room-files").createSignedUrl(filePath, 60 * 60);
+      
+      // If signed URL failed, try the root/parent file's path as fallback
+      if (!data?.signedUrl) {
+        const { data: fileRecord } = await supabase
+          .from("data_room_files")
+          .select("parent_file_id")
+          .eq("id", fileId)
+          .single();
+        
+        if (fileRecord?.parent_file_id) {
+          // This is a version - try root file's path
+          const { data: rootFile } = await supabase
+            .from("data_room_files")
+            .select("file_path")
+            .eq("id", fileRecord.parent_file_id)
+            .single();
+          
+          if (rootFile?.file_path) {
+            const fallback = await supabase.storage.from("data-room-files").createSignedUrl(rootFile.file_path, 60 * 60);
+            data = fallback.data;
+          }
+        }
+      }
+
+      setPreviewLoading(false);
+      if (data?.signedUrl) {
+        setPreviewFile({
+          id: fileId,
+          name: fileName,
+          url: data.signedUrl,
+          type: fileType,
+          mimeType: mimeType || undefined,
+          file_path: filePath
+        });
+      } else {
+        toast({
+          title: "Could not open file",
+          description: "The file could not be loaded. Please try again.",
+          variant: "destructive",
+        });
+      }
+    } catch (err) {
+      setPreviewLoading(false);
+      console.error("Error opening file:", err);
+      toast({
+        title: "Could not open file",
+        description: "An error occurred while loading the file.",
+        variant: "destructive",
       });
     }
   };
