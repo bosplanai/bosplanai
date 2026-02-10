@@ -100,7 +100,7 @@ const MobileHeaderMenu = () => {
             <SheetTitle className="text-left">Menu</SheetTitle>
           </SheetHeader>
           
-          <div className="flex flex-col h-full">
+          <div className="flex flex-col" style={{ height: 'calc(100% - 57px)' }}>
             {/* Current User */}
             <div className="p-4 border-b border-border">
               <div className="flex items-center gap-3">
