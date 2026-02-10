@@ -86,11 +86,14 @@ const MergeHistory = () => {
       // Revert task assignments: remove target user, add back source user
       for (const taskId of taskIds) {
         // Remove target user assignment
-        await supabase
+        const { error: deleteError } = await supabase
           .from("task_assignments")
           .delete()
           .eq("task_id", taskId)
           .eq("user_id", log.target_user_id);
+        if (deleteError) {
+          console.error("Revert: delete assignment failed", deleteError);
+        }
         
         // Check if source already assigned
         const { data: existing } = await supabase
@@ -98,18 +101,21 @@ const MergeHistory = () => {
           .select("id")
           .eq("task_id", taskId)
           .eq("user_id", log.source_user_id)
-          .single();
+          .maybeSingle();
         
         if (!existing) {
           // Add source user assignment back
-          await supabase
+          const { error: insertError } = await supabase
             .from("task_assignments")
             .insert({
               task_id: taskId,
               user_id: log.source_user_id,
               assigned_by: user.id,
-              status: 'accepted',
+              assignment_status: 'accepted',
             });
+          if (insertError) {
+            console.error("Revert: insert assignment failed", insertError);
+          }
         }
         
         // Use SECURITY DEFINER function to bypass RLS for merge revert
