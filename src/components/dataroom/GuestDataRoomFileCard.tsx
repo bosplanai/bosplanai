@@ -114,14 +114,14 @@ export function GuestDataRoomFileCard({
   const canEditDocument = isEditableDocument(file.mime_type, file.name);
 
   return (
-    <Card className="overflow-hidden hover:shadow-md transition-all duration-200 bg-card border-border/60 cursor-pointer" onClick={onView}>
+    <Card className="overflow-hidden hover:shadow-md transition-all duration-200 bg-card border-border/60">
       {/* Header with file icon, name, version badge, and dropdown */}
       <div className="p-4 pb-2">
         <div className="flex items-start gap-3">
-          <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+          <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0 cursor-pointer" onClick={onView}>
             {getFileIcon(file.mime_type)}
           </div>
-          <div className="flex-1 min-w-0">
+          <div className="flex-1 min-w-0 cursor-pointer" onClick={onView}>
             <div className="flex items-center gap-2">
               <h3 className="font-semibold text-sm truncate flex-1" title={file.name}>
                 {file.name}
@@ -221,8 +221,8 @@ export function GuestDataRoomFileCard({
         </div>
       )}
 
-      {/* File info preview */}
-      <div className="px-4 pb-3">
+      {/* File info preview - clickable to view */}
+      <div className="px-4 pb-3 cursor-pointer" onClick={onView}>
         <div className="bg-gray-50 dark:bg-[#2a2f38] rounded-lg p-3 text-xs text-muted-foreground dark:text-white/70 min-h-[80px] max-h-[100px] overflow-hidden">
           <p className="font-medium text-foreground/70 dark:text-white/80">{file.name}</p>
           <p>Size: {formatFileSize(file.file_size)}</p>

@@ -1467,6 +1467,7 @@ By signing below, you acknowledge that you have read, understood, and agree to b
   const updateFileDetailsMutation = useMutation({
     mutationFn: async (data: {
       fileId: string;
+      rootFileId?: string;
       folder_id: string | null;
       is_restricted: boolean;
       assigned_to: string | null;
@@ -1475,6 +1476,8 @@ By signing below, you acknowledge that you have read, understood, and agree to b
       if (!activeRoomId || !selectedRoom || !user?.id) {
         throw new Error("Not authenticated or no room selected");
       }
+      // Update assignment on the root file so it persists across versions
+      const targetFileId = data.rootFileId || data.fileId;
       const { error } = await supabase
         .from("data_room_files")
         .update({
@@ -1483,7 +1486,7 @@ By signing below, you acknowledge that you have read, understood, and agree to b
           assigned_to: data.assigned_to,
           assigned_guest_id: data.assigned_guest_id
         })
-        .eq("id", data.fileId);
+        .eq("id", targetFileId);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -2391,7 +2394,7 @@ By signing below, you acknowledge that you have read, understood, and agree to b
                                     }}
                                     onEditDetails={() => {
                                       setEditDetailsFile({
-                                        id: file.id,
+                                        id: (file as any).root_file_id || file.id,
                                         name: file.name,
                                         folder_id: null,
                                         is_restricted: file.is_restricted,
