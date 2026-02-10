@@ -376,10 +376,13 @@ const ProjectTasksModal = ({
       await supabase.from("task_assignments").delete().eq("task_id", taskId).eq("user_id", userId);
     } else {
       // Add assignment to task_assignments table
+      const isSelf = userId === user.id;
       await supabase.from("task_assignments").insert({
         task_id: taskId,
         user_id: userId,
-        assigned_by: user.id
+        assigned_by: user.id,
+        assignment_status: isSelf ? "accepted" : "pending",
+        accepted_at: isSelf ? new Date().toISOString() : null,
       });
     }
 

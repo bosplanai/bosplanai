@@ -719,7 +719,25 @@ export const useTasks = () => {
 
         if (error) throw error;
 
-        // Update in place
+        // Sync task_assignments junction table so visibility filters work on refetch
+        // Remove all existing assignments for this task
+        await supabase
+          .from("task_assignments")
+          .delete()
+          .eq("task_id", taskId);
+
+        // If self-assigning, create an accepted assignment record
+        if (assignedUserId && user) {
+          await supabase.from("task_assignments").insert({
+            task_id: taskId,
+            user_id: assignedUserId,
+            assigned_by: user.id,
+            assignment_status: "accepted",
+            accepted_at: new Date().toISOString(),
+          });
+        }
+
+        // Update in place (including task_assignments for visibility filtering)
         setTasks((prev) =>
           prev.map((t) =>
             t.id === taskId
@@ -728,6 +746,9 @@ export const useTasks = () => {
                   assigned_user_id: assignedUserId,
                   assigned_user: data.assigned_user as TaskUser | null,
                   assignment_status: 'accepted' as AssignmentStatus,
+                  task_assignments: assignedUserId
+                    ? [{ id: '', user_id: assignedUserId, assignment_status: 'accepted' }]
+                    : [],
                 }
               : t
           )
