@@ -47,6 +47,7 @@ import ManageAIUsage from "./pages/superadmin/ManageAIUsage";
 import CustomerActivity from "./pages/superadmin/CustomerActivity";
 import ManageVirtualAssistants from "./pages/superadmin/ManageVirtualAssistants";
 import AuditLogs from "./pages/superadmin/AuditLogs";
+import CustomerFeedback from "./pages/superadmin/CustomerFeedback";
 import Policies from "./pages/Policies";
 import SpecialistSignup from "./pages/SpecialistSignup";
 import TermsAndConditions from "./pages/TermsAndConditions";
@@ -381,6 +382,7 @@ const AppRoutes = () => (
                 <Route path="/superadmin/customer-activity" element={<CustomerActivity />} />
                 <Route path="/superadmin/virtual-assistants" element={<ManageVirtualAssistants />} />
                 <Route path="/superadmin/audit-logs" element={<AuditLogs />} />
+                <Route path="/superadmin/customer-feedback" element={<CustomerFeedback />} />
                 <Route path="/superadmin/*" element={<SuperAdminDashboard />} />
 
                 {/* Root redirect - sends to org-prefixed URL */}

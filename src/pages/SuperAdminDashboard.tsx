@@ -2,7 +2,7 @@ import { useOrgNavigation } from "@/hooks/useOrgNavigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Shield, Building2, Users, UserX, Gift, Link, ArrowRight, Sparkles, Activity, Bot, UserPlus, LogOut, FileText } from "lucide-react";
+import { Shield, Building2, Users, UserX, Gift, Link, ArrowRight, Sparkles, Activity, Bot, UserPlus, LogOut, FileText, MessageSquare } from "lucide-react";
 import { useSuperAdmin } from "@/hooks/useSuperAdmin";
 import { useAuth } from "@/hooks/useAuth";
 import { useSuperAdminData } from "@/hooks/useSuperAdminData";
@@ -11,7 +11,6 @@ import { useSuperAdminSession } from "@/hooks/useSuperAdminSession";
 import bosplanLogo from "@/assets/bosplan-logo.png";
 import SuperAdminSettingsDialog from "@/components/superadmin/SuperAdminSettingsDialog";
 import CustomButtonsSection from "@/components/superadmin/CustomButtonsSection";
-import CustomerFeedbackSection from "@/components/superadmin/CustomerFeedbackSection";
 const SuperAdminDashboard = () => {
   const { navigate, navigateOrg } = useOrgNavigation();
   const {
@@ -146,6 +145,19 @@ const SuperAdminDashboard = () => {
       href: "/superadmin/ai-usage",
       color: "text-amber-500",
       bgColor: "bg-amber-500/10"
+    }]
+  }, {
+    category: "Customer Insights",
+    description: "Review customer feedback and engagement data",
+    icon: MessageSquare,
+    iconColor: "text-yellow-400",
+    items: [{
+      title: "Customer Feedback",
+      description: "View and manage beta feedback submissions from users",
+      icon: MessageSquare,
+      href: "/superadmin/customer-feedback",
+      color: "text-yellow-500",
+      bgColor: "bg-yellow-500/10"
     }]
   }, {
     category: "Security & Compliance",
@@ -307,11 +319,6 @@ const SuperAdminDashboard = () => {
                 </div>
               </div>;
         })}
-        </div>
-
-        {/* Customer Feedback Section */}
-        <div className="mt-8">
-          <CustomerFeedbackSection />
         </div>
 
         {/* Custom Buttons Section */}
