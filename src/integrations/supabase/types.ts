@@ -181,6 +181,30 @@ export type Database = {
         }
         Relationships: []
       }
+      customer_broadcasts: {
+        Row: {
+          created_at: string
+          id: string
+          message: string
+          recipient_count: number
+          sent_by: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          message: string
+          recipient_count?: number
+          sent_by: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          message?: string
+          recipient_count?: number
+          sent_by?: string
+        }
+        Relationships: []
+      }
       data_room_activity: {
         Row: {
           action: string
@@ -3449,6 +3473,10 @@ export type Database = {
           p_task_id: string
         }
         Returns: undefined
+      }
+      send_customer_broadcast: {
+        Args: { broadcast_message: string }
+        Returns: Json
       }
       validate_referral_code: {
         Args: { code: string }

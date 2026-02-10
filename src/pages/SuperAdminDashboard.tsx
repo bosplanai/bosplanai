@@ -3,6 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Shield, Building2, Users, UserX, Gift, Link, ArrowRight, Sparkles, Activity, Bot, UserPlus, LogOut, FileText, MessageSquare } from "lucide-react";
+import CustomerBroadcastsSection from "@/components/superadmin/CustomerBroadcastsSection";
 import { useSuperAdmin } from "@/hooks/useSuperAdmin";
 import { useAuth } from "@/hooks/useAuth";
 import { useSuperAdminData } from "@/hooks/useSuperAdminData";
@@ -319,6 +320,11 @@ const SuperAdminDashboard = () => {
                 </div>
               </div>;
         })}
+        </div>
+
+        {/* Customer Broadcasts Section */}
+        <div className="mt-8">
+          <CustomerBroadcastsSection />
         </div>
 
         {/* Custom Buttons Section */}
