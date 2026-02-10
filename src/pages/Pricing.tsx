@@ -74,7 +74,7 @@ const Pricing = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <WelcomeHeader />
+      <WelcomeHeader variant="large-logo" />
 
       {/* Main Content */}
       <main className="container mx-auto px-4 py-12 md:py-16">
