@@ -50,11 +50,12 @@ export const RecyclingBin = ({ onRestore, variant = "both" }: RecyclingBinProps)
     variant === "projects" ? "projects" : "tasks"
   );
   const { user } = useAuth();
-  const { profile } = useOrganization();
+  const { organization, profile } = useOrganization();
   const { toast } = useToast();
+  const activeOrgId = organization?.id || profile?.organization_id;
 
   const fetchDeletedItems = async () => {
-    if (!user || !profile?.organization_id) return;
+    if (!user || !activeOrgId) return;
 
     setLoading(true);
     try {
@@ -63,7 +64,7 @@ export const RecyclingBin = ({ onRestore, variant = "both" }: RecyclingBinProps)
         const { data: tasksData, error: tasksError } = await supabase
           .from("tasks")
           .select("id, title, category, priority, deleted_at")
-          .eq("organization_id", profile.organization_id)
+          .eq("organization_id", activeOrgId)
           .not("deleted_at", "is", null)
           .order("deleted_at", { ascending: false });
 
@@ -76,7 +77,7 @@ export const RecyclingBin = ({ onRestore, variant = "both" }: RecyclingBinProps)
         const { data: projectsData, error: projectsError } = await supabase
           .from("projects")
           .select("id, title, description, status, deleted_at")
-          .eq("organization_id", profile.organization_id)
+          .eq("organization_id", activeOrgId)
           .not("deleted_at", "is", null)
           .order("deleted_at", { ascending: false });
 
@@ -100,7 +101,7 @@ export const RecyclingBin = ({ onRestore, variant = "both" }: RecyclingBinProps)
       setDeletedTasks([]);
       setDeletedProjects([]);
     }
-  }, [isOpen, user, profile?.organization_id]);
+  }, [isOpen, user, activeOrgId]);
 
   // Task selection handlers
   const toggleTaskSelect = (id: string) => {
@@ -381,14 +382,14 @@ export const RecyclingBin = ({ onRestore, variant = "both" }: RecyclingBinProps)
   };
 
   const emptyBin = async () => {
-    if (!profile?.organization_id) return;
+    if (!activeOrgId) return;
     try {
       if (variant === "tasks" || variant === "both") {
-        await supabase.from("tasks").delete().eq("organization_id", profile.organization_id).not("deleted_at", "is", null);
+        await supabase.from("tasks").delete().eq("organization_id", activeOrgId).not("deleted_at", "is", null);
         setDeletedTasks([]);
       }
       if (variant === "projects" || variant === "both") {
-        await supabase.from("projects").delete().eq("organization_id", profile.organization_id).not("deleted_at", "is", null);
+        await supabase.from("projects").delete().eq("organization_id", activeOrgId).not("deleted_at", "is", null);
         setDeletedProjects([]);
       }
 

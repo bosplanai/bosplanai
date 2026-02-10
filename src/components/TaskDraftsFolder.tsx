@@ -33,7 +33,8 @@ const TaskDraftsFolder = () => {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [draftToDelete, setDraftToDelete] = useState<string | null>(null);
   const { fetchDraftTasks, publishDraft, deleteTask } = useTasks();
-  const { profile } = useOrganization();
+  const { organization, profile } = useOrganization();
+  const activeOrgId = organization?.id || profile?.organization_id;
   const { toast } = useToast();
 
   const loadDrafts = async () => {
@@ -50,7 +51,7 @@ const TaskDraftsFolder = () => {
     } else {
       setDrafts([]);
     }
-  }, [isOpen, profile?.organization_id]);
+  }, [isOpen, activeOrgId]);
 
   const handlePublish = async (taskId: string) => {
     const success = await publishDraft(taskId);

@@ -37,11 +37,12 @@ export const useArchive = () => {
   const [archivedProjects, setArchivedProjects] = useState<ArchivedProject[]>([]);
   const [loading, setLoading] = useState(false);
   const { user } = useAuth();
-  const { profile } = useOrganization();
+  const { organization, profile } = useOrganization();
   const { toast } = useToast();
+  const activeOrgId = organization?.id || profile?.organization_id;
 
   const fetchArchivedItems = useCallback(async () => {
-    if (!user || !profile?.organization_id) return;
+    if (!user || !activeOrgId) return;
 
     setLoading(true);
     try {
@@ -51,7 +52,7 @@ export const useArchive = () => {
         .select(`
           id, title, description, category, priority, completed_at, archived_at
         `)
-        .eq("organization_id", profile.organization_id)
+        .eq("organization_id", activeOrgId)
         .not("archived_at", "is", null)
         .is("deleted_at", null)
         .order("archived_at", { ascending: false });
@@ -64,7 +65,7 @@ export const useArchive = () => {
       const { data: projectsData, error: projectsError } = await supabase
         .from("projects")
         .select("id, title, description, status, due_date, archived_at, updated_at")
-        .eq("organization_id", profile.organization_id)
+        .eq("organization_id", activeOrgId)
         .not("archived_at", "is", null)
         .order("archived_at", { ascending: false });
 
@@ -77,11 +78,11 @@ export const useArchive = () => {
     } finally {
       setLoading(false);
     }
-  }, [user, profile?.organization_id]);
+  }, [user, activeOrgId]);
 
   // Auto-archive items that have been complete for 10+ days
   const autoArchiveItems = useCallback(async () => {
-    if (!user || !profile?.organization_id) return;
+    if (!user || !activeOrgId) return;
 
     try {
       const tenDaysAgo = new Date();
@@ -92,7 +93,7 @@ export const useArchive = () => {
       const { data: tasksToArchive, error: tasksQueryError } = await supabase
         .from("tasks")
         .select("id, completed_at")
-        .eq("organization_id", profile.organization_id)
+        .eq("organization_id", activeOrgId)
         .eq("status", "complete")
         .is("archived_at", null)
         .is("deleted_at", null)
@@ -114,7 +115,7 @@ export const useArchive = () => {
       const { data: projectsToArchive, error: projectsQueryError } = await supabase
         .from("projects")
         .select("id, updated_at")
-        .eq("organization_id", profile.organization_id)
+        .eq("organization_id", activeOrgId)
         .eq("status", "done")
         .is("archived_at", null);
 
@@ -143,7 +144,7 @@ export const useArchive = () => {
         console.error("Error auto-archiving items:", error);
       }
     }
-  }, [user, profile?.organization_id]);
+  }, [user, activeOrgId]);
 
   const archiveTask = async (taskId: string): Promise<boolean> => {
     try {
@@ -331,12 +332,12 @@ export const useArchive = () => {
 
   // Clear cached data and re-run auto-archive when org changes
   useEffect(() => {
-    if (user && profile?.organization_id) {
+    if (user && activeOrgId) {
       setArchivedTasks([]);
       setArchivedProjects([]);
       autoArchiveItems();
     }
-  }, [user, profile?.organization_id, autoArchiveItems]);
+  }, [user, activeOrgId, autoArchiveItems]);
 
   return {
     archivedTasks,
