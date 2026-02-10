@@ -61,6 +61,8 @@ import Pricing from "./pages/Pricing";
 import VirtualAssistants from "./pages/VirtualAssistants";
 import AcceptInvite from "./pages/AcceptInvite";
 import FeedbackForm from "./pages/FeedbackForm";
+import Agents from "./pages/Agents";
+import AgentsWaitlist from "./pages/superadmin/AgentsWaitlist";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 const queryClient = new QueryClient();
@@ -370,6 +372,7 @@ const AppRoutes = () => (
                 <Route path="/pricing" element={<Pricing />} />
                 <Route path="/accept-invite" element={<AcceptInvite />} />
                 <Route path="/feedback-form" element={<FeedbackForm />} />
+                <Route path="/agents" element={<Agents />} />
                 
                 {/* Super Admin Routes - no org prefix */}
                 <Route path="/superadmin/login" element={<SuperAdminAuth />} />
@@ -383,6 +386,7 @@ const AppRoutes = () => (
                 <Route path="/superadmin/virtual-assistants" element={<ManageVirtualAssistants />} />
                 <Route path="/superadmin/audit-logs" element={<AuditLogs />} />
                 <Route path="/superadmin/customer-feedback" element={<CustomerFeedback />} />
+                <Route path="/superadmin/agents-waitlist" element={<AgentsWaitlist />} />
                 <Route path="/superadmin/*" element={<SuperAdminDashboard />} />
 
                 {/* Root redirect - sends to org-prefixed URL */}

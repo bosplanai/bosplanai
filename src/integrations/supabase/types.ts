@@ -14,6 +14,30 @@ export type Database = {
   }
   public: {
     Tables: {
+      agent_waitlist: {
+        Row: {
+          company_name: string
+          created_at: string
+          email: string
+          id: string
+          name: string
+        }
+        Insert: {
+          company_name: string
+          created_at?: string
+          email: string
+          id?: string
+          name: string
+        }
+        Update: {
+          company_name?: string
+          created_at?: string
+          email?: string
+          id?: string
+          name?: string
+        }
+        Relationships: []
+      }
       ai_usage_limits: {
         Row: {
           created_at: string
