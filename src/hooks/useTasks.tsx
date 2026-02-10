@@ -65,6 +65,9 @@ export const useTasks = () => {
   const { isAdmin, isMember } = useUserRole();
   const { toast } = useToast();
   
+  // Track if this is the initial load vs a background refetch
+  const isInitialLoad = useRef(true);
+  
   // Refs to avoid stale closures in realtime subscription
   const userRef = useRef(user);
   const profileRef = useRef(profile);
@@ -102,7 +105,13 @@ export const useTasks = () => {
     if (!currentUser || !currentProfile || !currentOrganization) {
       setTasks([]);
       setLoading(false);
+      isInitialLoad.current = false;
       return;
+    }
+
+    // Only show loading spinner on the very first fetch
+    if (isInitialLoad.current) {
+      setLoading(true);
     }
 
     try {
@@ -238,6 +247,7 @@ export const useTasks = () => {
       }
     } finally {
       setLoading(false);
+      isInitialLoad.current = false;
     }
   }, [toast]);
 
