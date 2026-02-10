@@ -6,7 +6,7 @@ const BetaFooter = () => {
     <footer className="w-full bg-muted/50 border-t border-border px-4 py-3 pb-20 md:pb-3">
       <div className="flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-4 text-xs sm:text-sm text-muted-foreground">
         <p className="text-center">
-          <span className="font-semibold text-foreground">BETA Product:</span> This version of Bosplan.com is being used for BETA testing. Please share your feedback to help us improve.
+          <span className="font-semibold text-foreground">BETA Product (V4):</span> This version of Bosplan.com is being used for BETA testing. Please share your feedback to help us improve.
         </p>
         <Link 
           to="/feedback-form" 
