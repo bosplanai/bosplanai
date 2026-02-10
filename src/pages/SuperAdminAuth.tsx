@@ -87,13 +87,13 @@ const SuperAdminAuth = () => {
         .select("role")
         .eq("user_id", authData.user.id)
         .eq("role", "super_admin")
-        .maybeSingle();
+        .limit(1);
 
       if (roleError) {
         throw new Error("Failed to verify permissions");
       }
 
-      if (!roleData) {
+      if (!roleData || roleData.length === 0) {
         // Sign out if not a super admin
         await supabase.auth.signOut();
         throw new Error("Access denied. Super admin privileges required.");
