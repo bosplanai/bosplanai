@@ -2304,7 +2304,7 @@ By signing below, you acknowledge that you have read, understood, and agree to b
                                     assigneeName={assigneeName}
                                     version={(file as any).version_count || 1}
                                     canEdit={canEditFile(file)}
-                                    canDelete={isAdmin || file.uploaded_by === user?.id}
+                                    canDelete={true}
                                     isAdmin={isAdmin}
                                     currentUserId={user?.id}
                                     onView={() => handleViewFile(file.id, file.file_path, file.name, file.mime_type)}
