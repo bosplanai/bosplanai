@@ -145,7 +145,7 @@ const DataRoomFilePreviewDialog = ({
           return;
         }
 
-        // If this is a version file (has parent), try to get content from the root/parent
+        // Get file metadata to check if this is a version
         const { data: fileData } = await supabase
           .from("data_room_files")
           .select("parent_file_id, file_path, mime_type, data_room_id, organization_id")
@@ -153,16 +153,39 @@ const DataRoomFilePreviewDialog = ({
           .single();
 
         if (fileData?.parent_file_id) {
-          // This is a version file, try to fetch content from the parent file
-          const { data: parentContent } = await supabase
-            .from("data_room_document_content")
+          // This is a version file - check data_room_document_versions for version-specific content
+          const { data: versionContent } = await supabase
+            .from("data_room_document_versions")
             .select("content")
+            .eq("file_id", file.id)
+            .order("version_number", { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+          if (versionContent?.content && versionContent.content.trim() !== "") {
+            setDocumentContent(versionContent.content);
+            return;
+          }
+
+          // Also check by matching the document_id from the parent's document content
+          const { data: parentDoc } = await supabase
+            .from("data_room_document_content")
+            .select("id")
             .eq("file_id", fileData.parent_file_id)
             .maybeSingle();
 
-          if (parentContent?.content && parentContent.content.trim() !== "") {
-            setDocumentContent(parentContent.content);
-            return;
+          if (parentDoc?.id) {
+            const { data: docVersion } = await supabase
+              .from("data_room_document_versions")
+              .select("content")
+              .eq("document_id", parentDoc.id)
+              .eq("file_id", file.id)
+              .maybeSingle();
+
+            if (docVersion?.content && docVersion.content.trim() !== "") {
+              setDocumentContent(docVersion.content);
+              return;
+            }
           }
         }
 
