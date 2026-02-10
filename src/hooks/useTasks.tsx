@@ -67,6 +67,10 @@ export const useTasks = () => {
   
   // Track if this is the initial load vs a background refetch
   const isInitialLoad = useRef(true);
+  // Track the last fetched org to avoid redundant concurrent fetches
+  const lastFetchedOrgId = useRef<string | null>(null);
+  // Fetch counter to discard stale responses
+  const fetchCounter = useRef(0);
   
   // Refs to avoid stale closures in realtime subscription
   const userRef = useRef(user);
@@ -108,6 +112,9 @@ export const useTasks = () => {
       isInitialLoad.current = false;
       return;
     }
+
+    // Increment fetch counter to track staleness
+    const thisFetch = ++fetchCounter.current;
 
     // Only show loading spinner on the very first fetch
     if (isInitialLoad.current) {
@@ -226,8 +233,13 @@ export const useTasks = () => {
         })
       );
 
+      // Discard result if a newer fetch has been initiated
+      if (thisFetch !== fetchCounter.current) return;
+
       setTasks(tasksWithSignedUrls);
     } catch (error: any) {
+      // Discard errors from stale fetches
+      if (thisFetch !== fetchCounter.current) return;
       // Silently handle missing table/relationship errors for new organizations
       // PGRST205 = missing table, PGRST200 = missing relationship
       const ignoredCodes = ['PGRST205', 'PGRST200'];
@@ -246,8 +258,10 @@ export const useTasks = () => {
         });
       }
     } finally {
-      setLoading(false);
-      isInitialLoad.current = false;
+      if (thisFetch === fetchCounter.current) {
+        setLoading(false);
+        isInitialLoad.current = false;
+      }
     }
   }, [toast]);
 
