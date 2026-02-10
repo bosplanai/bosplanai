@@ -6,7 +6,6 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-// Helper function for SHA-256 password hash
 async function hashPassword(password: string): Promise<string> {
   const encoder = new TextEncoder();
   const data = encoder.encode(password);
@@ -29,8 +28,7 @@ Deno.serve(async (req) => {
     });
 
     const body = await req.json();
-    const { email, fileId, status, assigned_to, assigned_guest_id, folder_id, name } = body;
-    // Support both token and password fields, and accessId as fallback password
+    const { email, fileId } = body;
     const actualPassword = body.token || body.password || body.accessId;
 
     if (!email || !actualPassword || !fileId) {
@@ -40,26 +38,9 @@ Deno.serve(async (req) => {
       );
     }
 
-    // At least one update field must be provided
-    if (!status && assigned_to === undefined && assigned_guest_id === undefined && folder_id === undefined && name === undefined) {
-      return new Response(
-        JSON.stringify({ error: "No update fields provided" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    // Validate status value if provided
-    const validStatuses = ["not_opened", "in_review", "review_failed", "being_amended", "completed"];
-    if (status && !validStatuses.includes(status)) {
-      return new Response(
-        JSON.stringify({ error: "Invalid status value" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
     const normalizedEmail = email.toLowerCase().trim();
 
-    // Verify guest access - match pattern used by other guest functions
+    // Verify guest access
     const { data: invite, error: inviteError } = await supabaseAdmin
       .from("data_room_invites")
       .select("id, email, status, access_password, data_room_id, organization_id, guest_name")
@@ -88,7 +69,7 @@ Deno.serve(async (req) => {
     // Verify file belongs to this data room
     const { data: file, error: fileError } = await supabaseAdmin
       .from("data_room_files")
-      .select("id, data_room_id, organization_id")
+      .select("id, name, data_room_id, organization_id")
       .eq("id", fileId)
       .eq("data_room_id", invite.data_room_id)
       .single();
@@ -100,46 +81,34 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Build update object with only provided fields
-    const updateData: Record<string, unknown> = {};
-    if (status) updateData.status = status;
-    if (assigned_to !== undefined) updateData.assigned_to = assigned_to;
-    if (assigned_guest_id !== undefined) updateData.assigned_guest_id = assigned_guest_id;
-    if (folder_id !== undefined) updateData.folder_id = folder_id;
-    if (name !== undefined) updateData.name = name;
-
-    const { error: updateError } = await supabaseAdmin
+    // Soft delete the file (set deleted_at)
+    const { error: deleteError } = await supabaseAdmin
       .from("data_room_files")
-      .update(updateData)
+      .update({ deleted_at: new Date().toISOString() })
       .eq("id", fileId);
 
-    if (updateError) {
-      console.error("Error updating file:", updateError);
+    if (deleteError) {
+      console.error("Error deleting file:", deleteError);
       return new Response(
-        JSON.stringify({ error: "Failed to update file" }),
+        JSON.stringify({ error: "Failed to delete file" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
+    // Also soft-delete any child versions
+    await supabaseAdmin
+      .from("data_room_files")
+      .update({ deleted_at: new Date().toISOString() })
+      .eq("parent_file_id", fileId);
+
     // Log activity
-    const details: Record<string, unknown> = { file_id: fileId };
-    if (status) details.new_status = status;
-    if (assigned_to !== undefined) details.assigned_to = assigned_to;
-    if (assigned_guest_id !== undefined) details.assigned_guest_id = assigned_guest_id;
-    if (folder_id !== undefined) details.folder_id = folder_id;
-    if (name !== undefined) details.new_name = name;
-
-    const action = status ? "file_status_changed" 
-      : (folder_id !== undefined || name !== undefined) ? "file_details_updated"
-      : "file_assignment_changed";
-
     await supabaseAdmin.from("data_room_activity").insert({
       data_room_id: invite.data_room_id,
       organization_id: file.organization_id,
       user_name: invite.guest_name || normalizedEmail.split("@")[0],
       user_email: normalizedEmail,
-      action,
-      details,
+      action: "file_deleted",
+      details: { file_id: fileId, file_name: file.name },
       is_guest: true,
     });
 
@@ -148,7 +117,7 @@ Deno.serve(async (req) => {
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error: unknown) {
-    console.error("Error in guest-update-file-status:", error);
+    console.error("Error in guest-delete-file:", error);
     const errorMessage = error instanceof Error ? error.message : "Unknown error";
     return new Response(
       JSON.stringify({ error: errorMessage }),

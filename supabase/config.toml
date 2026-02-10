@@ -161,3 +161,6 @@ verify_jwt = false
 
 [functions.guest-update-file-status]
 verify_jwt = false
+
+[functions.guest-delete-file]
+verify_jwt = false

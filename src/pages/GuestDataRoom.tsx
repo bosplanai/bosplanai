@@ -50,6 +50,7 @@ import GuestFilePreviewDialog from "@/components/dataroom/GuestFilePreviewDialog
 import GuestDataRoomDocumentEditorDialog from "@/components/dataroom/GuestDataRoomDocumentEditorDialog";
 import { GuestDataRoomFileCard } from "@/components/dataroom/GuestDataRoomFileCard";
 import { DataRoomVersionHistoryDialog } from "@/components/dataroom/DataRoomVersionHistoryDialog";
+import { DataRoomEditDetailsDialog } from "@/components/dataroom/DataRoomEditDetailsDialog";
 import { isEditableDocument as isEditableDocumentUtil } from "@/lib/documentUtils";
 
 interface PreviewFile {
@@ -255,6 +256,11 @@ const GuestDataRoom = () => {
   const [versionProfileMap, setVersionProfileMap] = useState<Record<string, string>>({});
   const [loadingVersions, setLoadingVersions] = useState(false);
   const [restoringVersion, setRestoringVersion] = useState(false);
+
+  // Edit details state
+  const [editDetailsDialogOpen, setEditDetailsDialogOpen] = useState(false);
+  const [editDetailsFile, setEditDetailsFile] = useState<{ id: string; name: string; folder_id: string | null; assigned_to?: string | null; assigned_guest_id?: string | null } | null>(null);
+  const [savingDetails, setSavingDetails] = useState(false);
 
   // Profile map for uploaders and assignees
   const [profileMap, setProfileMap] = useState<Record<string, string>>({});
@@ -932,10 +938,6 @@ const GuestDataRoom = () => {
 
   // Delete file handler
   const handleDeleteFile = async (file: FileItem) => {
-    if (!file.is_own_upload) {
-      toast.error("You can only delete files you uploaded");
-      return;
-    }
 
     setDeletingFileId(file.id);
     try {
@@ -1000,6 +1002,38 @@ const GuestDataRoom = () => {
       toast.error(err instanceof Error ? err.message : "Failed to delete folder");
     } finally {
       setDeletingFolderId(null);
+    }
+  };
+
+  // Edit details handler
+  const handleSaveEditDetails = async (data: {
+    folder_id: string | null;
+    is_restricted: boolean;
+    assigned_to: string | null;
+    assigned_guest_id: string | null;
+  }) => {
+    if (!editDetailsFile) return;
+    setSavingDetails(true);
+    try {
+      const { error: fnError } = await supabase.functions.invoke("guest-update-file-status", {
+        body: {
+          token: token || password,
+          email: email.toLowerCase(),
+          fileId: editDetailsFile.id,
+          folder_id: data.folder_id,
+          assigned_to: data.assigned_to,
+          assigned_guest_id: data.assigned_guest_id,
+        },
+      });
+      if (fnError) throw new Error(await extractFunctionErrorMessage(fnError));
+      toast.success("File details updated");
+      setEditDetailsDialogOpen(false);
+      setEditDetailsFile(null);
+      await fetchContent(currentFolderId);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to update file details");
+    } finally {
+      setSavingDetails(false);
     }
   };
 
@@ -1670,9 +1704,18 @@ const GuestDataRoom = () => {
                               onView={() => handleFilePreview(file)}
                               onDownload={(format) => handleDownload(file, format)}
                               onViewVersions={() => fetchFileVersions({ id: file.id, name: file.name })}
-                              onEditDocument={file.permission_level === "edit" ? () => setEditFile(file) : undefined}
-                              onDelete={file.is_own_upload ? () => handleDeleteFile(file) : undefined}
-                              onManagePermissions={file.is_own_upload ? () => openFilePermissions(file) : undefined}
+                              onEditDetails={() => {
+                                setEditDetailsFile({
+                                  id: file.id,
+                                  name: file.name,
+                                  folder_id: file.folder_id || null,
+                                  assigned_to: file.assigned_to || null,
+                                  assigned_guest_id: (file as any).assigned_guest_id || null,
+                                });
+                                setEditDetailsDialogOpen(true);
+                              }}
+                              onEditDocument={() => setEditFile(file)}
+                              onDelete={() => handleDeleteFile(file)}
                               onStatusChange={(status) => handleGuestFileStatusChange(file.id, status)}
                             />
                           );
@@ -2193,6 +2236,26 @@ const GuestDataRoom = () => {
           toast.info("Delete functionality is not available for guests");
         }}
         isRestoring={restoringVersion}
+      />
+
+      {/* Edit Details Dialog */}
+      <DataRoomEditDetailsDialog
+        open={editDetailsDialogOpen}
+        onOpenChange={setEditDetailsDialogOpen}
+        file={editDetailsFile}
+        folders={allFolders}
+        members={members.map(m => ({
+          id: m.user_id,
+          full_name: m.user?.full_name || "Unknown",
+          email: m.email || undefined,
+        }))}
+        guests={guests.map(g => ({
+          id: g.id,
+          guest_name: g.guest_name,
+          email: g.email,
+        }))}
+        onSave={handleSaveEditDetails}
+        isSaving={savingDetails}
       />
     </div>
   );
