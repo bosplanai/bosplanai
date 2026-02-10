@@ -135,68 +135,124 @@
         }
       }
  
-     // Get or create document content
-     let { data: document, error: docError } = await supabaseAdmin
-       .from("data_room_document_content")
-       .select("*")
-       .eq("file_id", fileId)
-       .maybeSingle();
- 
-     if (!document) {
-       // Create new document content if it doesn't exist
-       // First try to parse the original file
-       let initialContent = "<p>Start editing this document...</p>";
-       
-       try {
-         const parseResponse = await fetch(
-           `${supabaseUrl}/functions/v1/parse-document`,
-           {
-             method: "POST",
-             headers: {
-               Authorization: `Bearer ${supabaseServiceKey}`,
-               "Content-Type": "application/json",
-             },
-              body: JSON.stringify({
-                fileId: file.id,
-                filePath: file.file_path,
-                mimeType: file.mime_type,
-                bucket: "data-room-files",
-              }),
-           }
-         );
- 
-         if (parseResponse.ok) {
-           const parseResult = await parseResponse.json();
-           if (parseResult.content && parseResult.content.trim() !== '') {
-             initialContent = parseResult.content;
-           }
-         }
-       } catch (parseError) {
-         console.error("Error parsing document:", parseError);
-       }
- 
-       const { data: newDoc, error: createError } = await supabaseAdmin
-         .from("data_room_document_content")
-         .insert({
-           file_id: fileId,
-           data_room_id: invite.data_room_id,
-           organization_id: invite.organization_id,
-           content: initialContent,
-           content_type: "rich_text",
-         })
-         .select()
-         .single();
- 
-       if (createError) {
-         console.error("Error creating document:", createError);
-         return new Response(
-           JSON.stringify({ error: "Failed to create document" }),
-           { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-         );
-       }
- 
-       document = newDoc;
-     }
+      // Get or create document content
+      let { data: document, error: docError } = await supabaseAdmin
+        .from("data_room_document_content")
+        .select("*")
+        .eq("file_id", fileId)
+        .maybeSingle();
+  
+      if (!document && file.parent_file_id) {
+        // This is a version file - check data_room_document_versions for version-specific content
+        const { data: versionContent } = await supabaseAdmin
+          .from("data_room_document_versions")
+          .select("content, version_number, created_at")
+          .eq("file_id", fileId)
+          .order("version_number", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (versionContent?.content && versionContent.content.trim() !== "") {
+          // Return version content as a synthetic document object
+          document = {
+            id: fileId,
+            file_id: fileId,
+            content: versionContent.content,
+            content_type: "rich_text",
+            created_at: versionContent.created_at,
+            updated_at: versionContent.created_at,
+            data_room_id: file.data_room_id,
+            organization_id: invite.organization_id,
+            last_edited_by: null,
+          };
+        } else {
+          // Also check via document_id from the parent's document content
+          const { data: parentDoc } = await supabaseAdmin
+            .from("data_room_document_content")
+            .select("id")
+            .eq("file_id", file.parent_file_id)
+            .maybeSingle();
+
+          if (parentDoc?.id) {
+            const { data: docVersion } = await supabaseAdmin
+              .from("data_room_document_versions")
+              .select("content, created_at")
+              .eq("document_id", parentDoc.id)
+              .eq("file_id", fileId)
+              .maybeSingle();
+
+            if (docVersion?.content && docVersion.content.trim() !== "") {
+              document = {
+                id: fileId,
+                file_id: fileId,
+                content: docVersion.content,
+                content_type: "rich_text",
+                created_at: docVersion.created_at,
+                updated_at: docVersion.created_at,
+                data_room_id: file.data_room_id,
+                organization_id: invite.organization_id,
+                last_edited_by: null,
+              };
+            }
+          }
+        }
+      }
+
+      if (!document) {
+        // Create new document content if it doesn't exist
+        // First try to parse the original file
+        let initialContent = "<p>Start editing this document...</p>";
+        
+        try {
+          const parseResponse = await fetch(
+            `${supabaseUrl}/functions/v1/parse-document`,
+            {
+              method: "POST",
+              headers: {
+                Authorization: `Bearer ${supabaseServiceKey}`,
+                "Content-Type": "application/json",
+              },
+               body: JSON.stringify({
+                 fileId: file.id,
+                 filePath: file.file_path,
+                 mimeType: file.mime_type,
+                 bucket: "data-room-files",
+               }),
+            }
+          );
+  
+          if (parseResponse.ok) {
+            const parseResult = await parseResponse.json();
+            if (parseResult.content && parseResult.content.trim() !== '') {
+              initialContent = parseResult.content;
+            }
+          }
+        } catch (parseError) {
+          console.error("Error parsing document:", parseError);
+        }
+  
+        const { data: newDoc, error: createError } = await supabaseAdmin
+          .from("data_room_document_content")
+          .insert({
+            file_id: fileId,
+            data_room_id: invite.data_room_id,
+            organization_id: invite.organization_id,
+            content: initialContent,
+            content_type: "rich_text",
+          })
+          .select()
+          .single();
+  
+        if (createError) {
+          console.error("Error creating document:", createError);
+          return new Response(
+            JSON.stringify({ error: "Failed to create document" }),
+            { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+  
+        document = newDoc;
+      }
  
      return new Response(
        JSON.stringify({ document }),
