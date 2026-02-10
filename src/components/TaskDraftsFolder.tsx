@@ -11,6 +11,7 @@ import {
 } from "./ui/sheet";
 import { Badge } from "./ui/badge";
 import { useTasks, Task } from "@/hooks/useTasks";
+import { useOrganization } from "@/hooks/useOrganization";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
@@ -32,6 +33,7 @@ const TaskDraftsFolder = () => {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [draftToDelete, setDraftToDelete] = useState<string | null>(null);
   const { fetchDraftTasks, publishDraft, deleteTask } = useTasks();
+  const { profile } = useOrganization();
   const { toast } = useToast();
 
   const loadDrafts = async () => {
@@ -41,11 +43,14 @@ const TaskDraftsFolder = () => {
     setLoading(false);
   };
 
+  // Clear drafts when org changes; reload if sheet is open
   useEffect(() => {
     if (isOpen) {
       loadDrafts();
+    } else {
+      setDrafts([]);
     }
-  }, [isOpen]);
+  }, [isOpen, profile?.organization_id]);
 
   const handlePublish = async (taskId: string) => {
     const success = await publishDraft(taskId);

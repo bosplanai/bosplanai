@@ -329,8 +329,11 @@ export const useArchive = () => {
     });
   };
 
+  // Clear cached data and re-run auto-archive when org changes
   useEffect(() => {
     if (user && profile?.organization_id) {
+      setArchivedTasks([]);
+      setArchivedProjects([]);
       autoArchiveItems();
     }
   }, [user, profile?.organization_id, autoArchiveItems]);
