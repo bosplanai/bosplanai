@@ -24,6 +24,9 @@ const navItems = [{
 }, {
   label: "Pricing",
   path: "/pricing"
+}, {
+  label: "Agents",
+  path: "/agents"
 }];
 interface WelcomeHeaderProps {
   variant?: "default" | "large-logo";

@@ -146,6 +146,13 @@ const SuperAdminDashboard = () => {
       href: "/superadmin/ai-usage",
       color: "text-amber-500",
       bgColor: "bg-amber-500/10"
+    }, {
+      title: "Agents Waiting List",
+      description: "View signups from users interested in Bosplan AI Agents",
+      icon: Bot,
+      href: "/superadmin/agents-waitlist",
+      color: "text-teal-500",
+      bgColor: "bg-teal-500/10"
     }]
   }, {
     category: "Customer Insights",
