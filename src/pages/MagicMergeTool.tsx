@@ -239,12 +239,12 @@ const MagicMergeTool = () => {
           if (insertError) throw insertError;
         }
 
-        // Also update assigned_user_id on the task itself
-        // Magic Merge skips the task request/approval process - set directly to accepted
-        await supabase.from("tasks").update({
-          assigned_user_id: targetUserId,
-          assignment_status: 'accepted'
-        }).eq("id", taskId);
+        // Use SECURITY DEFINER function to bypass RLS for merge reassignment
+        const { error: rpcError } = await supabase.rpc("magic_merge_reassign_task", {
+          _task_id: taskId,
+          _new_user_id: targetUserId,
+        });
+        if (rpcError) throw rpcError;
       }
 
       // Get user names for notifications

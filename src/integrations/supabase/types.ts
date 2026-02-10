@@ -3437,6 +3437,10 @@ export type Database = {
       }
       is_super_admin: { Args: { _user_id: string }; Returns: boolean }
       is_task_assignee: { Args: { p_task_id: string }; Returns: boolean }
+      magic_merge_reassign_task: {
+        Args: { _new_user_id: string; _task_id: string }
+        Returns: undefined
+      }
       notify_policy_expired: { Args: never; Returns: undefined }
       reassign_task: {
         Args: {
