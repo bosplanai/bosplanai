@@ -2404,7 +2404,7 @@ By signing below, you acknowledge that you have read, understood, and agree to b
                                       setEditDetailsDialogOpen(true);
                                     }}
                                     onEditDocument={isEditableDocument(file.mime_type) ? () => setEditFile({
-                                      id: file.id,
+                                      id: (file as any).root_file_id || file.id,
                                       name: file.name,
                                       file_path: file.file_path,
                                       mime_type: file.mime_type
