@@ -163,6 +163,51 @@ Deno.serve(async (req) => {
       details: { file_id: fileRecord.id, file_name: file.name }
     });
 
+    // Background parse for editable documents so content is ready instantly
+    const lowerMime = mimeType.toLowerCase();
+    const lowerName = file.name.toLowerCase();
+    const isEditable = lowerMime.includes('word') || lowerMime.includes('officedocument') || 
+      lowerMime.includes('msword') || lowerMime.includes('excel') || lowerMime.includes('spreadsheet') ||
+      lowerName.endsWith('.docx') || lowerName.endsWith('.doc') || lowerName.endsWith('.xlsx') || lowerName.endsWith('.xls');
+
+    if (isEditable) {
+      // Fire and forget - don't await, don't block the response
+      (async () => {
+        try {
+          const parseUrl = `${supabaseUrl}/functions/v1/parse-document`;
+          const parseRes = await fetch(parseUrl, {
+            method: "POST",
+            headers: {
+              "Authorization": `Bearer ${supabaseServiceKey}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              fileId: fileRecord.id,
+              filePath,
+              mimeType,
+              bucket: "data-room-files",
+            }),
+          });
+          if (parseRes.ok) {
+            const parseData = await parseRes.json();
+            if (parseData.content && parseData.content.trim().length > 0) {
+              await supabaseAdmin.from("data_room_document_content").insert({
+                file_id: fileRecord.id,
+                data_room_id: invite.data_room_id,
+                organization_id: invite.organization_id,
+                content: parseData.content,
+                content_type: "rich_text",
+                last_edited_by: dataRoom.created_by,
+              });
+              console.log("Background parse successful for:", fileRecord.id);
+            }
+          }
+        } catch (e) {
+          console.error("Background parse error (non-blocking):", e);
+        }
+      })();
+    }
+
     console.log("File uploaded successfully:", fileRecord.id);
 
     return new Response(JSON.stringify({ success: true, file: fileRecord }),
