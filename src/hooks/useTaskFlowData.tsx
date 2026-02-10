@@ -559,6 +559,12 @@ export const useTaskFlowData = () => {
         .eq("id", taskId);
       
       if (error) throw error;
+
+      // Clean up task_assignments so visibility filters work correctly on refetch
+      await supabase
+        .from("task_assignments")
+        .delete()
+        .eq("task_id", taskId);
     }
     
     await fetchData();
