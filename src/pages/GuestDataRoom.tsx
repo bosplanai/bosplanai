@@ -1714,7 +1714,10 @@ const GuestDataRoom = () => {
                                 });
                                 setEditDetailsDialogOpen(true);
                               }}
-                              onEditDocument={() => setEditFile(file)}
+                              onEditDocument={() => setEditFile({
+                                ...file,
+                                id: (file as any).root_file_id || file.id,
+                              })}
                               onDelete={() => handleDeleteFile(file)}
                               onStatusChange={(status) => handleGuestFileStatusChange(file.id, status)}
                             />
