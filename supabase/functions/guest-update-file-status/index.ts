@@ -29,20 +29,28 @@ Deno.serve(async (req) => {
     });
 
     const body = await req.json();
-    const { email, fileId, status } = body;
+    const { email, fileId, status, assigned_to, assigned_guest_id } = body;
     // Support both token and password fields, and accessId as fallback password
     const actualPassword = body.token || body.password || body.accessId;
 
-    if (!email || !actualPassword || !fileId || !status) {
+    if (!email || !actualPassword || !fileId) {
       return new Response(
         JSON.stringify({ error: "Missing required fields" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // Validate status value
+    // At least one update field must be provided
+    if (!status && assigned_to === undefined && assigned_guest_id === undefined) {
+      return new Response(
+        JSON.stringify({ error: "No update fields provided" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Validate status value if provided
     const validStatuses = ["not_opened", "in_review", "review_failed", "being_amended", "completed"];
-    if (!validStatuses.includes(status)) {
+    if (status && !validStatuses.includes(status)) {
       return new Response(
         JSON.stringify({ error: "Invalid status value" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -92,28 +100,38 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Update file status
+    // Build update object with only provided fields
+    const updateData: Record<string, unknown> = {};
+    if (status) updateData.status = status;
+    if (assigned_to !== undefined) updateData.assigned_to = assigned_to;
+    if (assigned_guest_id !== undefined) updateData.assigned_guest_id = assigned_guest_id;
+
     const { error: updateError } = await supabaseAdmin
       .from("data_room_files")
-      .update({ status })
+      .update(updateData)
       .eq("id", fileId);
 
     if (updateError) {
-      console.error("Error updating file status:", updateError);
+      console.error("Error updating file:", updateError);
       return new Response(
-        JSON.stringify({ error: "Failed to update file status" }),
+        JSON.stringify({ error: "Failed to update file" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
     // Log activity
+    const details: Record<string, unknown> = { file_id: fileId };
+    if (status) details.new_status = status;
+    if (assigned_to !== undefined) details.assigned_to = assigned_to;
+    if (assigned_guest_id !== undefined) details.assigned_guest_id = assigned_guest_id;
+
     await supabaseAdmin.from("data_room_activity").insert({
       data_room_id: invite.data_room_id,
       organization_id: file.organization_id,
       user_name: invite.guest_name || normalizedEmail.split("@")[0],
       user_email: normalizedEmail,
-      action: "file_status_changed",
-      details: { file_id: fileId, new_status: status },
+      action: status ? "file_status_changed" : "file_assignment_changed",
+      details,
       is_guest: true,
     });
 
