@@ -106,7 +106,10 @@ export const UserOrganizationsProvider = ({ children }: { children: ReactNode })
   }, []);
 
   useEffect(() => {
-    isInitialLoad.current = true;
+    // Only treat as initial load if we haven't fetched yet
+    if (organizations.length === 0 && loading) {
+      isInitialLoad.current = true;
+    }
     fetchUserOrganizations();
   }, [fetchUserOrganizations]);
 
