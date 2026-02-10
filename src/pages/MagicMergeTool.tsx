@@ -220,23 +220,32 @@ const MagicMergeTool = () => {
       // 1. Update task_assignments: remove source user, add target user
       for (const taskId of taskIds) {
         // Remove source user assignment
-        await supabase.from("task_assignments").delete().eq("task_id", taskId).eq("user_id", sourceUserId);
+        const { error: deleteError } = await supabase.from("task_assignments").delete().eq("task_id", taskId).eq("user_id", sourceUserId);
+        if (deleteError) {
+          console.error("Merge: delete assignment failed", deleteError);
+          throw new Error(`Failed to remove source assignment: ${deleteError.message}`);
+        }
 
         // Check if target already assigned
-        const {
-          data: existing
-        } = await supabase.from("task_assignments").select("id").eq("task_id", taskId).eq("user_id", targetUserId).single();
+        const { data: existing } = await supabase
+          .from("task_assignments")
+          .select("id")
+          .eq("task_id", taskId)
+          .eq("user_id", targetUserId)
+          .maybeSingle();
+          
         if (!existing) {
           // Add target user assignment
-          const {
-            error: insertError
-          } = await supabase.from("task_assignments").insert({
+          const { error: insertError } = await supabase.from("task_assignments").insert({
             task_id: taskId,
             user_id: targetUserId,
             assigned_by: user.id,
-            status: 'accepted'
+            assignment_status: 'accepted'
           });
-          if (insertError) throw insertError;
+          if (insertError) {
+            console.error("Merge: insert assignment failed", insertError);
+            throw new Error(`Failed to create target assignment: ${insertError.message}`);
+          }
         }
 
         // Use SECURITY DEFINER function to bypass RLS for merge reassignment
@@ -244,7 +253,10 @@ const MagicMergeTool = () => {
           _task_id: taskId,
           _new_user_id: targetUserId,
         });
-        if (rpcError) throw rpcError;
+        if (rpcError) {
+          console.error("Merge: RPC reassign failed", rpcError);
+          throw new Error(`Failed to reassign task: ${rpcError.message}`);
+        }
       }
 
       // Get user names for notifications
