@@ -63,6 +63,8 @@ const ProjectDraftsFolder = ({ onPublishDraft }: Props) => {
   useEffect(() => {
     if (isOpen && organisationId) {
       loadDrafts();
+    } else {
+      setDrafts([]);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, organisationId]);

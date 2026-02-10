@@ -95,6 +95,10 @@ export const RecyclingBin = ({ onRestore, variant = "both" }: RecyclingBinProps)
       fetchDeletedItems();
       setSelectedTaskIds(new Set());
       setSelectedProjectIds(new Set());
+    } else {
+      // Clear stale data when org changes while sheet is closed
+      setDeletedTasks([]);
+      setDeletedProjects([]);
     }
   }, [isOpen, user, profile?.organization_id]);
 
