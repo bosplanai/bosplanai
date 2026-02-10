@@ -1706,7 +1706,7 @@ const GuestDataRoom = () => {
                               onViewVersions={() => fetchFileVersions({ id: file.id, name: file.name })}
                               onEditDetails={() => {
                                 setEditDetailsFile({
-                                  id: file.id,
+                                  id: (file as any).root_file_id || file.id,
                                   name: file.name,
                                   folder_id: file.folder_id || null,
                                   assigned_to: file.assigned_to || null,
